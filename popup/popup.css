@@ -9,6 +9,10 @@ button {
   margin-left: 10px;
 }
 
+button:hover {
+  cursor: pointer;
+}
+
 #main {
   display: flex;
   flex-direction: column;
