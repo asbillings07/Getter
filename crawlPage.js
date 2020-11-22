@@ -10,32 +10,16 @@
     }
   });
 
-  function getStyleOnPage(css, pseudoEl = ":before") {
+  function getStyleOnPage(css, pseudoEl) {
     if (typeof window.getComputedStyle == "undefined")
       window.getComputedStyle = function (elem) {
         return elem.currentStyle;
       };
     const nodes = document.body.getElementsByTagName("*");
     const values = [];
-    let elementStyle;
     Array.from(nodes).forEach((nodeElement, i) => {
       if (nodeElement.style) {
-        const outputElement =
-          "#" + (nodeElement.id || nodeElement.nodeName + "(" + i + ")");
-
-        if (css == "fontFamily") {
-          const fontStr = getComputedStyle(nodeElement, "")[css];
-          const fontArr = fontStr.split(",");
-          elementStyle = fontArr[0];
-        } else {
-          elementStyle = getComputedStyle(nodeElement, "")[css];
-        }
-
-        if (elementStyle) {
-          if (!values.includes(elementStyle)) {
-            values.push(elementStyle);
-          }
-        }
+        captureEls({ css, nodeElement, values });
         if (pseudoEl) {
           capturePseudoEls({ pseudoEl, css, values, nodeElement });
         }
@@ -71,6 +55,26 @@
       if (!values.includes(pseudoProp)) {
         console.log(":Before", pseudoProp);
         values.push(pseudoProp);
+      }
+    }
+  }
+
+  function captureEls(elementInfo) {
+    const { css, nodeElement, values } = elementInfo;
+    const outputElement = "#" + (nodeElement.id || nodeElement.nodeName);
+
+    let elementStyle;
+    if (css == "fontFamily") {
+      const fontStr = getComputedStyle(nodeElement, "")[css];
+      const fontArr = fontStr.split(",");
+      elementStyle = fontArr[0];
+    } else {
+      elementStyle = getComputedStyle(nodeElement, "")[css];
+    }
+
+    if (elementStyle) {
+      if (!values.includes(elementStyle)) {
+        values.push(elementStyle);
       }
     }
   }
