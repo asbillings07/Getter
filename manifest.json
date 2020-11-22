@@ -1,0 +1,38 @@
+{
+    "name": "CSS Indentify",
+    "version": "1.0",
+    "description": "Automatically find fonts, colors and more on any page!",
+    "permissions": [
+      "https://*/*",
+      "http://*/*",
+      "tabs",
+      "activeTab",
+      "declarativeContent",
+      "storage",
+      "alarms",
+      "notifications"
+    ],
+    "background": {
+      "scripts": ["background.js"],
+      "persistent": false
+    },
+    "options_page": "./options/options.html",
+    "page_action": {
+      "default_title": "CSS Identify",
+      "default_popup": "./popup/popup.html",
+      "default_icon": {
+        "16": "images/color_16px.png",
+        "32": "images/color_32px.png",
+        "48": "images/color_48px.png",
+        "128": "images/color_128px.png"
+      }
+    },
+    "icons": {
+        "16": "images/color_16px.png",
+        "32": "images/color_32px.png",
+        "48": "images/color_48px.png",
+        "128": "images/color_128px.png"
+    },
+    "manifest_version": 2
+  }
+  
