@@ -1,92 +1,85 @@
 (function () {
+  getItem("hasScriptRunOnPage", ({ hasScriptRunOnPage }) => {
+    if (hasScriptRunOnPage) {
+      console.log("Script has already run, pulling from last result");
+    } else {
+      chrome.runtime.sendMessage({ method: "getValues" }, (response) => {
+        console.log(response);
+        getValuesFromPage(response.getters, getStyleOnPage);
+      });
+    }
+  });
 
-    const values = ['fontFamily', 'fontWeigtht', 'backgroundColor']
+  function getStyleOnPage(css, pseudoEl = ":before") {
+    if (typeof window.getComputedStyle == "undefined")
+      window.getComputedStyle = function (elem) {
+        return elem.currentStyle;
+      };
+    const nodes = document.body.getElementsByTagName("*");
+    const values = [];
+    let elementStyle;
+    Array.from(nodes).forEach((nodeElement, i) => {
+      if (nodeElement.style) {
+        const outputElement =
+          "#" + (nodeElement.id || nodeElement.nodeName + "(" + i + ")");
 
-    function styleInPage(css, verbose = false){
-        if(typeof window.getComputedStyle== "undefined")
-        window.getComputedStyle = function(elem){
-            return elem.currentStyle;
+        if (css == "fontFamily") {
+          const fontStr = getComputedStyle(nodeElement, "")[css];
+          const fontArr = fontStr.split(",");
+          elementStyle = fontArr[0];
+        } else {
+          elementStyle = getComputedStyle(nodeElement, "")[css];
         }
-        const nodes = document.body.getElementsByTagName('*')
-        const values = []
-        console.log(nodes.length)
-       Array.from(nodes).forEach((nodeElement, i) => {
-            if(nodeElement.style){
-                const outputElement = '#'+(nodeElement.id || nodeElement.nodeName+'('+i+')');
-                const elementStyle = getComputedStyle(nodeElement, '')[css];
 
-                if(elementStyle){
-                    
-                    if (verbose) {
-                        values.push([outputElement , elementStyle]);
-                    } else if(values.indexOf(elementStyle)== -1) {
-                        values.push(elementStyle);
-                    }
-                }
-
-                const val_before = getComputedStyle(nodeElement, ':before')[css];
-                if(val_before){
-
-                    if (verbose) { 
-                        values.push([outputElement , val_before]); }
-                    else if(values.indexOf(val_before)== -1) { 
-                        values.push(val_before);
-                    }
-                }
-
-                const val_after= getComputedStyle(nodeElement, ':after')[css];
-                if(val_after){
-
-                    if(verbose) {
-                        values.push([outputElement , val_after]);
-                    } else if(values.indexOf(val_after)== -1) {
-                        values.push(val_after);
-                    }
-                }
-            }
-        })
-
-        return values;
-    }
-
-    function getValuesFromPage(values, styleInPage) {
-        const valueObj = {}
-        values.forEach(value => {
-            valueObj[value] = styleInPage(value)
-        })
-
-        chrome.runtime.sendMessage({ state: valueObj }, function(response) {
-            console.log(response);
-          });
-        return valueObj
-    }
-
-    
-
-    getValuesFromPage(values, styleInPage)
-  
-
-    
-    // getItem('state', ({ state }) => {
-
-    // })
-
-// function getAllCss() {
-//     var file = document.getElementById('css');
-//     console.log(file.sheet.cssRules)
-//     return Array.prototype.map.call(file.sheet.cssRules, (file) => file.cssText)
-// }
-
-// getAllCss()
-
-
-
-    function getItem(item, func = (data) => console.log(data)) {
-        chrome.storage.sync.get(item, func)
+        if (elementStyle) {
+          if (!values.includes(elementStyle)) {
+            values.push(elementStyle);
+          }
+        }
+        if (pseudoEl) {
+          capturePseudoEls({ pseudoEl, css, values, nodeElement });
+        }
       }
-    function setItem(item, func = () => false) {
-        chrome.storage.sync.set(item)
-      }
-    
+    });
 
-}())
+    return values;
+  }
+
+  function getValuesFromPage(values, getStyleOnPage) {
+    const valueObj = {};
+    values.forEach((value) => {
+      valueObj[value] = getStyleOnPage(value);
+    });
+
+    chrome.runtime.sendMessage({ state: valueObj });
+    setItem({ hasScriptRunOnPage: true });
+    return valueObj;
+  }
+
+  function getItem(item, func = (data) => false) {
+    chrome.storage.sync.get(item, func);
+  }
+  function setItem(item, func = () => false) {
+    chrome.storage.sync.set(item);
+  }
+
+  function capturePseudoEls(elementInfo) {
+    const { pseudoEl, css, values, nodeElement } = elementInfo;
+    const pseudoProp = getComputedStyle(nodeElement, pseudoEl)[css];
+
+    if (pseudoProp) {
+      if (!values.includes(pseudoProp)) {
+        console.log(":Before", pseudoProp);
+        values.push(pseudoProp);
+      }
+    }
+  }
+
+  // function getAllCss() {
+  //     var file = document.getElementById('css');
+  //     console.log(file.sheet.cssRules)
+  //     return Array.prototype.map.call(file.sheet.cssRules, (file) => file.cssText)
+  // }
+
+  // getAllCss()
+})();
