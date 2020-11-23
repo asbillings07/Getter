@@ -22,7 +22,7 @@ ul {
   font-size: 15px;
 }
 
-#listDiv {
+#colorDiv {
   height: 20px;
   width: 20px;
   border: black 2px solid;
@@ -30,5 +30,10 @@ ul {
 
 #liContainer {
   display: flex;
+  align-items: center;
   height: 30px;
+}
+
+#listDesc{
+  font-style: italic;
 }
