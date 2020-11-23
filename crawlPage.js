@@ -66,8 +66,10 @@
     let elementStyle;
     if (css == "fontFamily") {
       const fontStr = getComputedStyle(nodeElement, "")[css];
-      const fontArr = fontStr.split(",");
-      elementStyle = fontArr[0];
+      const font = fontStr.split(",")[0];
+      if (font.charAt(0) == `"` && font.charAt(font.length - 1) == `"`) {
+        elementStyle = font;
+      }
     } else {
       elementStyle = getComputedStyle(nodeElement, "")[css];
     }
