@@ -103,7 +103,7 @@
       if (allStyles[elementStyle]) {
         allStyles[elementStyle].style.push(elementStyle)
       } else {
-        allStyles[elementStyle] = { style: [elementStyle], id: createNodeId(5) }
+        allStyles[elementStyle] = { style: [elementStyle], id: nodeElement.id || createNodeId(5) }
         nodeElement.dataset.styleId = `${allStyles[elementStyle].id}`
       }
 
@@ -164,7 +164,7 @@
     let result = ''
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
     const charactersLength = characters.length
-    for (let i = 0; i < length; i++) {
+    for (let i = 0;i < length;i++) {
       result += characters.charAt(Math.floor(Math.random() * charactersLength))
     }
     return result

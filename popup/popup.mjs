@@ -1,35 +1,24 @@
 /* global chrome MutationObserver */
-
+import createColorElements from './createElement.mjs'
 (function () {
+  const { createColorElement, createFontElement, createDefaultElement } = createColorElements()
+  console.log(createColorElements)
   const anchor = document.getElementById('main')
   const spinner = document.getElementById('spinner')
   inspectDomForChanges(anchor, spinner)
 
   const getProperName = (cssName) =>
-  ({
-    backgroundColor: 'Background Color',
-    color: 'Color',
-    fontFamily: 'Font Family',
-    fontWeight: 'Font Weight',
-    fontSize: 'Font Size'
-  }[cssName])
+    ({
+      backgroundColor: 'Background Color',
+      color: 'Color',
+      fontFamily: 'Font Family',
+      fontWeight: 'Font Weight',
+      fontSize: 'Font Size'
+    }[cssName])
 
-  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-    chrome.tabs.executeScript(tabs[0].id, {
-      file: 'crawlPage.js'
-    })
-  })
+  chrome.tabs.query({ active: true, currentWindow: true }, onTabQuery)
 
-  chrome.runtime.onMessage.addListener(function (
-    request,
-    sender,
-    sendResponse
-  ) {
-    if (request.state) {
-      console.log(request.state)
-      createView(request.state)
-    }
-  })
+  chrome.runtime.onMessage.addListener(onMessage)
 
   function createView (cssObj) {
     console.log(cssObj)
@@ -41,7 +30,7 @@
             ? -1
             : 1
       })
-      console.log(sortedObjArr)
+
       anchor.appendChild(createElements(type, sortedObjArr))
     }
   }
@@ -55,53 +44,21 @@
       orderedList.appendChild(createdListEl)
     })
     orderedList.prepend(title)
-    anchor.style.width = '500px'
-    anchor.style.width = '500px'
+    anchor.style.width = '420px'
     return orderedList
   }
 
   function createElementsByProp (name, prop) {
     const [style, freq] = prop
-
-    const containerDiv = document.createElement('div')
-    const listItem = document.createElement('div')
-    const colorDiv = document.createElement('div')
-    const hexDiv = document.createElement('div')
-    const description = document.createElement('p')
-    containerDiv.id = 'liContainer'
-
-    if (name === 'backgroundColor' || name === 'color') {
-      containerDiv.id = 'liContainer'
-      colorDiv.id = 'colorDiv'
-      colorDiv.className = 'mr'
-      listItem.className = 'mr pointer'
-      hexDiv.className = 'mr pointer'
-      colorDiv.style.backgroundColor = rgbToHex(style)
-      hexDiv.textContent = rgbToHex(style)
-      hexDiv.addEventListener('click', copyToClipboard)
-      listItem.textContent = `${style}`
-      listItem.addEventListener('click', copyToClipboard)
-
-      description.id = 'listDesc'
-      description.textContent = `used ${freq.style.length} time(s) on the page`
-
-      containerDiv.appendChild(colorDiv)
-      containerDiv.appendChild(listItem)
-      containerDiv.appendChild(hexDiv)
-      containerDiv.appendChild(description)
-
-      return containerDiv
-    } else if (name === 'fontFamily') {
-      listItem.textContent = style
-      listItem.value = freq.id
-      listItem.className = 'pointer'
-      listItem.style.fontFamily = style
-      listItem.addEventListener('click', hightLightFontOnPage)
-      containerDiv.appendChild(listItem)
-      return containerDiv
-    } else {
-      listItem.textContent = style
-      return listItem
+    switch (name) {
+      case 'backgroundColor' || 'color':
+        return createColorElement({ freq, style, rgbToHex, copyToClipboard })
+      case 'color':
+        return createColorElement({ freq, style, rgbToHex, copyToClipboard })
+      case 'fontFamily':
+        return createFontElement({ freq, style, hightLightFontOnPage })
+      default:
+        return createDefaultElement({ style })
     }
   }
 
@@ -121,19 +78,22 @@
     const rgbArr = rbgStr.split('(')[1].split(')').join('').split(',')
     if (rgbArr.length === 4) rgbArr.pop()
 
-    const hexConvert = rgbArr.map(value => {
-      switch (true) {
-        case +value < 0:
-          return 0
-        case +value > 255:
-          return 255
-        default:
-          return +value
-      }
-    }).map(val => {
-      const hexVal = parseInt(val).toString(16).toUpperCase().trim()
-      return hexVal.length === 1 ? '0' + hexVal : hexVal
-    }).join('')
+    const hexConvert = rgbArr
+      .map((value) => {
+        switch (true) {
+          case +value < 0:
+            return 0
+          case +value > 255:
+            return 255
+          default:
+            return +value
+        }
+      })
+      .map((val) => {
+        const hexVal = parseInt(val).toString(16).toUpperCase().trim()
+        return hexVal.length === 1 ? '0' + hexVal : hexVal
+      })
+      .join('')
     return `#${hexConvert}`
   }
 
@@ -185,6 +145,19 @@
     }
     // Start observing the target node for configured mutations
     observer.observe(domEl, config)
+  }
+
+  function onMessage (request, sender, sendResponse) {
+    if (request.state) {
+      console.log(request.state)
+      createView(request.state)
+    }
+  }
+
+  function onTabQuery (tabs) {
+    chrome.tabs.executeScript(tabs[0].id, {
+      file: 'crawlPage.js'
+    })
   }
 
   // function setItem (item, func = () => false) {
