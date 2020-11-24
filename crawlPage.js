@@ -1,5 +1,9 @@
 /* global chrome, getComputedStyle  */
 (function () {
+  // grab all initial state in the beginning
+  getItem(null, (data) => {
+    console.log('local storage data', data)
+  })
   getItem('hasScriptRunOnPage', ({ hasScriptRunOnPage }) => {
     if (hasScriptRunOnPage) {
       console.log('Script has already run, pulling from last result')
@@ -33,10 +37,14 @@
     const allStyles = {}
     // need to get frequency of used colors
     Array.from(nodes).forEach((nodeElement, i) => {
-      if (nodeElement.style) {
-        captureEls({ css, nodeElement, allStyles })
-        if (pseudoEl) {
-          capturePseudoEls({ pseudoEl, css, allStyles, nodeElement })
+      // todo - I should make this list part of the options.
+      const filteredNodes = ['script', 'img', 'time', 'iframe', 'input', 'br', 'span', 'form']
+      if (!filteredNodes.includes(nodeElement.localName)) {
+        if (nodeElement.style) {
+          captureEls({ css, nodeElement, allStyles })
+          if (pseudoEl) {
+            capturePseudoEls({ pseudoEl, css, allStyles, nodeElement })
+          }
         }
       }
     })
@@ -51,7 +59,6 @@
       if (!isObjEmpty(styleObj)) valueObj[value] = styleObj
     })
     console.log(valueObj)
-
     chrome.runtime.sendMessage({ state: valueObj })
     setItem({ hasScriptRunOnPage: true })
     return valueObj
@@ -78,6 +85,7 @@
 
   function captureEls (elementInfo) {
     const { css, nodeElement, allStyles } = elementInfo
+
     // const outputElement = '#' + (nodeElement.id || nodeElement.nodeName)
 
     let elementStyle
@@ -93,33 +101,37 @@
 
     if (elementStyle) {
       if (allStyles[elementStyle]) {
-        allStyles[elementStyle].push(elementStyle)
+        allStyles[elementStyle].style.push(elementStyle)
       } else {
-        allStyles[elementStyle] = [elementStyle]
+        allStyles[elementStyle] = { style: [elementStyle], id: createNodeId(5) }
+        nodeElement.dataset.styleId = `${allStyles[elementStyle].id}`
       }
-      if (!nodeElement.dataset.styleId) {
-        nodeElement.dataset.styleId = `${elementStyle}`
-      }
-      // console.log(`${elementStyle}-${allStyles.indexOf(elementStyle)}`)
-      console.log(nodeElement.dataset.styleId)
-      console.log(nodeElement)
+
+      // if (!nodeElement.dataset.styleId) {
+      //   nodeElement.dataset.styleId = `${nodeElement.id}`
+      // }
+      console.log([nodeElement, `${nodeElement.dataset.styleId}`])
+      // console.log(nodeElement.dataset.styleId)
+      // console.log(nodeElement)
     }
   }
 
   function highlightInPage (styleId) {
     const allNodes = document.body.getElementsByTagName('*')
     console.log(`[data-style-id="${styleId}"]`)
-    const nodes = document.body.querySelectorAll('[data-style-id="0"]')
+    const nodes = document.body.querySelectorAll(`[data-style-id="${styleId}"]`)
     console.log('Queried Nodes', nodes)
 
     // remove previous highlights
     Array.from(allNodes).forEach(node => {
-      node.classList.remove('style-highlight')
+      // node.classList.remove('style-highlight')
+      node.style.backgroundColor = ''
     })
 
     // add highlight to specified nodes
     Array.from(nodes).forEach(node => {
-      node.classList.add('style-highlight')
+      // node.classList.add('style-highlight')
+      node.style.backgroundColor = 'yellow'
     })
   }
 
@@ -146,6 +158,16 @@
 
   function isObjEmpty (obj) {
     return Object.keys(obj).length === 0
+  }
+
+  function createNodeId (length) {
+    let result = ''
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+    const charactersLength = characters.length
+    for (let i = 0; i < length; i++) {
+      result += characters.charAt(Math.floor(Math.random() * charactersLength))
+    }
+    return result
   }
 
   addCSSRule(sheet, '.style-highlight', 'background-color: yellow')

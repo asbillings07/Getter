@@ -1,7 +1,4 @@
-div {
-  width: 500px;
-  height: 500px;
-}
+
 
 button {
   border: none;
@@ -25,7 +22,16 @@ ul {
 #colorDiv {
   height: 20px;
   width: 20px;
+  margin-right: 10px;
   border: black 2px solid;
+}
+
+.mr {
+  margin-right: 10px;
+}
+
+.pointer {
+  cursor: pointer;
 }
 
 #liContainer {
@@ -36,4 +42,8 @@ ul {
 
 #listDesc{
   font-style: italic;
+}
+
+#spinner {
+  font-size: 35px;
 }

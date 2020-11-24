@@ -1,30 +1,30 @@
 export default (function () {
   const createStore = (reducer) => {
-    if (reducer === undefined || typeof reducer !== "function") {
-      return new Error("You can not use the store without a reducer");
+    if (reducer === undefined || typeof reducer !== 'function') {
+      return new Error('You can not use the store without a reducer')
     }
-    let listeners = [];
-    let currentState = reducer(undefined, {});
+    let listeners = []
+    let currentState = reducer(undefined, {})
 
     return {
       getState: () => currentState,
       dispatch: (action) => {
-        currentState = reducer(currentState, action);
+        currentState = reducer(currentState, action)
 
         listeners.forEach((listener) => {
-          listener();
-        });
+          listener()
+        })
       },
       subscribe: (newListener) => {
-        listeners.push(newListener);
+        listeners.push(newListener)
 
         const unsubscribe = () => {
-          listeners = listeners.filter((l) => l !== newListener);
-        };
+          listeners = listeners.filter((l) => l !== newListener)
+        }
 
-        return unsubscribe;
-      },
-    };
-  };
-  return createStore;
-})();
+        return unsubscribe
+      }
+    }
+  }
+  return createStore
+})()
