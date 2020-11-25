@@ -3,13 +3,10 @@
     "version": "1.0",
     "description": "Automatically find fonts, colors and more on any page!",
     "permissions": [
-      "https://*/*",
-      "http://*/*",
       "tabs",
       "activeTab",
       "declarativeContent",
       "storage",
-      "alarms",
       "notifications"
     ],
     "background": {
