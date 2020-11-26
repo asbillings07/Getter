@@ -1,54 +1,44 @@
 /* eslint-disable indent */
+import didact from './didact.mjs'
 export default (function () {
+    const { createElement, renderEl } = didact
     return function CreateColorElements () {
         return {
             createColorElement: function (elObj) {
-                const containerDiv = document.createElement('div')
-                const listItem = document.createElement('div')
                 const { freq, style, rgbToHex, copyToClipboard } = elObj
-                const colorDiv = document.createElement('div')
-                const hexDiv = document.createElement('div')
-                const description = document.createElement('p')
-                containerDiv.id = 'liContainer'
-                containerDiv.id = 'liContainer'
-                colorDiv.id = 'colorDiv'
-                colorDiv.className = 'mr'
-                listItem.className = 'mr pointer'
-                hexDiv.className = 'mr pointer'
-                colorDiv.style.backgroundColor = rgbToHex(style)
-                hexDiv.textContent = rgbToHex(style)
-                hexDiv.addEventListener('click', copyToClipboard)
-                listItem.textContent = `${style}`
-                listItem.addEventListener('click', copyToClipboard)
+                const listItem = createElement('div', { className: 'mr pointer', textContent: style, onclick: (e) => copyToClipboard(e) })
+                const hexDiv = createElement('div', { className: 'mr pointer', textContent: rgbToHex(style), onclick: (e) => copyToClipboard(e) })
+                const colorDiv = createElement('div', { id: 'colorDiv', className: 'mr', style: `background-color: ${rgbToHex(style)}` })
+                const description = createElement('p', { id: 'listDesc', textContent: `used ${freq.style.length} time(s)` })
+                const containerDiv = createElement('div', { id: 'liContainer' }, colorDiv, listItem, hexDiv, description)
+                const rootDiv = document.createElement('div')
 
-                description.id = 'listDesc'
-                description.textContent = `used ${freq.style.length} time(s)`
-
-                containerDiv.appendChild(colorDiv)
-                containerDiv.appendChild(listItem)
-                containerDiv.appendChild(hexDiv)
-                containerDiv.appendChild(description)
-
-                return containerDiv
+                return renderEl(containerDiv, rootDiv)
             },
             createFontElement: function (elObj) {
-                const containerDiv = document.createElement('div')
-                const listItem = document.createElement('div')
+                // const containerDiv = document.createElement('div')
+                // const listItem = document.createElement('div')
                 const { freq, style, hightLightFontOnPage } = elObj
-                listItem.textContent = style
-                listItem.value = freq.id
-                listItem.className = 'pointer'
-                listItem.style.fontFamily = style
-                listItem.addEventListener('click', hightLightFontOnPage)
-                containerDiv.appendChild(listItem)
-                return containerDiv
+                // listItem.textContent = style
+                // listItem.value = freq.id
+                // listItem.className = 'pointer'
+                // listItem.addEventListener('click', hightLightFontOnPage)
+                // containerDiv.appendChild(listItem)
+                const listItem = createElement('div', { className: 'pointer', value: freq.id, textContent: style, onclick: e => hightLightFontOnPage(e) })
+                const containerDiv = createElement('div', { id: 'liContainer' }, listItem)
+                const rootDiv = document.createElement('div')
+                return renderEl(containerDiv, rootDiv)
             },
             createDefaultElement: function (elObj) {
                 // const containerDiv = document.createElement('div')
-                const listItem = document.createElement('div')
+                // const listItem = document.createElement('div')
                 const { style } = elObj
-                listItem.textContent = style
-                return listItem
+                // listItem.textContent = style
+                // return listItem
+                const listItem = createElement('div', { textContent: style })
+                const containerDiv = createElement('div', { id: 'liContainer' }, listItem)
+                const rootDiv = document.createElement('div')
+                return renderEl(containerDiv, rootDiv)
             }
         }
     }
