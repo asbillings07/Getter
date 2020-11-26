@@ -6,6 +6,7 @@
       "tabs",
       "activeTab",
       "declarativeContent",
+      "webNavigation",
       "storage",
       "notifications"
     ],

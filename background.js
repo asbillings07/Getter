@@ -12,6 +12,7 @@
 
   setItem({
     hasScriptRunOnPage: false,
+    pageRefreshed: false,
     cssGetters: [
       'fontFamily',
       // 'fontWeight',
@@ -28,6 +29,11 @@
 
   chrome.storage.onChanged.addListener((changes) => {
     console.log(changes)
+  })
+
+  chrome.webNavigation.onDOMContentLoaded.addListener((object) => {
+    setItem({ hasScriptRunOnPage: false })
+    // createNotification('Page Has Refreshed', 'Extension results have been updated')
   })
 
   chrome.tabs.onActivated.addListener(function () {
@@ -69,5 +75,15 @@
   }
   function setItem (item, func = () => false) {
     chrome.storage.local.set(item)
+  }
+  function createNotification (title, message) {
+    const options = {
+      type: 'basic',
+      iconUrl: '../images/color_16px.png',
+      title: title,
+      message: message,
+      requireInteraction: false
+    }
+    chrome.notifications.create(options)
   }
 })()

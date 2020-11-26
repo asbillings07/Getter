@@ -1,8 +1,12 @@
 /* global chrome, getComputedStyle  */
 (function () {
+  let hasScriptRun
+  let cssValues
   // grab all initial state in the beginning
   getItem(null, (data) => {
     console.log('local storage data', data)
+    const { hasScriptRunOnPage } = data
+    hasScriptRun = hasScriptRunOnPage
   })
   getItem('hasScriptRunOnPage', ({ hasScriptRunOnPage }) => {
     if (hasScriptRunOnPage) {
@@ -85,12 +89,12 @@
 
   function captureEls (elementInfo) {
     const { css, nodeElement, allStyles } = elementInfo
-    const filterFonts = ['sans-serif', 'serif']
+    const filterFonts = new Set(['sans-serif', 'serif', 'Arial'])
     // const outputElement = '#' + (nodeElement.id || nodeElement.nodeName)
 
     let elementStyle
     if (css === 'fontFamily') {
-      elementStyle = getComputedStyle(nodeElement, '')[css].split(',')
+      elementStyle = getComputedStyle(nodeElement, '')[css].split(',').map(font => font.trim()).filter(font => !filterFonts.has(font))
     } else {
       elementStyle = getComputedStyle(nodeElement, '')[css]
     }
@@ -100,17 +104,12 @@
         allStyles[elementStyle].style.push(elementStyle)
       } else if (Array.isArray(elementStyle)) {
         elementStyle.forEach(el => {
-          if (!filterFonts.includes(el.trim())) {
-            allStyles[el] = { style: [el], id: nodeElement.id || createNodeId(5) }
-            nodeElement.dataset.styleId = `${allStyles[el].id}`
-          }
+          allStyles[el] = { style: [el], id: getId(nodeElement) }
+          nodeElement.dataset.styleId = `${allStyles[el].id}`
         })
       } else {
-        console.log(elementStyle)
-        if (!filterFonts.includes(elementStyle.trim())) {
-          allStyles[elementStyle] = { style: [elementStyle], id: nodeElement.id || createNodeId(5) }
-          nodeElement.dataset.styleId = `${allStyles[elementStyle].id}`
-        }
+        allStyles[elementStyle] = { style: [elementStyle], id: getId(nodeElement) }
+        nodeElement.dataset.styleId = `${allStyles[elementStyle].id}`
       }
 
       // if (!nodeElement.dataset.styleId) {
@@ -119,6 +118,15 @@
       // console.log([nodeElement, `${nodeElement.dataset.styleId}`])
       // console.log(nodeElement.dataset.styleId)
       // console.log(nodeElement)
+    }
+  }
+
+  function getId (el) {
+    if (el.id) {
+      return el.id
+    } else {
+      el.id = createNodeId(5)
+      return el.id
     }
   }
 
@@ -137,7 +145,7 @@
     // add highlight to specified nodes
     Array.from(nodes).forEach(node => {
       // node.classList.add('style-highlight')
-      node.style.backgroundColor = 'yellow'
+      node.style.backgroundColor = '#FFAE42'
     })
   }
 
