@@ -38,7 +38,7 @@
     // need to get frequency of used colors
     Array.from(nodes).forEach((nodeElement, i) => {
       // todo - I should make this list part of the options.
-      const filteredNodes = ['script', 'img', 'time', 'iframe', 'input', 'br', 'span', 'form']
+      const filteredNodes = ['img', 'time', 'iframe', 'input', 'br', 'form']
       if (!filteredNodes.includes(nodeElement.localName)) {
         if (nodeElement.style) {
           captureEls({ css, nodeElement, allStyles })
@@ -85,16 +85,12 @@
 
   function captureEls (elementInfo) {
     const { css, nodeElement, allStyles } = elementInfo
-
+    const filterFonts = ['sans-serif', 'serif']
     // const outputElement = '#' + (nodeElement.id || nodeElement.nodeName)
 
     let elementStyle
     if (css === 'fontFamily') {
-      const fontStr = getComputedStyle(nodeElement, '')[css]
-      const font = fontStr.split(',')[0]
-      if (font.charAt(0) === '"' && font.charAt(font.length - 1) === '"') {
-        elementStyle = font
-      }
+      elementStyle = getComputedStyle(nodeElement, '')[css].split(',')
     } else {
       elementStyle = getComputedStyle(nodeElement, '')[css]
     }
@@ -102,15 +98,25 @@
     if (elementStyle) {
       if (allStyles[elementStyle]) {
         allStyles[elementStyle].style.push(elementStyle)
+      } else if (Array.isArray(elementStyle)) {
+        elementStyle.forEach(el => {
+          if (!filterFonts.includes(el.trim())) {
+            allStyles[el] = { style: [el], id: nodeElement.id || createNodeId(5) }
+            nodeElement.dataset.styleId = `${allStyles[el].id}`
+          }
+        })
       } else {
-        allStyles[elementStyle] = { style: [elementStyle], id: nodeElement.id || createNodeId(5) }
-        nodeElement.dataset.styleId = `${allStyles[elementStyle].id}`
+        console.log(elementStyle)
+        if (!filterFonts.includes(elementStyle.trim())) {
+          allStyles[elementStyle] = { style: [elementStyle], id: nodeElement.id || createNodeId(5) }
+          nodeElement.dataset.styleId = `${allStyles[elementStyle].id}`
+        }
       }
 
       // if (!nodeElement.dataset.styleId) {
       //   nodeElement.dataset.styleId = `${nodeElement.id}`
       // }
-      console.log([nodeElement, `${nodeElement.dataset.styleId}`])
+      // console.log([nodeElement, `${nodeElement.dataset.styleId}`])
       // console.log(nodeElement.dataset.styleId)
       // console.log(nodeElement)
     }

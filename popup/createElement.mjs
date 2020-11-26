@@ -6,9 +6,9 @@ export default (function () {
         return {
             createColorElement: function (elObj) {
                 const { freq, style, rgbToHex, copyToClipboard } = elObj
-                const listItem = createElement('div', { className: 'mr pointer', textContent: style, onclick: (e) => copyToClipboard(e) })
-                const hexDiv = createElement('div', { className: 'mr pointer', textContent: rgbToHex(style), onclick: (e) => copyToClipboard(e) })
-                const colorDiv = createElement('div', { id: 'colorDiv', className: 'mr', style: `background-color: ${rgbToHex(style)}` })
+                const listItem = createElement('div', { id: 'listItem', className: 'mr pointer', textContent: style, onclick: (e) => copyToClipboard(e) })
+                const hexDiv = createElement('div', { id: 'hexDiv', className: 'mr pointer', textContent: rgbToHex(style), onclick: (e) => copyToClipboard(e) })
+                const colorDiv = createElement('div', { id: 'colorDiv', className: 'mr pointer', style: `background-color: ${rgbToHex(style)}`, onclick: (e) => copyToClipboard(e) })
                 const description = createElement('p', { id: 'listDesc', textContent: `used ${freq.style.length} time(s)` })
                 const containerDiv = createElement('div', { id: 'liContainer' }, colorDiv, listItem, hexDiv, description)
                 const rootDiv = document.createElement('div')

@@ -31,6 +31,7 @@
   })
 
   chrome.tabs.onActivated.addListener(function () {
+    // todo need to check if tab or url in current tab changes
     setItem({ hasScriptRunOnPage: false })
   })
 

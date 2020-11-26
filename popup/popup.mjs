@@ -1,5 +1,6 @@
 /* global chrome MutationObserver */
 import createColorElements from './createElement.mjs'
+
 (function () {
   const { createColorElement, createFontElement, createDefaultElement } = createColorElements()
   console.log(createColorElements)
@@ -31,11 +32,11 @@ import createColorElements from './createElement.mjs'
             : 1
       })
 
-      anchor.appendChild(createElements(type, sortedObjArr))
+      anchor.appendChild(createViewElements(type, sortedObjArr))
     }
   }
 
-  function createElements (name, arr) {
+  function createViewElements (name, arr) {
     const title = document.createElement('h4')
     title.textContent = `${getProperName(name)}(s) used on page`
     const orderedList = document.createElement('ul')
@@ -113,7 +114,16 @@ import createColorElements from './createElement.mjs'
       console.error('Clipboard is unavailable')
       return
     }
-    const text = e.target.innerText
+
+    let text
+
+    if (e.target.innerText) {
+      console.log(e.target)
+      text = e.target.innerText
+    } else {
+      text = rgbToHex(e.target.style.backgroundColor)
+    }
+
     try {
       await navigator.clipboard.writeText(text)
       createNotification(
