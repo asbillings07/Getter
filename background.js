@@ -50,17 +50,19 @@
     console.log(sender)
 
     // console.log("REQUEST", request);
-
-    if (request.method === 'getValues') {
-      sendResponse({ getters: cssValues })
-      // setItem({hasScriptRunOnPage: true})
-    }
-    if (request.state) {
-      console.log(request.state)
-      setItem({
-        [sender.tab.url]: request.state,
-        currentResults: request.state
-      })
+    switch (request.action) {
+      case 'getValues':
+        sendResponse({ getters: cssValues })
+        break
+      case 'getState':
+        console.log(request.payload)
+        setItem({
+          [sender.tab.url]: request.payload,
+          currentResults: request.payload
+        })
+        break
+      default:
+        console.log(request)
     }
   })
 

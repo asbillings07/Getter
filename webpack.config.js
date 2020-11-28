@@ -1,9 +1,14 @@
 const HtmlWebpackPlugin = require('html-webpack-plugin')
+const TerserPlugin = require('terser-webpack-plugin')
 const { join, resolve } = require('path')
 
 module.exports = ({ mode } = { mode: 'production' }) => ({
   mode,
-  entry: join(__dirname, 'src', 'index.js'),
+  entry: {
+    popup: './popup/popup.mjs',
+    background: './background.js',
+    options: './options/options.js'
+  },
   output: {
     filename: 'bundle.js'
   },
@@ -16,14 +21,20 @@ module.exports = ({ mode } = { mode: 'production' }) => ({
       }
     ]
   },
+  optimization: {
+    minimizer: [
+      new TerserPlugin({
+        cache: true,
+        parallel: true,
+        sourceMap: true, // Must be set to true if using source-maps in production
+        terserOptions: {
+          // https://github.com/webpack-contrib/terser-webpack-plugin#terseroptions
+        }
+      })
+    ]
+  },
   plugins: [
-    new HtmlWebpackPlugin({
-      template: resolve(__dirname, 'src', 'index.html')
-    })
+    new HtmlWebpackPlugin()
   ],
-  devtool: 'eval-cheap-module-source-map',
-  devServer: {
-    host: '0.0.0.0',
-    port: 3000
-  }
+  devtool: 'eval-cheap-module-source-map'
 })

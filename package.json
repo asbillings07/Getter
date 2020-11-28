@@ -4,7 +4,8 @@
   "description": "chrome extension that gets css info",
   "main": "background.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack"
   },
   "repository": {
     "type": "git",
@@ -20,6 +21,11 @@
   },
   "homepage": "https://github.com/asbillings07/Getter#readme",
   "dependencies": {
-    "webpack": "^5.6.0"
+    "path": "^0.12.7",
+    "webpack": "^5.6.0",
+    "webpack-cli": "^4.2.0"
+  },
+  "devDependencies": {
+    "terser-webpack-plugin": "^5.0.3"
   }
 }

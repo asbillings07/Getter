@@ -11,9 +11,9 @@
   getItem('hasScriptRunOnPage', ({ hasScriptRunOnPage }) => {
     if (hasScriptRunOnPage) {
       console.log('Script has already run, pulling from last result')
-      getItem('currentResults', ({ currentResults }) => chrome.runtime.sendMessage({ state: currentResults }))
+      getItem('currentResults', ({ currentResults }) => chrome.runtime.sendMessage({ action: 'getCurrentResults', payload: currentResults }))
     } else {
-      chrome.runtime.sendMessage({ method: 'getValues' }, (response) => {
+      chrome.runtime.sendMessage({ action: 'getValues', payload: null }, (response) => {
         console.log(response)
         getValuesFromPage(response.getters, getStyleOnPage)
       })
@@ -27,7 +27,7 @@
   ) {
     if (request.styleId) {
       highlightInPage(request.styleId)
-      sendResponse({ title: 'Font Highlighted', message: 'The selected Font has been highlighted in the page' })
+      sendResponse({ action: 'notif', payload: { title: 'Font Highlighted', message: 'The selected Font has been highlighted in the page' } })
     }
   })
 
@@ -63,7 +63,7 @@
       if (!isObjEmpty(styleObj)) valueObj[value] = styleObj
     })
     console.log(valueObj)
-    chrome.runtime.sendMessage({ state: valueObj })
+    chrome.runtime.sendMessage({ action: 'getState', payload: valueObj })
     setItem({ hasScriptRunOnPage: true })
     return valueObj
   }

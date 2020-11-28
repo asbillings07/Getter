@@ -158,9 +158,19 @@ import createColorElements from './createElement.mjs'
   }
 
   function onMessage (request, sender, sendResponse) {
-    if (request.state) {
-      console.log(request.state)
-      createView(request.state)
+    switch (request.action) {
+      case 'getState':
+        console.log(request.payload)
+        createView(request.payload)
+        break
+      case 'getNotif':
+        createNotification(request.payload.title, request.payload.message)
+        break
+      case 'getCurrentResults':
+        createView(request.payload)
+        break
+      default:
+        console.log(request)
     }
   }
 
