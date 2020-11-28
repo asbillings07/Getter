@@ -10,26 +10,22 @@ module.exports = ({ mode } = { mode: 'production' }) => ({
     options: './options/options.js'
   },
   output: {
-    filename: 'bundle.js'
+    filename: '[name].[ext]',
+    path: resolve('__dirname', '/dist')
   },
-  module: {
-    rules: [
-      {
-        test: /\.(js|jsx)/,
-        exclude: /(node_modules)/,
-        use: ['babel-loader']
-      }
-    ]
-  },
+  //   module: {
+  //     rules: [
+  //       {
+  //         test: /\.(js|jsx)/,
+  //         exclude: /(node_modules)/,
+  //         use: ['babel-loader']
+  //       }
+  //     ]
+  //   },
   optimization: {
     minimizer: [
       new TerserPlugin({
-        cache: true,
-        parallel: true,
-        sourceMap: true, // Must be set to true if using source-maps in production
-        terserOptions: {
-          // https://github.com/webpack-contrib/terser-webpack-plugin#terseroptions
-        }
+        parallel: true
       })
     ]
   },
