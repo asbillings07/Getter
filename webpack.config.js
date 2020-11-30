@@ -10,18 +10,22 @@ module.exports = ({ mode } = { mode: 'production' }) => ({
     options: './options/options.js'
   },
   output: {
-    filename: '[name].[ext]',
-    path: resolve('__dirname', '/dist')
+    filename: '[name].js',
+    path: resolve(__dirname, 'dist')
   },
-  //   module: {
-  //     rules: [
-  //       {
-  //         test: /\.(js|jsx)/,
-  //         exclude: /(node_modules)/,
-  //         use: ['babel-loader']
-  //       }
-  //     ]
-  //   },
+  module: {
+    rules: [
+      {
+        test: /\.css/,
+        use: ['style-loader', 'css-loader']
+      }
+      // {
+      //   test: /\.(js|jsx)/,
+      //   exclude: /(node_modules)/,
+      //   use: ['babel-loader']
+      // }
+    ]
+  },
   optimization: {
     minimizer: [
       new TerserPlugin({
@@ -30,7 +34,13 @@ module.exports = ({ mode } = { mode: 'production' }) => ({
     ]
   },
   plugins: [
-    new HtmlWebpackPlugin()
-  ],
-  devtool: 'eval-cheap-module-source-map'
+    new HtmlWebpackPlugin({
+      filename: 'options.html',
+      template: './options/options.html'
+    }),
+    new HtmlWebpackPlugin({
+      filename: 'popup.html',
+      template: './popup/popup.html'
+    })
+  ]
 })
