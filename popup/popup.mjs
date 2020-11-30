@@ -1,5 +1,7 @@
 /* global chrome MutationObserver */
 import createColorElements from './createElement.mjs'
+import css from './popup.css'
+import fontAwesome from './fontawesome.js'
 
 (function () {
   const { createColorElement, createFontElement, createDefaultElement } = createColorElements()
