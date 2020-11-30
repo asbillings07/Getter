@@ -11,13 +11,13 @@
       "notifications"
     ],
     "background": {
-      "scripts": ["background.js"],
+      "scripts": ["dist/background.js"],
       "persistent": false
     },
-    "options_page": "./options/options.html",
+    "options_page": "./dist/options.html",
     "page_action": {
       "default_title": "CSS Identify",
-      "default_popup": "./popup/popup.html",
+      "default_popup": "./dist/popup.html",
       "default_icon": {
         "16": "images/color_16px.png",
         "32": "images/color_32px.png",
