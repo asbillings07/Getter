@@ -1,9 +1,19 @@
 export default (function () {
   function renderEl (element, container) {
-    const dom =
-      element.nodeType === 'TEXT_ELEMENT'
-        ? document.createTextNode('')
-        : document.createElement(element.nodeType)
+    let dom
+
+    if (element.nodeType === 'TEXT_ELEMENT') {
+      dom = document.createTextNode('')
+    } else if (typeof element.nodeType === 'object') {
+      console.log(element)
+      dom = document.createElement(element.nodeType.nodeType)
+    } else {
+      dom = document.createElement(element.nodeType)
+    }
+    // const dom =
+    //   element.nodeType === 'TEXT_ELEMENT'
+    //     ?
+    //     : document.createElement(element.nodeType)
 
     const isProperty = key => key !== 'children'
     Object.keys(element.props)

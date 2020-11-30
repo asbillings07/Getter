@@ -1,13 +1,13 @@
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const TerserPlugin = require('terser-webpack-plugin')
-const { join, resolve } = require('path')
+const { resolve } = require('path')
 
 module.exports = ({ mode } = { mode: 'production' }) => ({
   mode,
   entry: {
     popup: './popup/popup.mjs',
     background: './background.js',
-    options: './options/options.js'
+    options: './options/options.mjs'
   },
   output: {
     filename: '[name].js',
@@ -19,11 +19,11 @@ module.exports = ({ mode } = { mode: 'production' }) => ({
         test: /\.css/,
         use: ['style-loader', 'css-loader']
       }
-      // {
-      //   test: /\.(js|jsx)/,
-      //   exclude: /(node_modules)/,
-      //   use: ['babel-loader']
-      // }
+      //   {
+      //     test: /\.(mjs|jsx)/,
+      //     exclude: /(node_modules)/,
+      //     use: ['babel-loader']
+      //   }
     ]
   },
   optimization: {

@@ -1,7 +1,7 @@
 /* global chrome MutationObserver */
 import createColorElements from './createElement.mjs'
-import css from './popup.css'
-import fontAwesome from './fontawesome.js'
+import './popup.css'
+import './fontawesome.js'
 
 (function () {
   const { createColorElement, createFontElement, createDefaultElement } = createColorElements()
@@ -137,9 +137,9 @@ import fontAwesome from './fontawesome.js'
     }
   }
 
-  function getItem (item, func = (data) => console.log(data)) {
-    chrome.storage.sync.get(item, func)
-  }
+  // function getItem (item, func = (data) => console.log(data)) {
+  //   chrome.storage.sync.get(item, func)
+  // }
 
   function inspectDomForChanges (domEl, domElRemove) {
     const config = { attributes: true, childList: true, subtree: true }
