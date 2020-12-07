@@ -13,13 +13,13 @@
       "https://*/*"
     ],
     "background": {
-      "scripts": ["dist/background.js"],
+      "scripts": ["background.js"],
       "persistent": false
     },
-    "options_page": "./dist/options.html",
+    "options_page": "./options/options.html",
     "page_action": {
       "default_title": "Getter",
-      "default_popup": "./dist/popup.html",
+      "default_popup": "./popup/popup.html",
       "default_icon": {
         "16": "images/color_16px.png",
         "32": "images/color_32px.png",

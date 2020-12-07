@@ -1,7 +1,5 @@
 /* global chrome MutationObserver */
-import createColorElements from './createElement.mjs'
-import './popup.css'
-import './fontawesome.js'
+import createColorElements from '../utils/createElement.mjs'
 
 (function () {
   const { createColorElement, createFontElement, createDefaultElement } = createColorElements()
@@ -180,7 +178,7 @@ import './fontawesome.js'
 
   function onTabQuery (tabs) {
     chrome.tabs.executeScript(tabs[0].id, {
-      file: 'crawlPage.js'
+      file: 'crawlPage.min.js'
     })
   }
 

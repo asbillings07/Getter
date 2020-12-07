@@ -1,5 +1,4 @@
 import helpers from '../utils/helperFunctions.mjs'
-import './options.css';
 
 (function () {
   const { setItem, getItem, createNotification } = helpers
