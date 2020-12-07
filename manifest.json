@@ -13,7 +13,7 @@
       "https://*/*"
     ],
     "background": {
-      "scripts": ["background.js"],
+      "scripts": ["background.min.js"],
       "persistent": false
     },
     "options_page": "./options/options.html",

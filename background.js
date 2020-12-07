@@ -11,12 +11,12 @@
   let cssValues
 
   getItem('cssGetters', ({ cssGetters }) => {
-    console.log('getters', cssGetters)
+    // console.log('getters', cssGetters)
     cssValues = cssGetters
   })
 
   chrome.storage.onChanged.addListener((changes) => {
-    console.log(changes)
+    // console.log(changes)
     if ('cssGetters' in changes && changes.cssGetters.newValue) {
       getItem('cssGetters', ({ cssGetters }) => {
         cssValues = cssGetters
@@ -39,8 +39,8 @@
     sender,
     sendResponse
   ) {
-    console.log(sender.tab.url)
-    console.log(sender)
+    // console.log(sender.tab.url)
+    // console.log(sender)
 
     // console.log("REQUEST", request);
     switch (request.action) {

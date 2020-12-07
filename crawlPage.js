@@ -4,17 +4,14 @@
   let cssValues
   // grab all initial state in the beginning
   getItem(null, (data) => {
-    console.log('local storage data', data)
     const { hasScriptRunOnPage } = data
     hasScriptRun = hasScriptRunOnPage
   })
   getItem('hasScriptRunOnPage', ({ hasScriptRunOnPage }) => {
     if (hasScriptRunOnPage) {
-      console.log('Script has already run, pulling from last result')
       getItem('currentResults', ({ currentResults }) => chrome.runtime.sendMessage({ action: 'getCurrentResults', payload: currentResults }))
     } else {
       chrome.runtime.sendMessage({ action: 'getValues', payload: null }, (response) => {
-        console.log(response)
         getValuesFromPage(response.getters, getStyleOnPage)
       })
     }
@@ -62,7 +59,6 @@
       const styleObj = getStyleOnPage(value)
       if (!isObjEmpty(styleObj)) valueObj[value] = styleObj
     })
-    console.log(valueObj)
     chrome.runtime.sendMessage({ action: 'getState', payload: valueObj })
     setItem({ hasScriptRunOnPage: true })
     return valueObj
@@ -81,7 +77,6 @@
 
     if (pseudoProp) {
       if (!allStyles.includes(pseudoProp)) {
-        console.log(':Before', pseudoProp)
         allStyles.push(pseudoProp)
       }
     }
@@ -132,9 +127,8 @@
 
   function highlightInPage (styleId) {
     const allNodes = document.body.getElementsByTagName('*')
-    console.log(`[data-style-id="${styleId}"]`)
+
     const nodes = document.body.querySelectorAll(`[data-style-id="${styleId}"]`)
-    console.log('Queried Nodes', nodes)
 
     // remove previous highlights
     Array.from(allNodes).forEach(node => {
@@ -178,7 +172,7 @@
     let result = ''
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
     const charactersLength = characters.length
-    for (let i = 0;i < length;i++) {
+    for (let i = 0; i < length; i++) {
       result += characters.charAt(Math.floor(Math.random() * charactersLength))
     }
     return result

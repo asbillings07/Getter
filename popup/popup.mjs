@@ -3,19 +3,18 @@ import createColorElements from '../utils/createElement.mjs'
 
 (function () {
   const { createColorElement, createFontElement, createDefaultElement } = createColorElements()
-  console.log(createColorElements)
   const anchor = document.getElementById('main')
   const spinner = document.getElementById('spinner')
   inspectDomForChanges(anchor, spinner)
 
   const getProperName = (cssName) =>
-    ({
-      backgroundColor: 'Background Color',
-      color: 'Color',
-      fontFamily: 'Font Family',
-      fontWeight: 'Font Weight',
-      fontSize: 'Font Size'
-    }[cssName])
+  ({
+    backgroundColor: 'Background Color',
+    color: 'Color',
+    fontFamily: 'Font Family',
+    fontWeight: 'Font Weight',
+    fontSize: 'Font Size'
+  }[cssName])
 
   chrome.tabs.query({ active: true, currentWindow: true }, onTabQuery)
 
