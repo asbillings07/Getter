@@ -7,25 +7,28 @@
         <div id="anchor">
             <h4>What CSS properties would you like to search for? (check all that apply)</h4>
             <div>
-                <label htmlFor="bgColor">Background Color</label>
-                <input type="checkbox" id="bgColor" />
+                <label class="label" htmlFor="backgroundColor">Background Color</label>
+                <input type="checkbox" id="backgroundColor" />
             </div>
             <div>
-                <label htmlFor="color">Color</label>
+                <label class="label" htmlFor="color">Color</label>
                 <input type="checkbox" id="color" />
             </div>
             <div>
-                <label htmlFor="fontFamily">Font Family</label>
+                <label class="label" htmlFor="fontFamily">Font Family</label>
                 <input type="checkbox" id="fontFamily" />
             </div>
             <div>
-                <label htmlFor="fontSize">Font Size</label>
+                <label class="label" htmlFor="fontSize">Font Size</label>
                 <input type="checkbox" id="fontSize" />
             </div>
             <div>
-                <label htmlFor="fontWeight">Font Weight</label>
+                <label class="label" htmlFor="fontWeight">Font Weight</label>
                 <input type="checkbox" id="fontWeight" />
             </div>
+        </div>
+        <div>
+            <button id="save">Save settings</button>
         </div>
         <!-- <div id="root">
             <h4>What Elements would you like included? (check all tags that apply)</h4>
@@ -51,6 +54,6 @@
             </div>
         </div> -->
 
-        <script src="options.js"></script>
+        <script src="options.mjs" type="module"></script>
     </body>
 </html>

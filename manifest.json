@@ -8,7 +8,9 @@
       "declarativeContent",
       "webNavigation",
       "storage",
-      "notifications"
+      "notifications",
+      "http://*/*", 
+      "https://*/*"
     ],
     "background": {
       "scripts": ["dist/background.js"],
@@ -16,7 +18,7 @@
     },
     "options_page": "./dist/options.html",
     "page_action": {
-      "default_title": "CSS Identify",
+      "default_title": "Getter",
       "default_popup": "./dist/popup.html",
       "default_icon": {
         "16": "images/color_16px.png",

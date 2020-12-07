@@ -10,18 +10,6 @@
   }
   let cssValues
 
-  setItem({
-    hasScriptRunOnPage: false,
-    pageRefreshed: false,
-    cssGetters: [
-      'fontFamily',
-      // 'fontWeight',
-      // 'fontSize',
-      'backgroundColor',
-      'color'
-    ]
-  })
-
   getItem('cssGetters', ({ cssGetters }) => {
     console.log('getters', cssGetters)
     cssValues = cssGetters
@@ -29,6 +17,11 @@
 
   chrome.storage.onChanged.addListener((changes) => {
     console.log(changes)
+    if ('cssGetters' in changes && changes.cssGetters.newValue) {
+      getItem('cssGetters', ({ cssGetters }) => {
+        cssValues = cssGetters
+      })
+    }
   })
 
   chrome.webNavigation.onDOMContentLoaded.addListener((object) => {
@@ -69,6 +62,15 @@
   chrome.runtime.onInstalled.addListener(function () {
     chrome.declarativeContent.onPageChanged.removeRules(undefined, function () {
       chrome.declarativeContent.onPageChanged.addRules([rule1])
+      setItem({
+        hasScriptRunOnPage: false,
+        pageRefreshed: false,
+        cssGetters: [
+          'fontFamily',
+          'backgroundColor',
+          'color'
+        ]
+      })
     })
   })
 

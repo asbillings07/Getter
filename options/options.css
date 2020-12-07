@@ -1,3 +1,7 @@
-#bgColor {
+.label {
     font-size: 13px;
+}
+
+#anchor {
+    margin: 15px 5px;
 }

@@ -1,10 +1,6 @@
 
 
-button {
-  border: none;
-  background-color: white;
-  margin-left: 10px;
-}
+
 
 button:hover {
   cursor: pointer;

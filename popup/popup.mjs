@@ -34,7 +34,7 @@ import './fontawesome.js'
             : 1
       })
 
-      anchor.appendChild(createViewElements(type, sortedObjArr))
+      if (anchor !== null) anchor.appendChild(createViewElements(type, sortedObjArr))
     }
   }
 
@@ -156,7 +156,9 @@ import './fontawesome.js'
       }
     }
     // Start observing the target node for configured mutations
-    observer.observe(domEl, config)
+    if (domEl) {
+      observer.observe(domEl, config)
+    }
   }
 
   function onMessage (request, sender, sendResponse) {
