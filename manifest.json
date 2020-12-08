@@ -8,9 +8,7 @@
       "declarativeContent",
       "webNavigation",
       "storage",
-      "notifications",
-      "http://*/*", 
-      "https://*/*"
+      "notifications"
     ],
     "background": {
       "scripts": ["background.min.js"],
