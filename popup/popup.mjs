@@ -2,7 +2,7 @@
 import createColorElements from '../utils/createElement.mjs'
 
 (function () {
-  const { createColorElement, createFontElement, createDefaultElement } = createColorElements()
+  const { createColorElement, createImageElement, createFontElement, createDefaultElement } = createColorElements()
   const anchor = document.getElementById('main')
   const spinner = document.getElementById('spinner')
   inspectDomForChanges(anchor, spinner)
@@ -13,7 +13,8 @@ import createColorElements from '../utils/createElement.mjs'
     color: 'Color',
     fontFamily: 'Font Family',
     fontWeight: 'Font Weight',
-    fontSize: 'Font Size'
+    fontSize: 'Font Size',
+    backgroundImage: 'Background Image'
   }[cssName])
 
   chrome.tabs.query({ active: true, currentWindow: true }, onTabQuery)
@@ -23,15 +24,20 @@ import createColorElements from '../utils/createElement.mjs'
   function createView (cssObj) {
     console.log(cssObj)
     for (const type in cssObj) {
-      const sortedObjArr = Object.entries(cssObj[type]).sort((a, b) => {
-        return a[1].style.length === b[1].style.length
-          ? 0
-          : a[1].style.length > b[1].style.length
-            ? -1
-            : 1
-      })
+      let sortedObjArr
+      if (type === 'backgroundImage') {
+        sortedObjArr = Object.entries(cssObj[type]).filter(([key, value]) => key === 'images')
+      } else {
+        sortedObjArr = Object.entries(cssObj[type]).sort((a, b) => {
+          return a[1].style.length === b[1].style.length
+            ? 0
+            : a[1].style.length > b[1].style.length
+              ? -1
+              : 1
+        })
+      }
 
-      if (anchor !== null) anchor.appendChild(createViewElements(type, sortedObjArr))
+      anchor.appendChild(createViewElements(type, sortedObjArr))
     }
   }
 
@@ -57,6 +63,8 @@ import createColorElements from '../utils/createElement.mjs'
         return createColorElement({ freq, style, rgbToHex, copyToClipboard })
       case 'fontFamily':
         return createFontElement({ freq, style, hightLightFontOnPage })
+      case 'imageSource':
+        return createImageElement({ freq, style, downloadImage })
       default:
         return createDefaultElement({ style })
     }
@@ -134,6 +142,10 @@ import createColorElements from '../utils/createElement.mjs'
     }
   }
 
+  function downloadImage (e) {
+    console.log(e)
+  }
+
   // function getItem (item, func = (data) => console.log(data)) {
   //   chrome.storage.sync.get(item, func)
   // }
@@ -177,7 +189,7 @@ import createColorElements from '../utils/createElement.mjs'
 
   function onTabQuery (tabs) {
     chrome.tabs.executeScript(tabs[0].id, {
-      file: 'crawlPage.min.js'
+      file: 'crawlPage.js'
     })
   }
 

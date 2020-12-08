@@ -24,9 +24,23 @@ export default (function () {
                 // listItem.className = 'pointer'
                 // listItem.addEventListener('click', hightLightFontOnPage)
                 // containerDiv.appendChild(listItem)
-                const listItem = createElement('div', { className: 'pointer', value: freq.id, textContent: style, onclick: e => hightLightFontOnPage(e) })
+                const listItem = createElement('div', { id: 'fontItem', className: 'pointer', value: freq.id, textContent: style, onclick: e => hightLightFontOnPage(e) })
                 const containerDiv = createElement('div', { id: 'liContainer' }, listItem)
                 const rootDiv = document.createElement('div')
+                return renderEl(containerDiv, rootDiv)
+            },
+            createImageElement: function (elObj) {
+                const { freq, downloadImage } = elObj
+
+                const imageItems = freq.images.filter(i => i !== 'images').map((image) => {
+                    const imageDiv = createElement('img', { id: 'imageDiv', className: 'mr pointer', src: `${image.single.src}`, onclick: (e) => downloadImage(e) })
+                    const description = createElement('p', { id: 'imageDesc', textContent: `${image.single.name}` })
+                    const container = createElement('div', {}, imageDiv, description)
+                    return container
+                })
+                const rootDiv = document.createElement('div')
+                const containerDiv = createElement('div', { id: 'liContainer', className: 'mr pointer' }, imageItems)
+
                 return renderEl(containerDiv, rootDiv)
             },
             createDefaultElement: function (elObj) {

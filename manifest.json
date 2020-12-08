@@ -11,7 +11,7 @@
       "notifications"
     ],
     "background": {
-      "scripts": ["background.min.js"],
+      "scripts": ["background.js"],
       "persistent": false
     },
     "options_page": "./options/options.html",
@@ -19,17 +19,17 @@
       "default_title": "Getter",
       "default_popup": "./popup/popup.html",
       "default_icon": {
-        "16": "images/color_16px.png",
-        "32": "images/color_32px.png",
-        "48": "images/color_48px.png",
-        "128": "images/color_128px.png"
+        "16": "images/CSS-Getter-Icon-16px.png",
+        "32": "images/CSS-Getter-Icon-32px.png",
+        "48": "images/CSS-Getter-Icon-48px.png",
+        "128": "images/CSS-Getter-Icon-128px.png"
       }
     },
     "icons": {
-        "16": "images/color_16px.png",
-        "32": "images/color_32px.png",
-        "48": "images/color_48px.png",
-        "128": "images/color_128px.png"
+      "16": "images/CSS-Getter-Icon-16px.png",
+      "32": "images/CSS-Getter-Icon-32px.png",
+      "48": "images/CSS-Getter-Icon-48px.png",
+      "128": "images/CSS-Getter-Icon-128px.png"
     },
     "manifest_version": 2
   }

@@ -68,7 +68,9 @@
         cssGetters: [
           'fontFamily',
           'backgroundColor',
-          'color'
+          'color',
+          'backgroundImage',
+          'imageSource'
         ]
       })
     })

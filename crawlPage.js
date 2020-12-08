@@ -1,3 +1,4 @@
+
 /* global chrome, getComputedStyle  */
 (function () {
   let hasScriptRun
@@ -39,7 +40,7 @@
     // need to get frequency of used colors
     Array.from(nodes).forEach((nodeElement, i) => {
       // todo - I should make this list part of the options.
-      const filteredNodes = ['img', 'time', 'iframe', 'input', 'br', 'form']
+      const filteredNodes = ['time', 'iframe', 'input', 'br', 'form']
       if (!filteredNodes.includes(nodeElement.localName)) {
         if (nodeElement.style) {
           captureEls({ css, nodeElement, allStyles })
@@ -90,29 +91,56 @@
     let elementStyle
     if (css === 'fontFamily') {
       elementStyle = getComputedStyle(nodeElement, '')[css].split(',').map(font => font.trim()).filter(font => !filterFonts.has(font))
+    } else if (css === 'imageSource' && nodeElement.localName === 'img') {
+      elementStyle = 'images'
     } else {
       elementStyle = getComputedStyle(nodeElement, '')[css]
     }
 
-    if (elementStyle) {
-      if (allStyles[elementStyle]) {
-        allStyles[elementStyle].style.push(elementStyle)
-      } else if (Array.isArray(elementStyle)) {
-        elementStyle.forEach(el => {
-          allStyles[el] = { style: [el], id: getId(nodeElement) }
-          nodeElement.dataset.styleId = `${allStyles[el].id}`
-        })
-      } else {
-        allStyles[elementStyle] = { style: [elementStyle], id: getId(nodeElement) }
-        nodeElement.dataset.styleId = `${allStyles[elementStyle].id}`
-      }
+    // if (nodeElement.localName === 'img') {
+    //   allStyles.backgroundImage = { images: [], id: getId(nodeElement) }
+    // }
 
-      // if (!nodeElement.dataset.styleId) {
-      //   nodeElement.dataset.styleId = `${nodeElement.id}`
-      // }
-      // console.log([nodeElement, `${nodeElement.dataset.styleId}`])
-      // console.log(nodeElement.dataset.styleId)
-      // console.log(nodeElement)
+    createStyleArray(allStyles, elementStyle, nodeElement)
+  }
+
+  function captureImageSrc (imageEl) {
+    const imageInfo = {}
+
+    if (imageEl.srcset) {
+      imageInfo.multiple = { src: imageEl.srcset.split(','), name: imageEl.alt }
+    }
+
+    if (imageEl.src) {
+      imageInfo.single = { src: imageEl.src, name: imageEl.alt }
+    }
+
+    return imageInfo
+  }
+
+  function createStyleArray (allStyles, elementStyle, nodeElement) {
+    switch (elementStyle) {
+      case 'images':
+        if (allStyles[elementStyle]) {
+          allStyles[elementStyle].images.push(captureImageSrc(nodeElement))
+        } else {
+          allStyles[elementStyle] = { images: [elementStyle], id: getId(nodeElement) }
+          nodeElement.dataset.styleId = `${allStyles[elementStyle].id}`
+        }
+
+        break
+      default:
+        if (allStyles[elementStyle]) {
+          allStyles[elementStyle].style.push(elementStyle)
+        } else if (Array.isArray(elementStyle)) {
+          elementStyle.forEach(el => {
+            allStyles[el] = { style: [el], id: getId(nodeElement) }
+            nodeElement.dataset.styleId = `${allStyles[el].id}`
+          })
+        } else {
+          allStyles[elementStyle] = { style: [elementStyle], id: getId(nodeElement) }
+          nodeElement.dataset.styleId = `${allStyles[elementStyle].id}`
+        }
     }
   }
 

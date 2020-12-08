@@ -10,21 +10,15 @@ export default (function () {
     } else {
       dom = document.createElement(element.nodeType)
     }
-    // const dom =
-    //   element.nodeType === 'TEXT_ELEMENT'
-    //     ?
-    //     : document.createElement(element.nodeType)
 
-    const isProperty = key => key !== 'children'
-    Object.keys(element.props)
-      .filter(isProperty)
-      .forEach(name => {
-        dom[name] = element.props[name]
+    console.log(element)
+    if (Array.isArray(element)) {
+      element.forEach(el => {
+        createWithProps(el, dom)
       })
-
-    element.props.children.forEach(child => {
-      return renderEl(child, dom)
-    })
+    } else {
+      createWithProps(element, dom)
+    }
 
     container.appendChild(dom)
     return container
@@ -50,6 +44,20 @@ export default (function () {
         children: []
       }
     }
+  }
+
+  function createWithProps (element, dom) {
+    const isProperty = key => key !== 'children'
+
+    Object.keys(element.props)
+      .filter(isProperty)
+      .forEach(name => {
+        dom[name] = element.props[name]
+      })
+
+    element.props.children.forEach(child => {
+      return renderEl(child, dom)
+    })
   }
 
   return { createElement, renderEl }

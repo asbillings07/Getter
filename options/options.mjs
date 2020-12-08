@@ -33,8 +33,9 @@ import helpers from '../utils/helperFunctions.mjs'
   const fontFamily = document.getElementById('fontFamily')
   const fontSize = document.getElementById('fontSize')
   const fontWeight = document.getElementById('fontWeight')
+  const backgroundImage = document.getElementById('backgroundImage')
 
-  const elementArr = [bgColor, color, fontFamily, fontSize, fontWeight]
+  const elementArr = [bgColor, color, fontFamily, fontSize, fontWeight, backgroundImage]
 
   elementArr.forEach(el => {
     el.addEventListener('change', regClick)
