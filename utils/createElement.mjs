@@ -29,17 +29,27 @@ export default (function () {
                 const rootDiv = document.createElement('div')
                 return renderEl(containerDiv, rootDiv)
             },
-            createImageElement: function (elObj) {
+            createImgSrcElement: function (elObj) {
                 const { freq, downloadImage } = elObj
 
                 const imageItems = freq.images.filter(i => i !== 'images').map((image) => {
-                    const imageDiv = createElement('img', { id: 'imageDiv', className: 'mr pointer', src: `${image.single.src}`, onclick: (e) => downloadImage(e) })
+                    const imageDiv = createElement('img', { id: 'imageDiv', className: 'mr pointer', src: `${image.single.src}`, onclick: (e) => downloadImage(e, image.single.src) })
                     const description = createElement('p', { id: 'imageDesc', textContent: `${image.single.name}` })
-                    const container = createElement('div', {}, imageDiv, description)
-                    return container
+                    const container = createElement('div', { className: 'container' }, imageDiv, description)
+                    return createElement('div', {}, container)
                 })
                 const rootDiv = document.createElement('div')
                 const containerDiv = createElement('div', { id: 'liContainer', className: 'mr pointer' }, imageItems)
+
+                return renderEl(containerDiv, rootDiv)
+            },
+            createBgImageElement: function (elObj) {
+                const { freq, downloadImage } = elObj
+                console.log(freq.style[0].split('/'))
+                const imageDiv = createElement('img', { id: 'bgDiv', className: 'mr pointer', style: `background-image: ${freq.style[0]}`, onclick: (e) => downloadImage(e, freq.style[0]) })
+                const description = createElement('p', { id: 'listDesc', textContent: 'image' })
+                const containerDiv = createElement('div', { id: 'liContainer' }, imageDiv, description)
+                const rootDiv = document.createElement('div')
 
                 return renderEl(containerDiv, rootDiv)
             },

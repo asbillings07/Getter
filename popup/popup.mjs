@@ -2,9 +2,10 @@
 import createColorElements from '../utils/createElement.mjs'
 
 (function () {
-  const { createColorElement, createImageElement, createFontElement, createDefaultElement } = createColorElements()
+  const { createColorElement, createImgSrcElement, createBgImageElement, createFontElement, createDefaultElement } = createColorElements()
   const anchor = document.getElementById('main')
   const spinner = document.getElementById('spinner')
+  let currentImage
   inspectDomForChanges(anchor, spinner)
 
   const getProperName = (cssName) =>
@@ -14,6 +15,7 @@ import createColorElements from '../utils/createElement.mjs'
     fontFamily: 'Font Family',
     fontWeight: 'Font Weight',
     fontSize: 'Font Size',
+    imageSource: 'Image Source',
     backgroundImage: 'Background Image'
   }[cssName])
 
@@ -25,7 +27,7 @@ import createColorElements from '../utils/createElement.mjs'
     console.log(cssObj)
     for (const type in cssObj) {
       let sortedObjArr
-      if (type === 'backgroundImage') {
+      if (type === 'imageSource') {
         sortedObjArr = Object.entries(cssObj[type]).filter(([key, value]) => key === 'images')
       } else {
         sortedObjArr = Object.entries(cssObj[type]).sort((a, b) => {
@@ -42,10 +44,11 @@ import createColorElements from '../utils/createElement.mjs'
   }
 
   function createViewElements (name, arr) {
-    const title = document.createElement('h4')
+    const title = document.createElement('h3')
     title.textContent = `${getProperName(name)}(s) used on page`
     const orderedList = document.createElement('ul')
     arr.forEach((prop) => {
+      console.log(prop)
       const createdListEl = createElementsByProp(name, prop)
       orderedList.appendChild(createdListEl)
     })
@@ -64,7 +67,9 @@ import createColorElements from '../utils/createElement.mjs'
       case 'fontFamily':
         return createFontElement({ freq, style, hightLightFontOnPage })
       case 'imageSource':
-        return createImageElement({ freq, style, downloadImage })
+        return createImgSrcElement({ freq, style, downloadImage })
+      case 'backgroundImage':
+        return createBgImageElement({ freq, style, downloadImage })
       default:
         return createDefaultElement({ style })
     }
@@ -105,13 +110,16 @@ import createColorElements from '../utils/createElement.mjs'
     return `#${hexConvert}`
   }
 
-  function createNotification (title, message) {
+  function createNotification (title, message, buttons, interaction) {
     const options = {
       type: 'basic',
       iconUrl: '../images/color_16px.png',
       title: title,
       message: message,
-      requireInteraction: false
+      requireInteraction: interaction || false
+    }
+    if (buttons) {
+      options.buttons = buttons
     }
     chrome.notifications.create(options)
   }
@@ -142,8 +150,15 @@ import createColorElements from '../utils/createElement.mjs'
     }
   }
 
-  function downloadImage (e) {
-    console.log(e)
+  function downloadImage (e, image) {
+    currentImage = image
+    const buttons = [{
+      title: 'View image'
+    }, {
+      title: 'Download image'
+    }]
+
+    createNotification('Image Notification', 'What would you like to do?', buttons, true)
   }
 
   // function getItem (item, func = (data) => console.log(data)) {
@@ -192,6 +207,49 @@ import createColorElements from '../utils/createElement.mjs'
       file: 'crawlPage.js'
     })
   }
+
+  function onNotifButtonPress (id, buttonIdx) {
+    if (buttonIdx === 0) { // view image
+      // need to open image in a new tab
+      console.log('opening image in new tab', buttonIdx)
+      createLink(currentImage, false, true)
+    }
+
+    if (buttonIdx === 1) { // download image
+      // need to download image
+      createLink(currentImage, true, false)
+      console.log('downloading image', buttonIdx)
+    }
+  }
+
+  function createLink (image, download, view) {
+    const a = document.createElement('a')
+    console.log(image)
+    if (image.includes('url')) {
+      console.log(image)
+      image = image.split('"')[1]
+      console.log(image)
+    }
+
+    if (download) {
+      chrome.downloads.download({ url: image })
+    }
+
+    if (view) {
+      a.href = image
+      a.target = '_blank'
+    }
+
+    const clickHandler = (e) => {
+      console.log(e)
+    }
+
+    a.addEventListener('click', clickHandler, false)
+    a.click()
+    a.removeEventListener('click', clickHandler)
+  }
+
+  chrome.notifications.onButtonClicked.addListener(onNotifButtonPress)
 
   // function setItem (item, func = () => false) {
   //   chrome.storage.sync.set(item)

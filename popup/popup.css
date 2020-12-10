@@ -55,6 +55,12 @@ ul {
   align-items: center;
 }
 
+.container {
+  display: flex;
+  align-items: center;
+  margin: 5px 0;
+}
+
 #fontItem {
   margin-top: 10px;
 }
@@ -69,6 +75,14 @@ ul {
 }
 
 #imageDiv {
-  width: 50px;
-  height: 50px;
+  width: 20%;
+  height: 65px;
+}
+
+#bgDiv {
+  width: 16%;
+  height: 80px;
+  background-size: cover;
+  background-repeat: no-repeat;
+  margin: 5px 0;
 }

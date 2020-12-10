@@ -8,6 +8,7 @@
       "declarativeContent",
       "webNavigation",
       "storage",
+      "downloads",
       "notifications"
     ],
     "background": {

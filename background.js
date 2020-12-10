@@ -3,7 +3,7 @@
   const rule1 = {
     conditions: [
       new chrome.declarativeContent.PageStateMatcher({
-        css: ['div']
+        pageUrl: { schemes: ['https', 'http'] }
       })
     ],
     actions: [new chrome.declarativeContent.ShowPageAction()]
@@ -87,6 +87,7 @@
       type: 'basic',
       iconUrl: '../images/color_16px.png',
       title: title,
+      buttons: ['view', 'download'],
       message: message,
       requireInteraction: false
     }

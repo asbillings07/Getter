@@ -11,7 +11,6 @@ export default (function () {
       dom = document.createElement(element.nodeType)
     }
 
-    console.log(element)
     if (Array.isArray(element)) {
       element.forEach(el => {
         createWithProps(el, dom)

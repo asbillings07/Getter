@@ -93,6 +93,14 @@
       elementStyle = getComputedStyle(nodeElement, '')[css].split(',').map(font => font.trim()).filter(font => !filterFonts.has(font))
     } else if (css === 'imageSource' && nodeElement.localName === 'img') {
       elementStyle = 'images'
+    } else if (css === 'backgroundImage') {
+      const bgStyle = getComputedStyle(nodeElement, '')[css]
+      if (bgStyle.includes('url')) {
+        elementStyle = bgStyle
+      } else {
+        elementStyle = 'none'
+      }
+
     } else {
       elementStyle = getComputedStyle(nodeElement, '')[css]
     }
@@ -127,9 +135,11 @@
           allStyles[elementStyle] = { images: [elementStyle], id: getId(nodeElement) }
           nodeElement.dataset.styleId = `${allStyles[elementStyle].id}`
         }
-
+        break
+      case 'none':
         break
       default:
+        console.log(elementStyle)
         if (allStyles[elementStyle]) {
           allStyles[elementStyle].style.push(elementStyle)
         } else if (Array.isArray(elementStyle)) {
