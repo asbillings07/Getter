@@ -9,15 +9,15 @@ import createColorElements from '../utils/createElement.mjs'
   inspectDomForChanges(anchor, spinner)
 
   const getProperName = (cssName) =>
-  ({
-    backgroundColor: 'Background Color',
-    color: 'Color',
-    fontFamily: 'Font Family',
-    fontWeight: 'Font Weight',
-    fontSize: 'Font Size',
-    imageSource: 'Image Source',
-    backgroundImage: 'Background Image'
-  }[cssName])
+    ({
+      backgroundColor: 'Background Color',
+      color: 'Color',
+      fontFamily: 'Font Family',
+      fontWeight: 'Font Weight',
+      fontSize: 'Font Size',
+      imageSource: 'Image Source',
+      backgroundImage: 'Background Image'
+    }[cssName])
 
   chrome.tabs.query({ active: true, currentWindow: true }, onTabQuery)
 
@@ -224,7 +224,6 @@ import createColorElements from '../utils/createElement.mjs'
 
   function createLink (image, download, view) {
     const a = document.createElement('a')
-    console.log(image)
     if (image.includes('url')) {
       console.log(image)
       image = image.split('"')[1]
