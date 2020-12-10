@@ -64,13 +64,12 @@
       chrome.declarativeContent.onPageChanged.addRules([rule1])
       setItem({
         hasScriptRunOnPage: false,
+        currentImage: null,
         pageRefreshed: false,
         cssGetters: [
           'fontFamily',
           'backgroundColor',
-          'color',
-          'backgroundImage',
-          'imageSource'
+          'color'
         ]
       })
     })
@@ -82,15 +81,44 @@
   function setItem (item, func = () => false) {
     chrome.storage.local.set(item)
   }
-  function createNotification (title, message) {
-    const options = {
-      type: 'basic',
-      iconUrl: '../images/color_16px.png',
-      title: title,
-      buttons: ['view', 'download'],
-      message: message,
-      requireInteraction: false
-    }
-    chrome.notifications.create(options)
+
+  function onNotifButtonPress (id, buttonIdx) {
+    getItem('currentImage', ({ currentImage }) => {
+      if (buttonIdx === 0) { // view image
+        createLink(currentImage, false, true)
+      }
+
+      if (buttonIdx === 1) { // download image
+        createLink(currentImage, true, false)
+      }
+    })
   }
+
+  function createLink (image, download, view) {
+    const a = document.createElement('a')
+    if (image.includes('url')) {
+      console.log(image)
+      image = image.split('"')[1]
+      console.log(image)
+    }
+
+    if (download) {
+      chrome.downloads.download({ url: image })
+    }
+
+    if (view) {
+      a.href = image
+      a.target = '_blank'
+    }
+
+    const clickHandler = (e) => {
+      console.log(e)
+    }
+
+    a.addEventListener('click', clickHandler, false)
+    a.click()
+    a.removeEventListener('click', clickHandler)
+  }
+
+  chrome.notifications.onButtonClicked.addListener(onNotifButtonPress)
 })()

@@ -5,19 +5,18 @@ import createColorElements from '../utils/createElement.mjs'
   const { createColorElement, createImgSrcElement, createBgImageElement, createFontElement, createDefaultElement } = createColorElements()
   const anchor = document.getElementById('main')
   const spinner = document.getElementById('spinner')
-  let currentImage
   inspectDomForChanges(anchor, spinner)
 
   const getProperName = (cssName) =>
-    ({
-      backgroundColor: 'Background Color',
-      color: 'Color',
-      fontFamily: 'Font Family',
-      fontWeight: 'Font Weight',
-      fontSize: 'Font Size',
-      imageSource: 'Image Source',
-      backgroundImage: 'Background Image'
-    }[cssName])
+  ({
+    backgroundColor: 'Background Color',
+    color: 'Color',
+    fontFamily: 'Font Family',
+    fontWeight: 'Font Weight',
+    fontSize: 'Font Size',
+    imageSource: 'Image Source',
+    backgroundImage: 'Background Image'
+  }[cssName])
 
   chrome.tabs.query({ active: true, currentWindow: true }, onTabQuery)
 
@@ -151,7 +150,9 @@ import createColorElements from '../utils/createElement.mjs'
   }
 
   function downloadImage (e, image) {
-    currentImage = image
+    console.log(image)
+    setItem({ currentImage: image })
+
     const buttons = [{
       title: 'View image'
     }, {
@@ -208,49 +209,7 @@ import createColorElements from '../utils/createElement.mjs'
     })
   }
 
-  function onNotifButtonPress (id, buttonIdx) {
-    if (buttonIdx === 0) { // view image
-      // need to open image in a new tab
-      console.log('opening image in new tab', buttonIdx)
-      createLink(currentImage, false, true)
-    }
-
-    if (buttonIdx === 1) { // download image
-      // need to download image
-      createLink(currentImage, true, false)
-      console.log('downloading image', buttonIdx)
-    }
+  function setItem (item) {
+    chrome.storage.local.set(item)
   }
-
-  function createLink (image, download, view) {
-    const a = document.createElement('a')
-    if (image.includes('url')) {
-      console.log(image)
-      image = image.split('"')[1]
-      console.log(image)
-    }
-
-    if (download) {
-      chrome.downloads.download({ url: image })
-    }
-
-    if (view) {
-      a.href = image
-      a.target = '_blank'
-    }
-
-    const clickHandler = (e) => {
-      console.log(e)
-    }
-
-    a.addEventListener('click', clickHandler, false)
-    a.click()
-    a.removeEventListener('click', clickHandler)
-  }
-
-  chrome.notifications.onButtonClicked.addListener(onNotifButtonPress)
-
-  // function setItem (item, func = () => false) {
-  //   chrome.storage.sync.set(item)
-  // }
 })()
