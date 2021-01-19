@@ -17,7 +17,9 @@ With this extension a user can see the following css on any webpage:
 
 A special thanks goes to Amanda Billings, an awesome designer. She helped create the images for the extension and was crucial in testing the extension.
 
-You can view this extension here: [Getter](https://chrome.google.com/webstore/detail/getter/nkgabfmcijbajgobbeloaobhbhpacnim)
+
+
+## You can view this extension here: [Getter](https://chrome.google.com/webstore/detail/getter/nkgabfmcijbajgobbeloaobhbhpacnim)
 
 ## Languages Used
 
