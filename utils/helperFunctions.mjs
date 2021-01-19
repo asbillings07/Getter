@@ -9,7 +9,7 @@ export default (function () {
   function createNotification (title, message) {
     const options = {
       type: 'basic',
-      iconUrl: '../images/color_16px.png',
+      iconUrl: '../images/CSS-Getter-Icon-16px.png',
       title: title,
       message: message,
       requireInteraction: false

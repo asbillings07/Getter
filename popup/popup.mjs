@@ -1,22 +1,24 @@
 /* global chrome MutationObserver */
 import createColorElements from '../utils/createElement.mjs'
+import helpers from '../utils/helperFunctions.mjs';
 
 (function () {
+  const { setItem } = helpers
   const { createColorElement, createImgSrcElement, createBgImageElement, createFontElement, createDefaultElement } = createColorElements()
   const anchor = document.getElementById('main')
   const spinner = document.getElementById('spinner')
   inspectDomForChanges(anchor, spinner)
 
   const getProperName = (cssName) =>
-  ({
-    backgroundColor: 'Background Color',
-    color: 'Color',
-    fontFamily: 'Font Family',
-    fontWeight: 'Font Weight',
-    fontSize: 'Font Size',
-    imageSource: 'Image Source',
-    backgroundImage: 'Background Image'
-  }[cssName])
+    ({
+      backgroundColor: 'Background Color',
+      color: 'Color',
+      fontFamily: 'Font Family',
+      fontWeight: 'Font Weight',
+      fontSize: 'Font Size',
+      imageSource: 'Image Source',
+      backgroundImage: 'Background Image'
+    }[cssName])
 
   chrome.tabs.query({ active: true, currentWindow: true }, onTabQuery)
 
@@ -112,7 +114,7 @@ import createColorElements from '../utils/createElement.mjs'
   function createNotification (title, message, buttons, interaction) {
     const options = {
       type: 'basic',
-      iconUrl: '../images/color_16px.png',
+      iconUrl: '../images/CSS-Getter-Icon-16px.png',
       title: title,
       message: message,
       requireInteraction: interaction || false
@@ -207,9 +209,5 @@ import createColorElements from '../utils/createElement.mjs'
     chrome.tabs.executeScript(tabs[0].id, {
       file: 'crawlPage.js'
     })
-  }
-
-  function setItem (item) {
-    chrome.storage.local.set(item)
   }
 })()
