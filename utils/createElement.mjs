@@ -16,14 +16,7 @@ export default (function () {
                 return renderEl(containerDiv, rootDiv)
             },
             createFontElement: function (elObj) {
-                // const containerDiv = document.createElement('div')
-                // const listItem = document.createElement('div')
                 const { freq, style, hightLightFontOnPage } = elObj
-                // listItem.textContent = style
-                // listItem.value = freq.id
-                // listItem.className = 'pointer'
-                // listItem.addEventListener('click', hightLightFontOnPage)
-                // containerDiv.appendChild(listItem)
                 const listItem = createElement('div', { id: 'fontItem', className: 'pointer', value: freq.id, textContent: style, onclick: e => hightLightFontOnPage(e) })
                 const containerDiv = createElement('div', { id: 'liContainer' }, listItem)
                 const rootDiv = document.createElement('div')
@@ -55,11 +48,7 @@ export default (function () {
                 return renderEl(containerDiv, rootDiv)
             },
             createDefaultElement: function (elObj) {
-                // const containerDiv = document.createElement('div')
-                // const listItem = document.createElement('div')
                 const { style } = elObj
-                // listItem.textContent = style
-                // return listItem
                 const listItem = createElement('div', { textContent: style })
                 const containerDiv = createElement('div', { id: 'liContainer' }, listItem)
                 const rootDiv = document.createElement('div')

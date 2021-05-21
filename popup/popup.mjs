@@ -10,34 +10,35 @@ import helpers from '../utils/helperFunctions.mjs';
   inspectDomForChanges(anchor, spinner)
 
   const getProperName = (cssName) =>
-    ({
-      backgroundColor: 'Background Color',
-      color: 'Color',
-      fontFamily: 'Font Family',
-      fontWeight: 'Font Weight',
-      fontSize: 'Font Size',
-      imageSource: 'Image Source',
-      backgroundImage: 'Background Image'
-    }[cssName])
+  ({
+    backgroundColor: 'Background Color',
+    color: 'Color',
+    fontFamily: 'Font Family',
+    fontWeight: 'Font Weight',
+    fontSize: 'Font Size',
+    imageSource: 'Image Source',
+    backgroundImage: 'Background Image'
+  }[cssName])
 
   chrome.tabs.query({ active: true, currentWindow: true }, onTabQuery)
 
   chrome.runtime.onMessage.addListener(onMessage)
 
   function createView (cssObj) {
-    console.log(cssObj)
+    const sortImgs = (a, b) => {
+      return a[1].style.length === b[1].style.length
+        ? 0
+        : a[1].style.length > b[1].style.length
+          ? -1
+          : 1
+    }
+
     for (const type in cssObj) {
       let sortedObjArr
       if (type === 'imageSource') {
         sortedObjArr = Object.entries(cssObj[type]).filter(([key, value]) => key === 'images')
       } else {
-        sortedObjArr = Object.entries(cssObj[type]).sort((a, b) => {
-          return a[1].style.length === b[1].style.length
-            ? 0
-            : a[1].style.length > b[1].style.length
-              ? -1
-              : 1
-        })
+        sortedObjArr = Object.entries(cssObj[type]).sort(sortImgs)
       }
 
       anchor.appendChild(createViewElements(type, sortedObjArr))
@@ -49,7 +50,6 @@ import helpers from '../utils/helperFunctions.mjs';
     title.textContent = `${getProperName(name)}(s) used on page`
     const orderedList = document.createElement('ul')
     arr.forEach((prop) => {
-      console.log(prop)
       const createdListEl = createElementsByProp(name, prop)
       orderedList.appendChild(createdListEl)
     })
@@ -60,8 +60,9 @@ import helpers from '../utils/helperFunctions.mjs';
 
   function createElementsByProp (name, prop) {
     const [style, freq] = prop
+
     switch (name) {
-      case 'backgroundColor' || 'color':
+      case 'backgroundColor':
         return createColorElement({ freq, style, rgbToHex, copyToClipboard })
       case 'color':
         return createColorElement({ freq, style, rgbToHex, copyToClipboard })
@@ -82,7 +83,7 @@ import helpers from '../utils/helperFunctions.mjs';
         tabs[0].id,
         { styleId: `${e.target.value}` },
         function (response) {
-          console.log(response)
+          return
         }
       )
     })
@@ -134,7 +135,6 @@ import helpers from '../utils/helperFunctions.mjs';
     let text
 
     if (e.target.innerText) {
-      console.log(e.target)
       text = e.target.innerText
     } else {
       text = rgbToHex(e.target.style.backgroundColor)
@@ -152,7 +152,6 @@ import helpers from '../utils/helperFunctions.mjs';
   }
 
   function downloadImage (e, image) {
-    console.log(image)
     setItem({ currentImage: image })
 
     const buttons = [{
@@ -164,21 +163,16 @@ import helpers from '../utils/helperFunctions.mjs';
     createNotification('Image Notification', 'What would you like to do?', buttons, true)
   }
 
-  // function getItem (item, func = (data) => console.log(data)) {
-  //   chrome.storage.sync.get(item, func)
-  // }
-
   function inspectDomForChanges (domEl, domElRemove) {
     const config = { attributes: true, childList: true, subtree: true }
     // Create an observer instance linked to the callback function
     const observer = new MutationObserver(callback)
     // Callback function to execute when mutations are observed
-    function callback (mutationsList, observer) {
+    function callback (mutationsList, obs) {
       for (const mutation of mutationsList) {
-        console.log('mutation', mutation)
         if (mutation.type === 'childList') {
           domElRemove.style.display = 'none'
-          observer.disconnect()
+          obs.disconnect()
         }
       }
     }
@@ -191,7 +185,6 @@ import helpers from '../utils/helperFunctions.mjs';
   function onMessage (request, sender, sendResponse) {
     switch (request.action) {
       case 'getState':
-        console.log(request.payload)
         createView(request.payload)
         break
       case 'getNotif':

@@ -11,12 +11,12 @@
   let cssValues
 
   getItem('cssGetters', ({ cssGetters }) => {
-    // console.log('getters', cssGetters)
+
     cssValues = cssGetters
   })
 
   chrome.storage.onChanged.addListener((changes) => {
-    // console.log(changes)
+
     if ('cssGetters' in changes && changes.cssGetters.newValue) {
       getItem('cssGetters', ({ cssGetters }) => {
         cssValues = cssGetters
@@ -39,10 +39,7 @@
     sender,
     sendResponse
   ) {
-    // console.log(sender.tab.url)
-    // console.log(sender)
 
-    // console.log("REQUEST", request);
     switch (request.action) {
       case 'getValues':
         sendResponse({ getters: cssValues })
@@ -97,9 +94,7 @@
   function createLink (image, download, view) {
     const a = document.createElement('a')
     if (image.includes('url')) {
-      console.log(image)
       image = image.split('"')[1]
-      console.log(image)
     }
 
     if (download) {

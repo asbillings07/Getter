@@ -1,19 +1,12 @@
 
 /* global chrome, getComputedStyle  */
 (function () {
-  let hasScriptRun
-  let cssValues
-  // grab all initial state in the beginning
-  getItem(null, (data) => {
-    const { hasScriptRunOnPage } = data
-    hasScriptRun = hasScriptRunOnPage
-  })
   getItem('hasScriptRunOnPage', ({ hasScriptRunOnPage }) => {
     if (hasScriptRunOnPage) {
       getItem('currentResults', ({ currentResults }) => chrome.runtime.sendMessage({ action: 'getCurrentResults', payload: currentResults }))
     } else {
       chrome.runtime.sendMessage({ action: 'getValues', payload: null }, (response) => {
-        getValuesFromPage(response.getters, getStyleOnPage)
+        getValuesFromPage(response.getters, getStylesOnPage)
       })
     }
   })
@@ -29,7 +22,7 @@
     }
   })
 
-  function getStyleOnPage (css, pseudoEl) {
+  function getStylesOnPage (css, pseudoEl) {
     if (typeof window.getComputedStyle === 'undefined') {
       window.getComputedStyle = function (elem) {
         return elem.currentStyle
@@ -86,7 +79,6 @@
   function captureEls (elementInfo) {
     const { css, nodeElement, allStyles } = elementInfo
     const filterFonts = new Set(['sans-serif', 'serif', 'Arial'])
-    // const outputElement = '#' + (nodeElement.id || nodeElement.nodeName)
 
     let elementStyle
     if (css === 'fontFamily') {
@@ -104,10 +96,6 @@
     } else {
       elementStyle = getComputedStyle(nodeElement, '')[css]
     }
-
-    // if (nodeElement.localName === 'img') {
-    //   allStyles.backgroundImage = { images: [], id: getId(nodeElement) }
-    // }
 
     createStyleArray(allStyles, elementStyle, nodeElement)
   }
@@ -139,7 +127,6 @@
       case 'none':
         break
       default:
-        console.log(elementStyle)
         if (allStyles[elementStyle]) {
           allStyles[elementStyle].style.push(elementStyle)
         } else if (Array.isArray(elementStyle)) {

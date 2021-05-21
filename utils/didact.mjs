@@ -5,7 +5,6 @@ export default (function () {
     if (element.nodeType === 'TEXT_ELEMENT') {
       dom = document.createTextNode('')
     } else if (typeof element.nodeType === 'object') {
-      console.log(element)
       dom = document.createElement(element.nodeType.nodeType)
     } else {
       dom = document.createElement(element.nodeType)
