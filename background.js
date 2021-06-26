@@ -39,23 +39,18 @@
     sender,
     sendResponse
   ) {
-    // console.log(sender.tab.url)
-    // console.log(sender)
-
-    // console.log("REQUEST", request);
     switch (request.action) {
       case 'getValues':
         sendResponse({ getters: cssValues })
         break
       case 'getState':
-        console.log(request.payload)
         setItem({
           [sender.tab.url]: request.payload,
           currentResults: request.payload
         })
         break
       default:
-        console.log(request)
+        break
     }
   })
 
@@ -97,9 +92,7 @@
   function createLink (image, download, view) {
     const a = document.createElement('a')
     if (image.includes('url')) {
-      console.log(image)
       image = image.split('"')[1]
-      console.log(image)
     }
 
     if (download) {
@@ -111,9 +104,7 @@
       a.target = '_blank'
     }
 
-    const clickHandler = (e) => {
-      console.log(e)
-    }
+    const clickHandler = () => null
 
     a.addEventListener('click', clickHandler, false)
     a.click()

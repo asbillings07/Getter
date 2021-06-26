@@ -86,7 +86,6 @@
   function captureEls (elementInfo) {
     const { css, nodeElement, allStyles } = elementInfo
     const filterFonts = new Set(['sans-serif', 'serif', 'Arial'])
-    // const outputElement = '#' + (nodeElement.id || nodeElement.nodeName)
 
     let elementStyle
     if (css === 'fontFamily') {
@@ -104,10 +103,6 @@
     } else {
       elementStyle = getComputedStyle(nodeElement, '')[css]
     }
-
-    // if (nodeElement.localName === 'img') {
-    //   allStyles.backgroundImage = { images: [], id: getId(nodeElement) }
-    // }
 
     createStyleArray(allStyles, elementStyle, nodeElement)
   }
@@ -139,7 +134,6 @@
       case 'none':
         break
       default:
-        console.log(elementStyle)
         if (allStyles[elementStyle]) {
           allStyles[elementStyle].style.push(elementStyle)
         } else if (Array.isArray(elementStyle)) {

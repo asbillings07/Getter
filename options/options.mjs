@@ -2,15 +2,15 @@ import helpers from '../utils/helperFunctions.mjs'
 
 (function () {
   const getLabelName = (cssName) =>
-    ({
-      backgroundColor: 'Background Color',
-      color: 'Color',
-      fontFamily: 'Font Family',
-      fontWeight: 'Font Weight',
-      fontSize: 'Font Size',
-      imageSource: 'Image Source',
-      backgroundImage: 'Background Image'
-    }[cssName])
+  ({
+    backgroundColor: 'Background Color',
+    color: 'Color',
+    fontFamily: 'Font Family',
+    fontWeight: 'Font Weight',
+    fontSize: 'Font Size',
+    imageSource: 'Image Source',
+    backgroundImage: 'Background Image'
+  }[cssName])
 
   const { setItem, getItem, createNotification } = helpers
   const anchor = document.getElementById('anchor')
@@ -34,30 +34,20 @@ import helpers from '../utils/helperFunctions.mjs'
   }
 
   function saveSettings (e) {
-    console.log(settings)
     setItem({ cssGetters: settings }, () => {
       createNotification('Settings Saved Successfully', 'The settings have been updated and will take effect the next time you use the extension.')
     })
   }
 
   const saveButton = document.getElementById('save')
-  // const bgColor = document.getElementById('backgroundColor')
-  // const color = document.getElementById('color')
-  // const fontFamily = document.getElementById('fontFamily')
-  // const fontSize = document.getElementById('fontSize')
-  // const fontWeight = document.getElementById('fontWeight')
-  // const backgroundImage = document.getElementById('backgroundImage')
 
-  const elementArr = ['backgroundColor', 'color', 'fontFamily', 'fontSize', 'fontWeight', 'imageSource', 'backgroundImage']
-
-  elementArr.forEach(el => {
+  ['backgroundColor', 'color', 'fontFamily', 'fontSize', 'fontWeight', 'imageSource', 'backgroundImage'].forEach(el => {
     createCheckbox(el, getLabelName(el))
   })
 
   getItem('cssGetters', ({ cssGetters }) => {
     settings = cssGetters
     settings.forEach(setting => {
-      console.log(setting)
       document.getElementById(setting).checked = true
     })
   })

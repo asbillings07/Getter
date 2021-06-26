@@ -25,7 +25,6 @@ import helpers from '../utils/helperFunctions.mjs';
   chrome.runtime.onMessage.addListener(onMessage)
 
   function createView (cssObj) {
-    console.log(cssObj)
     for (const type in cssObj) {
       let sortedObjArr
       if (type === 'imageSource') {
@@ -49,7 +48,6 @@ import helpers from '../utils/helperFunctions.mjs';
     title.textContent = `${getProperName(name)}(s) used on page`
     const orderedList = document.createElement('ul')
     arr.forEach((prop) => {
-      console.log(prop)
       const createdListEl = createElementsByProp(name, prop)
       orderedList.appendChild(createdListEl)
     })
@@ -82,7 +80,7 @@ import helpers from '../utils/helperFunctions.mjs';
         tabs[0].id,
         { styleId: `${e.target.value}` },
         function (response) {
-          console.log(response)
+         return
         }
       )
     })
@@ -134,7 +132,7 @@ import helpers from '../utils/helperFunctions.mjs';
     let text
 
     if (e.target.innerText) {
-      console.log(e.target)
+     
       text = e.target.innerText
     } else {
       text = rgbToHex(e.target.style.backgroundColor)
@@ -152,7 +150,6 @@ import helpers from '../utils/helperFunctions.mjs';
   }
 
   function downloadImage (e, image) {
-    console.log(image)
     setItem({ currentImage: image })
 
     const buttons = [{
@@ -164,10 +161,6 @@ import helpers from '../utils/helperFunctions.mjs';
     createNotification('Image Notification', 'What would you like to do?', buttons, true)
   }
 
-  // function getItem (item, func = (data) => console.log(data)) {
-  //   chrome.storage.sync.get(item, func)
-  // }
-
   function inspectDomForChanges (domEl, domElRemove) {
     const config = { attributes: true, childList: true, subtree: true }
     // Create an observer instance linked to the callback function
@@ -175,7 +168,6 @@ import helpers from '../utils/helperFunctions.mjs';
     // Callback function to execute when mutations are observed
     function callback (mutationsList, observer) {
       for (const mutation of mutationsList) {
-        console.log('mutation', mutation)
         if (mutation.type === 'childList') {
           domElRemove.style.display = 'none'
           observer.disconnect()
@@ -191,7 +183,6 @@ import helpers from '../utils/helperFunctions.mjs';
   function onMessage (request, sender, sendResponse) {
     switch (request.action) {
       case 'getState':
-        console.log(request.payload)
         createView(request.payload)
         break
       case 'getNotif':
@@ -201,7 +192,7 @@ import helpers from '../utils/helperFunctions.mjs';
         createView(request.payload)
         break
       default:
-        console.log(request)
+       break
     }
   }
 

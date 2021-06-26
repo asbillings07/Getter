@@ -16,14 +16,7 @@ export default (function () {
                 return renderEl(containerDiv, rootDiv)
             },
             createFontElement: function (elObj) {
-                // const containerDiv = document.createElement('div')
-                // const listItem = document.createElement('div')
                 const { freq, style, hightLightFontOnPage } = elObj
-                // listItem.textContent = style
-                // listItem.value = freq.id
-                // listItem.className = 'pointer'
-                // listItem.addEventListener('click', hightLightFontOnPage)
-                // containerDiv.appendChild(listItem)
                 const listItem = createElement('div', { id: 'fontItem', className: 'pointer', value: freq.id, textContent: style, onclick: e => hightLightFontOnPage(e) })
                 const containerDiv = createElement('div', { id: 'liContainer' }, listItem)
                 const rootDiv = document.createElement('div')
@@ -33,7 +26,7 @@ export default (function () {
                 const { freq, downloadImage } = elObj
 
                 const imageItems = freq.images.filter(i => i !== 'images').map((image) => {
-                    console.log(image)
+
                     const imageDiv = createElement('img', { id: 'imageDiv', className: 'mr pointer', src: `${image.single.src}`, onclick: (e) => downloadImage(e, image.single.src) })
                     const description = createElement('p', { id: 'imageDesc', textContent: `${image.single.name}` })
                     const container = createElement('div', { className: 'container' }, imageDiv, description)
@@ -46,7 +39,7 @@ export default (function () {
             },
             createBgImageElement: function (elObj) {
                 const { freq, downloadImage } = elObj
-                console.log(freq.style[0].split('/'))
+
                 const imageDiv = createElement('img', { id: 'bgDiv', className: 'mr pointer', style: `background-image: ${freq.style[0]}`, onclick: (e) => downloadImage(e, freq.style[0]) })
                 const description = createElement('p', { id: 'listDesc', textContent: '' })
                 const containerDiv = createElement('div', { id: 'liContainer' }, imageDiv, description)
@@ -55,11 +48,9 @@ export default (function () {
                 return renderEl(containerDiv, rootDiv)
             },
             createDefaultElement: function (elObj) {
-                // const containerDiv = document.createElement('div')
-                // const listItem = document.createElement('div')
+
                 const { style } = elObj
-                // listItem.textContent = style
-                // return listItem
+
                 const listItem = createElement('div', { textContent: style })
                 const containerDiv = createElement('div', { id: 'liContainer' }, listItem)
                 const rootDiv = document.createElement('div')
