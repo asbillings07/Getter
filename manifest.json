@@ -6,17 +6,20 @@
       "tabs",
       "activeTab",
       "declarativeContent",
+      "scripting",
       "webNavigation",
       "storage",
       "downloads",
       "notifications"
     ],
+    "host_permissions": [
+      "*://*/*"
+    ],
     "background": {
-      "scripts": ["background.js"],
-      "persistent": false
+      "service_worker": "background.js"
     },
     "options_page": "./options/options.html",
-    "page_action": {
+    "action": {
       "default_title": "Getter",
       "default_popup": "./popup/popup.html",
       "default_icon": {
@@ -32,6 +35,6 @@
       "48": "images/CSS-Getter-Icon-48px.png",
       "128": "images/CSS-Getter-Icon-128px.png"
     },
-    "manifest_version": 2
+    "manifest_version": 3
   }
   

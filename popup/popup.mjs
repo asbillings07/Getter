@@ -2,7 +2,7 @@
 import createColorElements from '../utils/createElement.mjs'
 import helpers from '../utils/helperFunctions.mjs';
 
-(function () {
+(async function () {
   const { setItem } = helpers
   const { createColorElement, createImgSrcElement, createBgImageElement, createFontElement, createDefaultElement } = createColorElements()
   const anchor = document.getElementById('main')
@@ -10,17 +10,27 @@ import helpers from '../utils/helperFunctions.mjs';
   inspectDomForChanges(anchor, spinner)
 
   const getProperName = (cssName) =>
-    ({
-      backgroundColor: 'Background Color',
-      color: 'Color',
-      fontFamily: 'Font Family',
-      fontWeight: 'Font Weight',
-      fontSize: 'Font Size',
-      imageSource: 'Image Source',
-      backgroundImage: 'Background Image'
-    }[cssName])
+  ({
+    backgroundColor: 'Background Color',
+    color: 'Color',
+    fontFamily: 'Font Family',
+    fontWeight: 'Font Weight',
+    fontSize: 'Font Size',
+    imageSource: 'Image Source',
+    backgroundImage: 'Background Image'
+  }[cssName])
 
-  chrome.tabs.query({ active: true, currentWindow: true }, onTabQuery)
+  async function getCurrentTab () {
+    let queryOptions = { active: true, currentWindow: true };
+    let [tab] = await chrome.tabs.query(queryOptions);
+    return tab;
+  }
+
+  let currentTab = await getCurrentTab()
+
+  onTabQuery(currentTab)
+
+  // chrome.tabs.query({ active: true, currentWindow: true }, onTabQuery)
 
   chrome.runtime.onMessage.addListener(onMessage)
 
@@ -59,7 +69,7 @@ import helpers from '../utils/helperFunctions.mjs';
   function createElementsByProp (name, prop) {
     const [style, freq] = prop
     switch (name) {
-      case 'backgroundColor' || 'color':
+      case 'backgroundColor':
         return createColorElement({ freq, style, rgbToHex, copyToClipboard })
       case 'color':
         return createColorElement({ freq, style, rgbToHex, copyToClipboard })
@@ -75,15 +85,22 @@ import helpers from '../utils/helperFunctions.mjs';
   }
 
   function hightLightFontOnPage (e) {
-    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-      chrome.tabs.sendMessage(
-        tabs[0].id,
-        { styleId: `${e.target.value}` },
-        function (response) {
-         return
-        }
-      )
-    })
+    // chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+    //   chrome.tabs.sendMessage(
+    //     currentTab.id,
+    //     { styleId: `${e.target.value}` },
+    //     function (response) {
+    //       return
+    //     }
+    //   )
+    // })
+    chrome.tabs.sendMessage(
+      currentTab.id,
+      { styleId: `${e.target.value}` },
+      function (response) {
+        console.log('****Message Response****', response);
+      }
+    )
   }
 
   function rgbToHex (rbgStr) {
@@ -132,7 +149,7 @@ import helpers from '../utils/helperFunctions.mjs';
     let text
 
     if (e.target.innerText) {
-     
+
       text = e.target.innerText
     } else {
       text = rgbToHex(e.target.style.backgroundColor)
@@ -149,7 +166,7 @@ import helpers from '../utils/helperFunctions.mjs';
     }
   }
 
-  function downloadImage (e, image) {
+  function downloadImage (_e, image) {
     setItem({ currentImage: image })
 
     const buttons = [{
@@ -166,11 +183,11 @@ import helpers from '../utils/helperFunctions.mjs';
     // Create an observer instance linked to the callback function
     const observer = new MutationObserver(callback)
     // Callback function to execute when mutations are observed
-    function callback (mutationsList, observer) {
+    function callback (mutationsList, obs) {
       for (const mutation of mutationsList) {
         if (mutation.type === 'childList') {
           domElRemove.style.display = 'none'
-          observer.disconnect()
+          obs.disconnect()
         }
       }
     }
@@ -192,13 +209,17 @@ import helpers from '../utils/helperFunctions.mjs';
         createView(request.payload)
         break
       default:
-       break
+        break
     }
   }
 
-  function onTabQuery (tabs) {
-    chrome.tabs.executeScript(tabs[0].id, {
-      file: 'crawlPage.js'
+
+
+  function onTabQuery (tab) {
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id, },
+      files: ['crawlPage.js']
     })
   }
+
 })()
