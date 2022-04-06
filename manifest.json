@@ -16,24 +16,24 @@
       "*://*/*"
     ],
     "background": {
-      "service_worker": "background.js"
+      "service_worker": "./src/background.js"
     },
-    "options_page": "./options/options.html",
+    "options_page": "./src/options/options.html",
     "action": {
       "default_title": "Getter",
-      "default_popup": "./popup/popup.html",
+      "default_popup": "./src/popup/popup.html",
       "default_icon": {
-        "16": "images/CSS-Getter-Icon-16px.png",
-        "32": "images/CSS-Getter-Icon-32px.png",
-        "48": "images/CSS-Getter-Icon-48px.png",
-        "128": "images/CSS-Getter-Icon-128px.png"
+        "16": "src/images/CSS-Getter-Icon-16px.png",
+        "32": "src/images/CSS-Getter-Icon-32px.png",
+        "48": "src/images/CSS-Getter-Icon-48px.png",
+        "128": "src/images/CSS-Getter-Icon-128px.png"
       }
     },
     "icons": {
-      "16": "images/CSS-Getter-Icon-16px.png",
-      "32": "images/CSS-Getter-Icon-32px.png",
-      "48": "images/CSS-Getter-Icon-48px.png",
-      "128": "images/CSS-Getter-Icon-128px.png"
+      "16": "src/images/CSS-Getter-Icon-16px.png",
+      "32": "src/images/CSS-Getter-Icon-32px.png",
+      "48": "src/images/CSS-Getter-Icon-48px.png",
+      "128": "src/images/CSS-Getter-Icon-128px.png"
     },
     "manifest_version": 3
   }

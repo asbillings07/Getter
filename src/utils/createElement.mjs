@@ -2,7 +2,7 @@
 import didact from './didact.mjs'
 export default (function () {
     const { createElement, renderEl } = didact
-    return function CreateColorElements () {
+    return function CreateColorElements() {
         return {
             createColorElement: function (elObj) {
                 const { freq, style, rgbToHex, copyToClipboard } = elObj
@@ -17,7 +17,7 @@ export default (function () {
             },
             createFontElement: function (elObj) {
                 const { freq, style, hightLightFontOnPage } = elObj
-                const listItem = createElement('div', { id: 'fontItem', className: 'pointer', value: freq.id, textContent: style, onclick: e => hightLightFontOnPage(e) })
+                const listItem = createElement('div', { id: 'fontItem', className: 'pointer', value: freq.id, textContent: style, onclick: hightLightFontOnPage })
                 const containerDiv = createElement('div', { id: 'liContainer' }, listItem)
                 const rootDiv = document.createElement('div')
                 return renderEl(containerDiv, rootDiv)

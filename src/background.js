@@ -1,5 +1,6 @@
 /* global chrome  */
-(function () {
+(async function () {
+  await getCurrentTab()
   const rule1 = {
     conditions: [
       new chrome.declarativeContent.PageStateMatcher({
@@ -14,6 +15,13 @@
     // console.log('getters', cssGetters)
     cssValues = cssGetters
   })
+
+  async function getCurrentTab() {
+    let queryOptions = { active: true, currentWindow: true };
+    let [tab] = await chrome.tabs.query(queryOptions);
+    setItem({ currentTab: tab })
+  }
+
 
   chrome.storage.onChanged.addListener((changes) => {
     // console.log(changes)
@@ -54,6 +62,7 @@
     }
   })
 
+
   chrome.runtime.onInstalled.addListener(function () {
     chrome.declarativeContent.onPageChanged.removeRules(undefined, function () {
       chrome.declarativeContent.onPageChanged.addRules([rule1])
@@ -70,14 +79,14 @@
     })
   })
 
-  function getItem (item, func = (data) => false) {
+  function getItem(item, func = (data) => false) {
     chrome.storage.local.get(item, func)
   }
-  function setItem (item, func = () => false) {
+  function setItem(item, func = () => false) {
     chrome.storage.local.set(item)
   }
 
-  function onNotifButtonPress (id, buttonIdx) {
+  function onNotifButtonPress(id, buttonIdx) {
     getItem('currentImage', ({ currentImage }) => {
       if (buttonIdx === 0) { // view image
         createLink(currentImage, false, true)
@@ -89,7 +98,7 @@
     })
   }
 
-  function createLink (image, download, view) {
+  function createLink(image, download, view) {
     const a = document.createElement('a')
     if (image.includes('url')) {
       image = image.split('"')[1]

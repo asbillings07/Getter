@@ -3,7 +3,7 @@ import createColorElements from '../utils/createElement.mjs'
 import helpers from '../utils/helperFunctions.mjs';
 
 (async function () {
-  const { setItem } = helpers
+  const { setItem, rgbToHex, getCurrentTab } = helpers
   const { createColorElement, createImgSrcElement, createBgImageElement, createFontElement, createDefaultElement } = createColorElements()
   const anchor = document.getElementById('main')
   const spinner = document.getElementById('spinner')
@@ -20,21 +20,13 @@ import helpers from '../utils/helperFunctions.mjs';
     backgroundImage: 'Background Image'
   }[cssName])
 
-  async function getCurrentTab () {
-    let queryOptions = { active: true, currentWindow: true };
-    let [tab] = await chrome.tabs.query(queryOptions);
-    return tab;
-  }
-
   let currentTab = await getCurrentTab()
 
   onTabQuery(currentTab)
 
-  // chrome.tabs.query({ active: true, currentWindow: true }, onTabQuery)
-
   chrome.runtime.onMessage.addListener(onMessage)
 
-  function createView (cssObj) {
+  function createView(cssObj) {
     for (const type in cssObj) {
       let sortedObjArr
       if (type === 'imageSource') {
@@ -53,7 +45,7 @@ import helpers from '../utils/helperFunctions.mjs';
     }
   }
 
-  function createViewElements (name, arr) {
+  function createViewElements(name, arr) {
     const title = document.createElement('h3')
     title.textContent = `${getProperName(name)}(s) used on page`
     const orderedList = document.createElement('ul')
@@ -66,7 +58,7 @@ import helpers from '../utils/helperFunctions.mjs';
     return orderedList
   }
 
-  function createElementsByProp (name, prop) {
+  function createElementsByProp(name, prop) {
     const [style, freq] = prop
     switch (name) {
       case 'backgroundColor':
@@ -84,16 +76,8 @@ import helpers from '../utils/helperFunctions.mjs';
     }
   }
 
-  function hightLightFontOnPage (e) {
-    // chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-    //   chrome.tabs.sendMessage(
-    //     currentTab.id,
-    //     { styleId: `${e.target.value}` },
-    //     function (response) {
-    //       return
-    //     }
-    //   )
-    // })
+  function hightLightFontOnPage(e) {
+    console.log('Is this actually working????', e.target.value)
     chrome.tabs.sendMessage(
       currentTab.id,
       { styleId: `${e.target.value}` },
@@ -103,30 +87,10 @@ import helpers from '../utils/helperFunctions.mjs';
     )
   }
 
-  function rgbToHex (rbgStr) {
-    const rgbArr = rbgStr.split('(')[1].split(')').join('').split(',')
-    if (rgbArr.length === 4) rgbArr.pop()
 
-    const hexConvert = rgbArr
-      .map((value) => {
-        switch (true) {
-          case +value < 0:
-            return 0
-          case +value > 255:
-            return 255
-          default:
-            return +value
-        }
-      })
-      .map((val) => {
-        const hexVal = parseInt(val).toString(16).toUpperCase().trim()
-        return hexVal.length === 1 ? '0' + hexVal : hexVal
-      })
-      .join('')
-    return `#${hexConvert}`
-  }
 
-  function createNotification (title, message, buttons, interaction) {
+
+  function createNotification(title, message, buttons, interaction) {
     const options = {
       type: 'basic',
       iconUrl: '../images/CSS-Getter-Icon-16px.png',
@@ -140,7 +104,7 @@ import helpers from '../utils/helperFunctions.mjs';
     chrome.notifications.create(options)
   }
 
-  async function copyToClipboard (e) {
+  async function copyToClipboard(e) {
     if (!navigator.clipboard) {
       console.error('Clipboard is unavailable')
       return
@@ -166,7 +130,7 @@ import helpers from '../utils/helperFunctions.mjs';
     }
   }
 
-  function downloadImage (_e, image) {
+  function downloadImage(_e, image) {
     setItem({ currentImage: image })
 
     const buttons = [{
@@ -178,12 +142,12 @@ import helpers from '../utils/helperFunctions.mjs';
     createNotification('Image Notification', 'What would you like to do?', buttons, true)
   }
 
-  function inspectDomForChanges (domEl, domElRemove) {
+  function inspectDomForChanges(domEl, domElRemove) {
     const config = { attributes: true, childList: true, subtree: true }
     // Create an observer instance linked to the callback function
     const observer = new MutationObserver(callback)
     // Callback function to execute when mutations are observed
-    function callback (mutationsList, obs) {
+    function callback(mutationsList, obs) {
       for (const mutation of mutationsList) {
         if (mutation.type === 'childList') {
           domElRemove.style.display = 'none'
@@ -197,7 +161,7 @@ import helpers from '../utils/helperFunctions.mjs';
     }
   }
 
-  function onMessage (request, sender, sendResponse) {
+  function onMessage(request, sender, sendResponse) {
     switch (request.action) {
       case 'getState':
         createView(request.payload)
@@ -215,7 +179,7 @@ import helpers from '../utils/helperFunctions.mjs';
 
 
 
-  function onTabQuery (tab) {
+  function onTabQuery(tab) {
     chrome.scripting.executeScript({
       target: { tabId: tab.id, },
       files: ['crawlPage.js']

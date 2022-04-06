@@ -1,12 +1,13 @@
-
 /* global chrome, getComputedStyle  */
-(function () {
+(async function () {
   let hasScriptRun
   let cssValues
+  let tab
   // grab all initial state in the beginning
-  getItem(null, (data) => {
-    const { hasScriptRunOnPage } = data
-    hasScriptRun = hasScriptRunOnPage
+  getItem('currentTab', ({ currentTab }) => {
+    if (currentTab) {
+      tab = currentTab
+    }
   })
   getItem('hasScriptRunOnPage', ({ hasScriptRunOnPage }) => {
     if (hasScriptRunOnPage) {
@@ -23,13 +24,14 @@
     sender,
     sendResponse
   ) {
+    console.log('Is this message coming through?', request)
     if (request.styleId) {
       highlightInPage(request.styleId)
       sendResponse({ action: 'notif', payload: { title: 'Font Highlighted', message: 'The selected Font has been highlighted in the page' } })
     }
   })
 
-  function getStyleOnPage (css, pseudoEl) {
+  function getStyleOnPage(css, pseudoEl) {
     if (typeof window.getComputedStyle === 'undefined') {
       window.getComputedStyle = function (elem) {
         return elem.currentStyle
@@ -54,7 +56,7 @@
     return allStyles
   }
 
-  function getValuesFromPage (values, getStyleOnPage) {
+  function getValuesFromPage(values, getStyleOnPage) {
     const valueObj = {}
     values.forEach((value) => {
       const styleObj = getStyleOnPage(value)
@@ -65,14 +67,9 @@
     return valueObj
   }
 
-  function getItem (item, func = (data) => false) {
-    chrome.storage.local.get(item, func)
-  }
-  function setItem (item, func = () => false) {
-    chrome.storage.local.set(item)
-  }
 
-  function capturePseudoEls (elementInfo) {
+
+  function capturePseudoEls(elementInfo) {
     const { pseudoEl, css, allStyles, nodeElement } = elementInfo
     const pseudoProp = getComputedStyle(nodeElement, pseudoEl)[css]
 
@@ -83,13 +80,18 @@
     }
   }
 
-  function captureEls (elementInfo) {
+  function captureEls(elementInfo) {
     const { css, nodeElement, allStyles } = elementInfo
     const filterFonts = new Set(['sans-serif', 'serif', 'Arial'])
 
     let elementStyle
     if (css === 'fontFamily') {
-      elementStyle = getComputedStyle(nodeElement, '')[css].split(',').map(font => font.trim()).filter(font => !filterFonts.has(font))
+      console.log(nodeElement)
+      if (nodeElement.textContent) {
+        elementStyle = getComputedStyle(nodeElement, '')[css].split(',').map(font => font.trim()).filter(font => !filterFonts.has(font))
+      } else {
+        elementStyle = 'none'
+      }
     } else if (css === 'imageSource' && nodeElement.localName === 'img') {
       elementStyle = 'images'
     } else if (css === 'backgroundImage') {
@@ -107,7 +109,7 @@
     createStyleArray(allStyles, elementStyle, nodeElement)
   }
 
-  function captureImageSrc (imageEl) {
+  function captureImageSrc(imageEl) {
     const imageInfo = {}
 
     if (imageEl.srcset) {
@@ -121,7 +123,8 @@
     return imageInfo
   }
 
-  function createStyleArray (allStyles, elementStyle, nodeElement) {
+  function createStyleArray(allStyles, elementStyle, nodeElement) {
+    console.log('styles...', elementStyle)
     switch (elementStyle) {
       case 'images':
         if (allStyles[elementStyle]) {
@@ -148,7 +151,7 @@
     }
   }
 
-  function getId (el) {
+  function getId(el) {
     if (el.id) {
       return el.id
     } else {
@@ -157,50 +160,70 @@
     }
   }
 
-  function highlightInPage (styleId) {
+  function highlightInPage(styleId) {
     const allNodes = document.body.getElementsByTagName('*')
 
     const nodes = document.body.querySelectorAll(`[data-style-id="${styleId}"]`)
 
     // remove previous highlights
-    Array.from(allNodes).forEach(node => {
-      // node.classList.remove('style-highlight')
-      node.style.backgroundColor = ''
+    Array.from(nodes).forEach(node => {
+      // we want to ensure there's text in the node
+      if (node.classList.contains('style-highlight')) {
+        // node.style.backgroundColor = ''
+        node.classList.remove('style-highlight')
+      } else {
+        node.classList.add('style-highlight')
+        node.style.backgroundColor = 'red'
+      }
     })
 
     // add highlight to specified nodes
-    Array.from(nodes).forEach(node => {
-      // node.classList.add('style-highlight')
-      node.style.backgroundColor = '#FFAE42'
-    })
+    // Array.from(nodes).forEach(node => {
+    //   if (node.classList.includes(style))
+    //     node.classList.add('style-highlight')
+    //   // node.style.backgroundColor = '#FFAE42'
+    // })
   }
 
-  const sheet = (function () {
-    // Create the <style> tag
-    const style = document.createElement('style')
+  // const sheet = (function () {
+  //   // Create the <style> tag
+  //   const style = document.createElement('style')
 
-    // WebKit hack :(
-    style.appendChild(document.createTextNode(''))
+  //   // WebKit hack :(
+  //   style.appendChild(document.createTextNode(''))
 
-    // Add the <style> element to the page
-    document.head.appendChild(style)
+  //   // Add the <style> element to the page
+  //   document.head.appendChild(style)
 
-    return style.sheet
-  })()
+  //   return style.sheet
+  // })()
 
-  function addCSSRule (sheet, selector, rules, index = 0) {
-    if ('insertRule' in sheet) {
-      sheet.insertRule(selector + '{' + rules + '}', index)
-    } else if ('addRule' in sheet) {
-      sheet.addRule(selector, rules, index)
-    }
+  // function addCSSRule(sheet, selector, rules, index = 0) {
+  //   if ('insertRule' in sheet) {
+  //     sheet.insertRule(selector + '{' + rules + '}', index)
+  //   } else if ('addRule' in sheet) {
+  //     sheet.addRule(selector, rules, index)
+  //   }
+  // }
+
+  /**
+    Utils
+   */
+
+
+
+  function getItem(item, func = (data) => false) {
+    chrome.storage.local.get(item, func)
+  }
+  function setItem(item, func = () => false) {
+    chrome.storage.local.set(item)
   }
 
-  function isObjEmpty (obj) {
-    return Object.keys(obj).length === 0
+  function isObjEmpty(obj) {
+    return obj && Object.keys(obj).length === 0 && obj.constructor === Object;
   }
 
-  function createNodeId (length) {
+  function createNodeId(length) {
     let result = ''
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
     const charactersLength = characters.length
@@ -210,5 +233,11 @@
     return result
   }
 
-  addCSSRule(sheet, '.style-highlight', 'background-color: yellow')
+  const css = '.style-highlight { background-color: red; }';
+  chrome.scripting.insertCSS({
+    target: { tabId: currentTab.id },
+    css: css,
+  });
+
+  // addCSSRule(sheet, '.style-highlight', 'background-color: yellow')
 })()

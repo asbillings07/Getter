@@ -17,7 +17,7 @@ import helpers from '../utils/helperFunctions.mjs'
 
   let settings
 
-  function regClick (e) {
+  function regClick(e) {
     const checked = e.target.checked
     const settingId = e.target.id
     if (checked) {
@@ -33,15 +33,16 @@ import helpers from '../utils/helperFunctions.mjs'
     }
   }
 
-  function saveSettings (e) {
+  function saveSettings(e) {
     setItem({ cssGetters: settings }, () => {
       createNotification('Settings Saved Successfully', 'The settings have been updated and will take effect the next time you use the extension.')
     })
   }
 
   const saveButton = document.getElementById('save')
+  const options = ['backgroundColor', 'color', 'fontFamily', 'fontSize', 'fontWeight', 'imageSource', 'backgroundImage'];
 
-  ['backgroundColor', 'color', 'fontFamily', 'fontSize', 'fontWeight', 'imageSource', 'backgroundImage'].forEach(el => {
+  options.forEach(el => {
     createCheckbox(el, getLabelName(el))
   })
 
@@ -54,7 +55,7 @@ import helpers from '../utils/helperFunctions.mjs'
 
   saveButton.addEventListener('click', saveSettings)
 
-  function createCheckbox (id, labelName) {
+  function createCheckbox(id, labelName) {
     const div = document.createElement('div')
     const label = document.createElement('label')
     const input = document.createElement('input')
