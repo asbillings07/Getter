@@ -26,7 +26,7 @@ export default (function () {
                 const { freq, downloadImage } = elObj
 
                 const imageItems = freq.images.filter(i => i !== 'images').map((image) => {
-                    console.log(image)
+
                     const imageDiv = createElement('img', { id: 'imageDiv', className: 'mr pointer', src: `${image.single.src}`, onclick: (e) => downloadImage(e, image.single.src) })
                     const description = createElement('p', { id: 'imageDesc', textContent: `${image.single.name}` })
                     const container = createElement('div', { className: 'container' }, imageDiv, description)
@@ -39,7 +39,7 @@ export default (function () {
             },
             createBgImageElement: function (elObj) {
                 const { freq, downloadImage } = elObj
-                console.log(freq.style[0].split('/'))
+
                 const imageDiv = createElement('img', { id: 'bgDiv', className: 'mr pointer', style: `background-image: ${freq.style[0]}`, onclick: (e) => downloadImage(e, freq.style[0]) })
                 const description = createElement('p', { id: 'listDesc', textContent: '' })
                 const containerDiv = createElement('div', { id: 'liContainer' }, imageDiv, description)
@@ -48,7 +48,13 @@ export default (function () {
                 return renderEl(containerDiv, rootDiv)
             },
             createDefaultElement: function (elObj) {
+<<<<<<< HEAD
                 const { style } = elObj
+=======
+
+                const { style } = elObj
+
+>>>>>>> ec133386ac2381a45f3578411ce2d6bab436044d
                 const listItem = createElement('div', { textContent: style })
                 const containerDiv = createElement('div', { id: 'liContainer' }, listItem)
                 const rootDiv = document.createElement('div')

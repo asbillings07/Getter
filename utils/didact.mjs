@@ -5,6 +5,10 @@ export default (function () {
     if (element.nodeType === 'TEXT_ELEMENT') {
       dom = document.createTextNode('')
     } else if (typeof element.nodeType === 'object') {
+<<<<<<< HEAD
+=======
+
+>>>>>>> ec133386ac2381a45f3578411ce2d6bab436044d
       dom = document.createElement(element.nodeType.nodeType)
     } else {
       dom = document.createElement(element.nodeType)

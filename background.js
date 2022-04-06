@@ -39,20 +39,18 @@
     sender,
     sendResponse
   ) {
-
     switch (request.action) {
       case 'getValues':
         sendResponse({ getters: cssValues })
         break
       case 'getState':
-        console.log(request.payload)
         setItem({
           [sender.tab.url]: request.payload,
           currentResults: request.payload
         })
         break
       default:
-        console.log(request)
+        break
     }
   })
 
@@ -106,9 +104,7 @@
       a.target = '_blank'
     }
 
-    const clickHandler = (e) => {
-      console.log(e)
-    }
+    const clickHandler = () => null
 
     a.addEventListener('click', clickHandler, false)
     a.click()

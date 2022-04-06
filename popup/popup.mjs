@@ -25,6 +25,7 @@ import helpers from '../utils/helperFunctions.mjs';
   chrome.runtime.onMessage.addListener(onMessage)
 
   function createView (cssObj) {
+<<<<<<< HEAD
     const sortImgs = (a, b) => {
       return a[1].style.length === b[1].style.length
         ? 0
@@ -33,6 +34,8 @@ import helpers from '../utils/helperFunctions.mjs';
           : 1
     }
 
+=======
+>>>>>>> ec133386ac2381a45f3578411ce2d6bab436044d
     for (const type in cssObj) {
       let sortedObjArr
       if (type === 'imageSource') {
@@ -135,6 +138,10 @@ import helpers from '../utils/helperFunctions.mjs';
     let text
 
     if (e.target.innerText) {
+<<<<<<< HEAD
+=======
+
+>>>>>>> ec133386ac2381a45f3578411ce2d6bab436044d
       text = e.target.innerText
     } else {
       text = rgbToHex(e.target.style.backgroundColor)
@@ -194,7 +201,7 @@ import helpers from '../utils/helperFunctions.mjs';
         createView(request.payload)
         break
       default:
-        console.log(request)
+        break
     }
   }
 

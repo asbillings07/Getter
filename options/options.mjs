@@ -41,9 +41,7 @@ import helpers from '../utils/helperFunctions.mjs'
 
   const saveButton = document.getElementById('save')
 
-  const elementArr = ['backgroundColor', 'color', 'fontFamily', 'fontSize', 'fontWeight', 'imageSource', 'backgroundImage']
-
-  elementArr.forEach(el => {
+  ['backgroundColor', 'color', 'fontFamily', 'fontSize', 'fontWeight', 'imageSource', 'backgroundImage'].forEach(el => {
     createCheckbox(el, getLabelName(el))
   })
 
