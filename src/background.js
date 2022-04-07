@@ -1,124 +1,136 @@
+import { setItem, getItem, getCurrentTab } from './utils/helperFunctions.js';
+import "regenerator-runtime/runtime.js";
+
 /* global chrome  */
-(async function () {
-  await getCurrentTab()
-  const rule1 = {
-    conditions: [
-      new chrome.declarativeContent.PageStateMatcher({
-        pageUrl: { schemes: ['https', 'http'] }
-      })
-    ],
-    actions: [new chrome.declarativeContent.ShowPageAction()]
+await getCurrentTab()
+const rule1 = {
+  conditions: [
+    new chrome.declarativeContent.PageStateMatcher({
+      pageUrl: { schemes: ['https', 'http'] }
+    })
+  ],
+  actions: [new chrome.declarativeContent.ShowPageAction()]
+}
+let cssValues
+let filteredElementValues
+
+getItem(null, ({ cssGetters, filteredElements }) => {
+  // console.log('getters', cssGetters)
+  cssValues = cssGetters
+  filteredElementValues = filteredElements
+})
+
+async function setCurrentTab() {
+  let tab = await getCurrentTab()
+  setItem({ currentTab: tab })
+}
+
+
+chrome.storage.onChanged.addListener((changes) => {
+  // console.log(changes)
+  if ('cssGetters' in changes && changes.cssGetters.newValue) {
+    getItem('cssGetters', ({ cssGetters }) => {
+      cssValues = cssGetters
+    })
   }
-  let cssValues
-
-  getItem('cssGetters', ({ cssGetters }) => {
-    // console.log('getters', cssGetters)
-    cssValues = cssGetters
-  })
-
-  async function getCurrentTab() {
-    let queryOptions = { active: true, currentWindow: true };
-    let [tab] = await chrome.tabs.query(queryOptions);
-    setItem({ currentTab: tab })
+  if ('filteredElements' in changes && changes.filteredElements.newValue) {
+    getItem('filteredElements', ({ filteredElements }) => {
+      filteredElementValues = filteredElements
+    })
   }
+})
 
+chrome.webNavigation.onDOMContentLoaded.addListener((object) => {
+  setItem({ hasScriptRunOnPage: false })
+  createNotification({ title: 'Page Has Refreshed', message: 'Extension results have been updated' })
+})
 
-  chrome.storage.onChanged.addListener((changes) => {
-    // console.log(changes)
-    if ('cssGetters' in changes && changes.cssGetters.newValue) {
-      getItem('cssGetters', ({ cssGetters }) => {
-        cssValues = cssGetters
-      })
-    }
-  })
+chrome.tabs.onActivated.addListener(function () {
+  // todo need to check if tab or url in current tab changes
+  setItem({ hasScriptRunOnPage: false })
+})
 
-  chrome.webNavigation.onDOMContentLoaded.addListener((object) => {
-    setItem({ hasScriptRunOnPage: false })
-    // createNotification('Page Has Refreshed', 'Extension results have been updated')
-  })
-
-  chrome.tabs.onActivated.addListener(function () {
-    // todo need to check if tab or url in current tab changes
-    setItem({ hasScriptRunOnPage: false })
-  })
-
-  chrome.runtime.onMessage.addListener(function (
-    request,
-    sender,
-    sendResponse
-  ) {
-    switch (request.action) {
-      case 'getValues':
-        sendResponse({ getters: cssValues })
-        break
-      case 'getState':
-        setItem({
-          [sender.tab.url]: request.payload,
-          currentResults: request.payload
-        })
-        break
-      default:
-        break
-    }
-  })
-
-
-  chrome.runtime.onInstalled.addListener(function () {
-    chrome.declarativeContent.onPageChanged.removeRules(undefined, function () {
-      chrome.declarativeContent.onPageChanged.addRules([rule1])
+chrome.runtime.onMessage.addListener(function (
+  request,
+  sender,
+  sendResponse
+) {
+  switch (request.action) {
+    case 'getCSSValues':
+      sendResponse({ getters: cssValues })
+      break
+    case 'getState':
       setItem({
-        hasScriptRunOnPage: false,
-        currentImage: null,
-        pageRefreshed: false,
-        cssGetters: [
-          'fontFamily',
-          'backgroundColor',
-          'color'
-        ]
+        [sender.tab.url]: request.payload,
+        currentResults: request.payload
       })
+      break
+    case 'getElementValues':
+      sendResponse({ filteredElementValues })
+    default:
+      break
+  }
+})
+
+
+chrome.runtime.onInstalled.addListener(function () {
+  chrome.declarativeContent.onPageChanged.removeRules(undefined, function () {
+    chrome.declarativeContent.onPageChanged.addRules([rule1])
+    setItem({
+      hasScriptRunOnPage: false,
+      currentImage: null,
+      pageRefreshed: false,
+      cssGetters: [
+        'fontFamily',
+        'backgroundColor',
+        'color'
+      ],
+      filteredElements: ['time', 'iframe', 'input', 'br', 'form']
     })
   })
+})
 
-  function getItem(item, func = (data) => false) {
-    chrome.storage.local.get(item, func)
-  }
-  function setItem(item, func = () => false) {
-    chrome.storage.local.set(item)
-  }
+// function getItem(item, func = (data) => false) {
+//   chrome.storage.local.get(item, func)
+// }
+// function setItem(item, func = () => false) {
+//   chrome.storage.local.set(item)
+// }
 
-  function onNotifButtonPress(id, buttonIdx) {
-    getItem('currentImage', ({ currentImage }) => {
-      if (buttonIdx === 0) { // view image
-        createLink(currentImage, false, true)
-      }
 
-      if (buttonIdx === 1) { // download image
-        createLink(currentImage, true, false)
-      }
-    })
-  }
-
-  function createLink(image, download, view) {
-    const a = document.createElement('a')
-    if (image.includes('url')) {
-      image = image.split('"')[1]
+function onNotifButtonPress(id, buttonIdx) {
+  getItem('currentImage', ({ currentImage }) => {
+    if (buttonIdx === 0) { // view image
+      createLink(currentImage, false, true)
     }
 
-    if (download) {
-      chrome.downloads.download({ url: image })
+    if (buttonIdx === 1) { // download image
+      createLink(currentImage, true, false)
     }
+  })
+}
 
-    if (view) {
-      a.href = image
-      a.target = '_blank'
-    }
-
-    const clickHandler = () => null
-
-    a.addEventListener('click', clickHandler, false)
-    a.click()
-    a.removeEventListener('click', clickHandler)
+function createLink(image, download, view) {
+  const a = document.createElement('a')
+  if (image.includes('url')) {
+    image = image.split('"')[1]
   }
 
-  chrome.notifications.onButtonClicked.addListener(onNotifButtonPress)
-})()
+  if (download) {
+    chrome.downloads.download({ url: image })
+  }
+
+  if (view) {
+    a.href = image
+    a.target = '_blank'
+  }
+
+  const clickHandler = () => null
+
+  a.addEventListener('click', clickHandler, false)
+  a.click()
+  a.removeEventListener('click', clickHandler)
+}
+
+chrome.notifications.onButtonClicked.addListener(onNotifButtonPress)
+

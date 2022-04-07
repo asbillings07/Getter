@@ -1,0 +1,40 @@
+{
+    "name": "Getter",
+    "version": "1.2.0",
+    "description": "Automatically find fonts, colors and more on any page!",
+    "permissions": [
+      "tabs",
+      "activeTab",
+      "declarativeContent",
+      "scripting",
+      "webNavigation",
+      "storage",
+      "downloads",
+      "notifications"
+    ],
+    "host_permissions": [
+      "*://*/*"
+    ],
+    "background": {
+      "service_worker": "background.js"
+    },
+    "options_page": "options.html",
+    "action": {
+      "default_title": "Getter",
+      "default_popup": "popup.html",
+      "default_icon": {
+        "16": "CSS-Getter-Icon-16px.png",
+        "32": "CSS-Getter-Icon-32px.png",
+        "48": "CSS-Getter-Icon-48px.png",
+        "128": "CSS-Getter-Icon-128px.png"
+      }
+    },
+    "icons": {
+      "16": "CSS-Getter-Icon-16px.png",
+      "32": "CSS-Getter-Icon-32px.png",
+      "48": "CSS-Getter-Icon-48px.png",
+      "128": "CSS-Getter-Icon-128px.png"
+    },
+    "manifest_version": 3
+  }
+  

@@ -7,13 +7,13 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "webpack": "webpack",
     "clean": "rimraf ./dist/",
-    "build": "npm run clean && npm run webpack"
+    "dev": "webpack --config webpack/webpack.dev.js",
+    "build": "webpack --config webpack/webpack.prod.js"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/asbillings07/Getter.git"
   },
-  "type": "module",
   "keywords": [
     "extension"
   ],
@@ -24,9 +24,7 @@
   },
   "homepage": "https://github.com/asbillings07/Getter#readme",
   "dependencies": {
-    "path": "^0.12.7",
-    "webpack": "^5.6.0",
-    "webpack-cli": "^4.2.0"
+    "path": "^0.12.7"
   },
   "devDependencies": {
     "@babel/core": "^7.12.9",
@@ -34,11 +32,15 @@
     "@babel/preset-env": "^7.12.7",
     "@babel/preset-react": "^7.12.7",
     "@babel/runtime": "^7.12.5",
-    "babel-loader": "^8.2.2",
+    "babel-loader": "^8.2.4",
+    "clean-webpack-plugin": "^4.0.0",
+    "copy-webpack-plugin": "^10.2.4",
     "css-loader": "^5.0.1",
-    "html-webpack-plugin": "^4.5.0",
+    "html-webpack-plugin": "^5.5.0",
+    "regenerator-runtime": "^0.13.9",
     "style-loader": "^2.0.0",
-    "terser": "^5.5.1",
-    "terser-webpack-plugin": "^5.0.3"
+    "webpack": "^5.72.0",
+    "webpack-cli": "^4.9.2",
+    "webpack-merge": "^5.8.0"
   }
 }
