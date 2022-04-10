@@ -1,12 +1,12 @@
 /* global chrome */
 
-function getItem(item, func = (data) => false) {
+function getItem (item, func = (data) => false) {
   chrome.storage.local.get(item, func)
 }
-function setItem(item, func = () => false) {
+function setItem (item, func = () => false) {
   chrome.storage.local.set(item, func)
 }
-function createNotification({ title, message, buttons, interaction }) {
+function createNotification ({ title, message, buttons, interaction }) {
   const options = {
     type: 'basic',
     iconUrl: 'CSS-Getter-Icon-16px.png',
@@ -20,7 +20,7 @@ function createNotification({ title, message, buttons, interaction }) {
   chrome.notifications.create(options)
 }
 
-function rgbToHex(rbgStr) {
+function rgbToHex (rbgStr) {
   const rgbArr = rbgStr.split('(')[1].split(')').join('').split(',')
   if (rgbArr.length === 4) rgbArr.pop()
 
@@ -43,17 +43,17 @@ function rgbToHex(rbgStr) {
   return `#${hexConvert}`
 }
 
-async function getCurrentTab() {
+async function getCurrentTab () {
   let queryOptions = { active: true, currentWindow: true };
   let [tab] = await chrome.tabs.query(queryOptions);
   return tab;
 }
 
-function isObjEmpty(obj) {
+function isObjEmpty (obj) {
   return obj && Object.keys(obj).length === 0 && obj.constructor === Object;
 }
 
-async function copyToClipboard(e) {
+async function copyToClipboard (e) {
   if (!navigator.clipboard) {
     console.error('Clipboard is unavailable')
     return
@@ -70,16 +70,16 @@ async function copyToClipboard(e) {
 
   try {
     await navigator.clipboard.writeText(text)
-    createNotification(
-      'Copied to Clipboard!',
-      `${text} has been copied to the clipboard.`
-    )
+    createNotification({
+      title: 'Copied to Clipboard!',
+      message: `${text} has been copied to the clipboard.`
+    })
   } catch (err) {
     console.error('Failed to copy!', err)
   }
 }
 
-function downloadImage(_e, image) {
+function downloadImage (_e, image) {
   setItem({ currentImage: image })
 
   const buttons = [{
@@ -88,15 +88,15 @@ function downloadImage(_e, image) {
     title: 'Download image'
   }]
 
-  createNotification('Image Notification', 'What would you like to do?', buttons, true)
+  createNotification({ title: 'Image Notification', message: 'What would you like to do?', buttons, interaction: true })
 }
 
-function inspectDomForChanges(domEl, domElRemove) {
+function inspectDomForChanges (domEl, domElRemove) {
   const config = { attributes: true, childList: true, subtree: true }
   // Create an observer instance linked to the callback function
   const observer = new MutationObserver(callback)
   // Callback function to execute when mutations are observed
-  function callback(mutationsList, obs) {
+  function callback (mutationsList, obs) {
     for (const mutation of mutationsList) {
       if (mutation.type === 'childList') {
         domElRemove.style.display = 'none'

@@ -1,6 +1,6 @@
 /* global chrome MutationObserver */
 import { createElementType } from '../utils/createElement.js'
-import { setItem, rgbToHex, getCurrentTab } from '../utils/helperFunctions.js';
+import { rgbToHex, getCurrentTab, inspectDomForChanges, createNotification, copyToClipboard, downloadImage } from '../utils/helperFunctions.js';
 import "regenerator-runtime/runtime.js";
 
 const anchor = document.getElementById('main')
@@ -24,7 +24,7 @@ onTabQuery(currentTab)
 
 chrome.runtime.onMessage.addListener(onMessage)
 
-function createView(cssObj) {
+function createView (cssObj) {
   for (const type in cssObj) {
     let sortedObjArr
     if (type === 'imageSource') {
@@ -43,7 +43,7 @@ function createView(cssObj) {
   }
 }
 
-function createViewElements(name, arr) {
+function createViewElements (name, arr) {
   const title = document.createElement('h3')
   title.textContent = `${getProperName(name)}(s) used on page`
   const orderedList = document.createElement('ul')
@@ -56,7 +56,7 @@ function createViewElements(name, arr) {
   return orderedList
 }
 
-function createElementsByProp(name, prop) {
+function createElementsByProp (name, prop) {
   const [style, freq] = prop
   const elementProps = {
     freq, style, rgbToHex, copyToClipboard, hightLightFontOnPage, downloadImage
@@ -64,7 +64,7 @@ function createElementsByProp(name, prop) {
   return createElementType(name, { ...elementProps })
 }
 
-function hightLightFontOnPage(e) {
+function hightLightFontOnPage (e) {
   console.log('Is this actually working????', e.target.value)
   chrome.tabs.sendMessage(
     currentTab.id,
@@ -75,14 +75,7 @@ function hightLightFontOnPage(e) {
   )
 }
 
-
-
-
-
-
-
-
-function onMessage(request, sender, sendResponse) {
+function onMessage (request, _sender, _sendResponse) {
   switch (request.action) {
     case 'getState':
       createView(request.payload)
@@ -100,7 +93,7 @@ function onMessage(request, sender, sendResponse) {
 
 
 
-function onTabQuery(tab) {
+function onTabQuery (tab) {
   chrome.scripting.executeScript({
     target: { tabId: tab.id, },
     files: ['crawlPage.js']
