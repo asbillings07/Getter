@@ -1,5 +1,6 @@
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
+const webpack = require('webpack')
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 
@@ -31,6 +32,16 @@ module.exports = {
     },
     plugins: [
         new CleanWebpackPlugin({ cleanStaleWebpackAssets: false }),
+        new webpack.ProgressPlugin({
+            activeModules: false,
+            entries: true,
+            modules: true,
+            modulesCount: 5000,
+            profile: false,
+            dependencies: true,
+            dependenciesCount: 10000,
+            percentBy: null,
+        }),
         new HtmlWebpackPlugin({
             filename: "popup.html",
             template: "src/popup/index.html",

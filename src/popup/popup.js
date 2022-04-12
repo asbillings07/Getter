@@ -1,5 +1,6 @@
 /* global chrome MutationObserver */
 import { createElementType } from '../utils/createElement.js'
+import deepEqual from 'deep-equal';
 import { rgbToHex, getCurrentTab, inspectDomForChanges, createNotification, copyToClipboard, downloadImage } from '../utils/helperFunctions.js';
 import "regenerator-runtime/runtime.js";
 
@@ -25,22 +26,39 @@ onTabQuery(currentTab)
 chrome.runtime.onMessage.addListener(onMessage)
 
 function createView (cssObj) {
-  for (const type in cssObj) {
-    let sortedObjArr
-    if (type === 'imageSource') {
-      sortedObjArr = Object.entries(cssObj[type]).filter(([key, value]) => key === 'images')
-    } else {
-      sortedObjArr = Object.entries(cssObj[type]).sort((a, b) => {
-        return a[1].style.length === b[1].style.length
-          ? 0
-          : a[1].style.length > b[1].style.length
-            ? -1
-            : 1
-      })
+
+  let count = 0;
+  let arrData = []
+
+  return () => {
+    console.log('ARRDATA', arrData)
+    console.log('COUNT', count)
+    console.log('IS THIS EQ', deepEqual(arrData[count], cssObj))
+    if (arrData && deepEqual(arrData[count], cssObj)) {
+      return
     }
 
-    anchor.appendChild(createViewElements(type, sortedObjArr))
+    for (const type in cssObj) {
+      let sortedObjArr
+      if (type === 'imageSource') {
+        sortedObjArr = Object.entries(cssObj[type]).filter(([key, value]) => key === 'images')
+      } else {
+        sortedObjArr = Object.entries(cssObj[type]).sort((a, b) => {
+          return a[1].style.length === b[1].style.length
+            ? 0
+            : a[1].style.length > b[1].style.length
+              ? -1
+              : 1
+        })
+      }
+
+      anchor.appendChild(createViewElements(type, sortedObjArr))
+    }
+
+    arrData.push(cssObj)
+    ++count
   }
+
 }
 
 function createViewElements (name, arr) {
@@ -76,15 +94,16 @@ function hightLightFontOnPage (e) {
 }
 
 function onMessage (request, _sender, _sendResponse) {
+  if (request.action == 'getCurrentResults') {
+    console.log('***In PopUp.js***', request.action)
+  }
+
   switch (request.action) {
-    case 'getState':
-      createView(request.payload)
-      break
     case 'getNotif':
       createNotification({ title: request.payload.title, message: request.payload.message })
       break
     case 'getCurrentResults':
-      createView(request.payload)
+      createView(request.payload)()
       break
     default:
       break

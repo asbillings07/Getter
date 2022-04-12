@@ -1,4 +1,4 @@
-import { setItem, getItem, getCurrentTab } from './utils/helperFunctions.js';
+import { setItem, getItem, getCurrentTab, createNotification } from './utils/helperFunctions.js';
 import "regenerator-runtime/runtime.js";
 
 /* global chrome  */
@@ -20,7 +20,7 @@ getItem(null, ({ cssGetters, filteredElements }) => {
   filteredElementValues = filteredElements
 })
 
-async function setCurrentTab() {
+async function setCurrentTab () {
   let tab = await getCurrentTab()
   setItem({ currentTab: tab })
 }
@@ -40,9 +40,9 @@ chrome.storage.onChanged.addListener((changes) => {
   }
 })
 
-chrome.webNavigation.onDOMContentLoaded.addListener((object) => {
+chrome.webNavigation.onDOMContentLoaded.addListener((_object) => {
   setItem({ hasScriptRunOnPage: false })
-  createNotification({ title: 'Page Has Refreshed', message: 'Extension results have been updated' })
+  // createNotification({ title: 'Page Has Refreshed', message: 'Extension results have been updated' })
 })
 
 chrome.tabs.onActivated.addListener(function () {
@@ -57,9 +57,9 @@ chrome.runtime.onMessage.addListener(function (
 ) {
   switch (request.action) {
     case 'getCSSValues':
-      sendResponse({ getters: cssValues })
+      sendResponse({ cssValues })
       break
-    case 'getState':
+    case 'setState':
       setItem({
         [sender.tab.url]: request.payload,
         currentResults: request.payload
@@ -67,6 +67,7 @@ chrome.runtime.onMessage.addListener(function (
       break
     case 'getElementValues':
       sendResponse({ filteredElementValues })
+      break
     default:
       break
   }
@@ -98,7 +99,7 @@ chrome.runtime.onInstalled.addListener(function () {
 // }
 
 
-function onNotifButtonPress(id, buttonIdx) {
+function onNotifButtonPress (id, buttonIdx) {
   getItem('currentImage', ({ currentImage }) => {
     if (buttonIdx === 0) { // view image
       createLink(currentImage, false, true)
@@ -110,7 +111,7 @@ function onNotifButtonPress(id, buttonIdx) {
   })
 }
 
-function createLink(image, download, view) {
+function createLink (image, download, view) {
   const a = document.createElement('a')
   if (image.includes('url')) {
     image = image.split('"')[1]
