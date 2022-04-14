@@ -1,6 +1,5 @@
 /* global chrome MutationObserver */
 import { createElementType } from '../utils/createElement.js'
-import deepEqual from 'deep-equal';
 import { rgbToHex, getCurrentTab, inspectDomForChanges, createNotification, copyToClipboard, downloadImage } from '../utils/helperFunctions.js';
 import "regenerator-runtime/runtime.js";
 
@@ -26,52 +25,43 @@ onTabQuery(currentTab)
 chrome.runtime.onMessage.addListener(onMessage)
 
 function createView (cssObj) {
+  const sortStyles = (a, b) => {
+    return a[1].style.length === b[1].style.length
+      ? 0
+      : a[1].style.length > b[1].style.length
+        ? -1
+        : 1
+  }
 
-  let count = 0;
-  let arrData = []
-
-  return () => {
-    console.log('ARRDATA', arrData)
-    console.log('COUNT', count)
-    console.log('IS THIS EQ', deepEqual(arrData[count], cssObj))
-    if (arrData && deepEqual(arrData[count], cssObj)) {
-      return
+  for (const type in cssObj) {
+    let sortedObjArr
+    if (type === 'imageSource') {
+      sortedObjArr = Object.entries(cssObj[type]).filter(([key, _value]) => key === 'images')
+    } else {
+      sortedObjArr = Object.entries(cssObj[type]).sort(sortStyles)
     }
+    const renderedViewElement = createViewElements(type, sortedObjArr)
 
-    for (const type in cssObj) {
-      let sortedObjArr
-      if (type === 'imageSource') {
-        sortedObjArr = Object.entries(cssObj[type]).filter(([key, value]) => key === 'images')
-      } else {
-        sortedObjArr = Object.entries(cssObj[type]).sort((a, b) => {
-          return a[1].style.length === b[1].style.length
-            ? 0
-            : a[1].style.length > b[1].style.length
-              ? -1
-              : 1
-        })
-      }
-
-      anchor.appendChild(createViewElements(type, sortedObjArr))
-    }
-
-    arrData.push(cssObj)
-    ++count
+    if (renderedViewElement) anchor.appendChild(renderedViewElement)
   }
 
 }
 
 function createViewElements (name, arr) {
-  const title = document.createElement('h3')
-  title.textContent = `${getProperName(name)}(s) used on page`
-  const orderedList = document.createElement('ul')
-  arr.forEach((prop) => {
-    const createdListEl = createElementsByProp(name, prop)
-    orderedList.appendChild(createdListEl)
-  })
-  orderedList.prepend(title)
-  anchor.style.width = '420px'
-  return orderedList
+  const styleName = getProperName(name)
+  if (document.getElementById(styleName) == null) {
+    const title = document.createElement('h3')
+    title.textContent = `${styleName}(s) used on page`
+    title.id = `${styleName}`
+    const orderedList = document.createElement('ul')
+    arr.forEach((prop) => {
+      const createdListEl = createElementsByProp(name, prop)
+      orderedList.appendChild(createdListEl)
+    })
+    orderedList.prepend(title)
+    anchor.style.width = '420px'
+    return orderedList
+  }
 }
 
 function createElementsByProp (name, prop) {
@@ -103,7 +93,7 @@ function onMessage (request, _sender, _sendResponse) {
       createNotification({ title: request.payload.title, message: request.payload.message })
       break
     case 'getCurrentResults':
-      createView(request.payload)()
+      createView(request.payload)
       break
     default:
       break
@@ -118,4 +108,3 @@ function onTabQuery (tab) {
     files: ['crawlPage.js']
   })
 }
-
