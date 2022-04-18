@@ -1,6 +1,6 @@
 /* global chrome MutationObserver */
 import { createElementType } from '../utils/createElement.js'
-import { rgbToHex, getCurrentTab, hasNodeRenderedBefore, inspectDomForChanges, createNotification, copyToClipboard, downloadImage } from '../utils/helperFunctions.js';
+import { rgbToHex, getCurrentTab, hasNodeRenderedBefore, inspectDomForChanges, createNotification, copyToClipboard, downloadImage, grabItem } from '../utils/helperFunctions.js';
 import "regenerator-runtime/runtime.js";
 
 const anchor = document.getElementById('main')
@@ -24,7 +24,7 @@ onTabQuery(currentTab)
 
 chrome.runtime.onMessage.addListener(onMessage)
 
-function createView(cssObj) {
+function createView (cssObj) {
   const sortStyles = (a, b) => {
     return a[1].style.length === b[1].style.length
       ? 0
@@ -47,7 +47,7 @@ function createView(cssObj) {
 
 }
 
-function createViewElements(name, arr) {
+function createViewElements (name, arr) {
   const styleName = getProperName(name)
   if (!hasNodeRenderedBefore(styleName)) {
     const title = document.createElement('h3')
@@ -64,7 +64,7 @@ function createViewElements(name, arr) {
   }
 }
 
-function createElementsByProp(name, prop) {
+function createElementsByProp (name, prop) {
   const [style, freq] = prop
   const elementProps = {
     freq, style, rgbToHex, copyToClipboard, hightLightFontOnPage, downloadImage
@@ -72,18 +72,19 @@ function createElementsByProp(name, prop) {
   return createElementType(name, { ...elementProps })
 }
 
-function hightLightFontOnPage(e) {
-  console.log('Is this actually working????', e.target.value)
+async function hightLightFontOnPage (e) {
+  console.log('Is this actually working????', e.target.textContent)
+  const fontIds = await grabItem('fontDict')
   chrome.tabs.sendMessage(
     currentTab.id,
-    { styleId: `${e.target.value}` },
+    { fontStyleIds: fontIds[e.target.textContent] },
     function (response) {
       console.log('****Message Response****', response);
     }
   )
 }
 
-function onMessage(request, _sender, _sendResponse) {
+function onMessage (request, _sender, _sendResponse) {
   if (request.action == 'getCurrentResults') {
     console.log('***In PopUp.js***', request.action)
   }
@@ -102,7 +103,7 @@ function onMessage(request, _sender, _sendResponse) {
 
 
 
-function onTabQuery(tab) {
+function onTabQuery (tab) {
   chrome.scripting.executeScript({
     target: { tabId: tab.id, },
     files: ['crawlPage.js']

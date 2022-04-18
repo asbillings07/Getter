@@ -1,4 +1,4 @@
-import { setItem, getItem, getCurrentTab, createNotification } from './utils/helperFunctions.js';
+import { setItem, getItem, grabItem, getCurrentTab, createNotification } from './utils/helperFunctions.js';
 import "regenerator-runtime/runtime.js";
 
 /* global chrome  */
@@ -11,32 +11,35 @@ const rule1 = {
   ],
   actions: [new chrome.declarativeContent.ShowPageAction()]
 }
-let cssValues
-let filteredElementValues
+let cssValues = await grabItem('cssGetters')
+let filteredElementValues = await grabItem('filteredElements')
 
-getItem(null, ({ cssGetters, filteredElements }) => {
-  // console.log('getters', cssGetters)
-  cssValues = cssGetters
-  filteredElementValues = filteredElements
-})
 
-async function setCurrentTab() {
+// getItem(null, ({ cssGetters, filteredElements }) => {
+//   // console.log('getters', cssGetters)
+//   cssValues = cssGetters
+//   filteredElementValues = filteredElements
+// })
+
+async function setCurrentTab () {
   let tab = await getCurrentTab()
   setItem({ currentTab: tab })
 }
 
 
-chrome.storage.onChanged.addListener((changes) => {
+chrome.storage.onChanged.addListener(async (changes) => {
   // console.log(changes)
   if ('cssGetters' in changes && changes.cssGetters.newValue) {
-    getItem('cssGetters', ({ cssGetters }) => {
-      cssValues = cssGetters
-    })
+    cssValues = await grabItem('cssGetters')
+    //  getItem('cssGetters', ({ cssGetters }) => {
+    //     cssValues = cssGetters
+    //   })
   }
   if ('filteredElements' in changes && changes.filteredElements.newValue) {
-    getItem('filteredElements', ({ filteredElements }) => {
-      filteredElementValues = filteredElements
-    })
+    filteredElementValues = await grabItem('filteredElements')
+    // getItem('filteredElements', ({ filteredElements }) => {
+    //   filteredElementValues = filteredElements
+    // })
   }
 })
 
@@ -50,11 +53,11 @@ chrome.tabs.onActivated.addListener(function () {
   setItem({ hasScriptRunOnPage: false })
 })
 
-chrome.runtime.onMessage.addListener(function (
+chrome.runtime.onMessage.addListener(async (
   request,
   sender,
   sendResponse
-) {
+) => {
   switch (request.action) {
     case 'getCSSValues':
       sendResponse({ cssValues })
@@ -67,6 +70,9 @@ chrome.runtime.onMessage.addListener(function (
       break
     case 'getElementValues':
       sendResponse({ filteredElementValues })
+      break
+    case 'getFontDict':
+      sendResponse(await grabItem('fontDict'))
       break
     default:
       break
@@ -91,19 +97,27 @@ chrome.runtime.onInstalled.addListener(function () {
   })
 })
 
-function onNotifButtonPress(id, buttonIdx) {
-  getItem('currentImage', ({ currentImage }) => {
-    if (buttonIdx === 0) { // view image
-      createLink(currentImage, false, true)
-    }
+async function onNotifButtonPress (_id, buttonIdx) {
+  const currentImage = await grabItem('currentImage')
+  if (buttonIdx === 0) { // view image
+    createLink(currentImage, false, true)
+  }
 
-    if (buttonIdx === 1) { // download image
-      createLink(currentImage, true, false)
-    }
-  })
+  if (buttonIdx === 1) { // download image
+    createLink(currentImage, true, false)
+  }
+  // getItem('currentImage', ({ currentImage }) => {
+  //   if (buttonIdx === 0) { // view image
+  //     createLink(currentImage, false, true)
+  //   }
+
+  //   if (buttonIdx === 1) { // download image
+  //     createLink(currentImage, true, false)
+  //   }
+  // })
 }
 
-function createLink(image, download, view) {
+function createLink (image, download, view) {
   const a = document.createElement('a')
   if (image.includes('url')) {
     image = image.split('"')[1]

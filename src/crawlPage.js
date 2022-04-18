@@ -34,13 +34,13 @@ chrome.runtime.onMessage.addListener(function (
   sendResponse
 ) {
   console.log('Is this message coming through?', request)
-  if (request.styleId) {
-    highlightInPage(request.styleId)
+  if (request.fontStyleIds) {
+    highlightInPage(request.fontStyleIds)
     sendResponse({ action: 'notif', payload: { title: 'Font Highlighted', message: 'The selected Font has been highlighted in the page' } })
   }
 })
 
-function getStyleOnPage(css, pseudoEl) {
+function getStyleOnPage (css, pseudoEl) {
   if (typeof window.getComputedStyle === 'undefined') {
     window.getComputedStyle = function (elem) {
       return elem.currentStyle
@@ -65,7 +65,7 @@ function getStyleOnPage(css, pseudoEl) {
   return allStyles
 }
 
-function getValuesFromPage(values, getStyles) {
+function getValuesFromPage (values, getStyles) {
   const valueObj = {}
   values.forEach((value) => {
     const styleObj = getStyles(value)
@@ -79,7 +79,7 @@ function getValuesFromPage(values, getStyles) {
 
 
 
-function capturePseudoEls(elementInfo) {
+function capturePseudoEls (elementInfo) {
   const { pseudoEl, css, allStyles, nodeElement } = elementInfo
   const pseudoProp = getComputedStyle(nodeElement, pseudoEl)[css]
 
@@ -90,7 +90,7 @@ function capturePseudoEls(elementInfo) {
   }
 }
 
-function captureEls(elementInfo) {
+function captureEls (elementInfo) {
   const { css, nodeElement, allStyles } = elementInfo
   const filterFonts = new Set(['sans-serif', 'serif', 'Arial'])
 
@@ -118,7 +118,7 @@ function captureEls(elementInfo) {
   createStyleArray(allStyles, elementStyle, nodeElement)
 }
 
-function captureImageSrc(imageEl) {
+function captureImageSrc (imageEl) {
   const imageInfo = {}
 
   if (imageEl.srcset) {
@@ -132,7 +132,7 @@ function captureImageSrc(imageEl) {
   return imageInfo
 }
 
-function createStyleArray(allStyles, elementStyle, nodeElement) {
+function createStyleArray (allStyles, elementStyle, nodeElement) {
   switch (elementStyle) {
     case 'images':
       if (allStyles[elementStyle]) {
@@ -151,10 +151,10 @@ function createStyleArray(allStyles, elementStyle, nodeElement) {
         elementStyle.forEach(el => {
           allStyles[el] = { style: [el], id: getId(nodeElement) }
           nodeElement.dataset.styleId = `${allStyles[el].id}`
-          createFontNodeList(el, allStyles[el].id, fontDict)
+          createFontNodeList(el, allStyles[el].id)
 
         })
-        setItem({ fontStyleIds: fontDict })
+        setItem({ fontDict })
       } else {
         allStyles[elementStyle] = { style: [elementStyle], id: getId(nodeElement) }
         nodeElement.dataset.styleId = `${allStyles[elementStyle].id}`
@@ -164,7 +164,7 @@ function createStyleArray(allStyles, elementStyle, nodeElement) {
 
 }
 
-function getId(el) {
+function getId (el) {
   if (el.id) {
     return el.id
   } else {
@@ -173,30 +173,22 @@ function getId(el) {
   }
 }
 
-function createFontNodeList(font, elementId) {
+function createFontNodeList (font, elementId) {
 
-  if (fontDict[font]) {
+  if (fontDict[font] && font !== 'root') {
     fontDict[font].push(elementId)
   } else {
     fontDict[font] = []
   }
 }
 
-function highlightInPage(styleId) {
+function highlightInPage (fontArr) {
   const allNodes = document.body.getElementsByTagName('*')
 
-  const nodes = document.body.querySelectorAll(`[data-style-id="${styleId}"]`)
-
   // remove previous highlights
-  Array.from(nodes).forEach(node => {
-    // we want to ensure there's text in the node
-    if (node.style.backgroundColor === 'red') {
-      node.style.backgroundColor = ''
-      // node.classList.remove('style-highlight')
-    } else {
-      node.style.backgroundColor = 'red'
-    }
-  })
+
+  Array.from(allNodes).forEach(node => removeHighlight(node, 'red'))
+  fontArr.forEach(id => addHighlight(document.getElementById(id), 'red'))
 
   // add highlight to specified nodes
   // Array.from(nodes).forEach(node => {
@@ -204,6 +196,18 @@ function highlightInPage(styleId) {
   //     node.classList.add('style-highlight')
   //   // node.style.backgroundColor = '#FFAE42'
   // })
+}
+
+
+function addHighlight (node, color) {
+  node.style.backgroundColor = color
+}
+
+function removeHighlight (node, color) {
+  const nodeColor = node.style.backgroundColor
+  if (nodeColor === color) {
+    node.style.backgroundColor = ""
+  }
 }
 
 // const sheet = (function () {
@@ -242,7 +246,7 @@ function highlightInPage(styleId) {
 
 
 
-function createNodeId(length) {
+function createNodeId (length) {
   let result = ''
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
   const charactersLength = characters.length
