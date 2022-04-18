@@ -5,7 +5,12 @@ const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 
 module.exports = {
-    entry: { popup: path.resolve(__dirname, "src", "popup/popup.js"), background: path.resolve(__dirname, "src", "background.js"), crawlPage: path.resolve(__dirname, "src", "crawlPage.js") },
+    entry: {
+        popup: path.resolve(__dirname, "src", "popup/popup.js"),
+        options: path.resolve(__dirname, "src", "options/options.js"),
+        background: path.resolve(__dirname, "src", "background.js"),
+        crawlPage: path.resolve(__dirname, "src", "crawlPage.js")
+    },
     module: {
         rules: [
             {

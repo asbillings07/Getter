@@ -20,7 +20,7 @@ getItem(null, ({ cssGetters, filteredElements }) => {
   filteredElementValues = filteredElements
 })
 
-async function setCurrentTab () {
+async function setCurrentTab() {
   let tab = await getCurrentTab()
   setItem({ currentTab: tab })
 }
@@ -91,15 +91,7 @@ chrome.runtime.onInstalled.addListener(function () {
   })
 })
 
-// function getItem(item, func = (data) => false) {
-//   chrome.storage.local.get(item, func)
-// }
-// function setItem(item, func = () => false) {
-//   chrome.storage.local.set(item)
-// }
-
-
-function onNotifButtonPress (id, buttonIdx) {
+function onNotifButtonPress(id, buttonIdx) {
   getItem('currentImage', ({ currentImage }) => {
     if (buttonIdx === 0) { // view image
       createLink(currentImage, false, true)
@@ -111,7 +103,7 @@ function onNotifButtonPress (id, buttonIdx) {
   })
 }
 
-function createLink (image, download, view) {
+function createLink(image, download, view) {
   const a = document.createElement('a')
   if (image.includes('url')) {
     image = image.split('"')[1]

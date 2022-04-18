@@ -1,4 +1,4 @@
-import { setItem, getItem, createNotification } from '../utils/helperFunctions.js'
+import { setItem, getItem, createNotification, hasNodeRenderedBefore } from '../utils/helperFunctions.js'
 
 
 const getLabelName = (cssName) =>
@@ -14,7 +14,7 @@ const getLabelName = (cssName) =>
 
 const anchor = document.getElementById('anchor')
 
-let settings
+let settings = []
 
 function regClick(e) {
   const checked = e.target.checked
@@ -55,19 +55,23 @@ getItem('cssGetters', ({ cssGetters }) => {
 saveButton.addEventListener('click', saveSettings)
 
 function createCheckbox(id, labelName) {
-  const div = document.createElement('div')
-  const label = document.createElement('label')
-  const input = document.createElement('input')
+  if (!hasNodeRenderedBefore(`${labelName} - ${id}`)) {
 
-  label.className = 'label'
-  label.htmlFor = id
-  label.textContent = labelName
-  input.type = 'checkbox'
-  input.id = id
-  input.addEventListener('change', regClick)
+    const div = document.createElement('div')
+    div.id = `${labelName} - ${id}`
+    const label = document.createElement('label')
+    const input = document.createElement('input')
 
-  div.appendChild(label)
-  div.appendChild(input)
-  anchor.appendChild(div)
+    label.className = 'label'
+    label.htmlFor = id
+    label.textContent = labelName
+    input.type = 'checkbox'
+    input.id = id
+    input.addEventListener('change', regClick)
+
+    div.appendChild(label)
+    div.appendChild(input)
+    anchor.appendChild(div)
+  }
 }
 

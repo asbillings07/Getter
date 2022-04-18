@@ -24,9 +24,9 @@
   },
   "homepage": "https://github.com/asbillings07/Getter#readme",
   "dependencies": {
-    "path": "^0.12.7"
   },
   "devDependencies": {
+    "path": "^0.12.7",
     "@babel/core": "^7.12.9",
     "@babel/plugin-transform-runtime": "^7.12.1",
     "@babel/preset-env": "^7.12.7",
