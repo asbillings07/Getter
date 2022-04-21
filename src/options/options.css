@@ -3,5 +3,22 @@
 }
 
 #anchor {
-    margin: 15px 5px;
+    padding: 25px;
+}
+
+#anchor-highlight {
+    padding: 25px;
+}
+
+label {
+    cursor: pointer;
+}
+
+input {
+    cursor: pointer;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
 }
