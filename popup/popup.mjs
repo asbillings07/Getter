@@ -1,13 +1,13 @@
 /* global chrome MutationObserver */
-import createColorElements from '../utils/createElement.mjs'
+import createColorElements from '../utils/createElement.mjs';
 import helpers from '../utils/helperFunctions.mjs';
 
 (async function () {
-  const { setItem } = helpers
-  const { createColorElement, createImgSrcElement, createBgImageElement, createFontElement, createDefaultElement } = createColorElements()
-  const anchor = document.getElementById('main')
-  const spinner = document.getElementById('spinner')
-  inspectDomForChanges(anchor, spinner)
+  const { setItem } = helpers;
+  const { createColorElement, createImgSrcElement, createBgImageElement, createFontElement, createDefaultElement } = createColorElements();
+  const anchor = document.getElementById('main');
+  const spinner = document.getElementById('spinner');
+  inspectDomForChanges(anchor, spinner);
 
   const getProperName = (cssName) =>
   ({
@@ -18,192 +18,201 @@ import helpers from '../utils/helperFunctions.mjs';
     fontSize: 'Font Size',
     imageSource: 'Image Source',
     backgroundImage: 'Background Image'
-  }[cssName])
+  }[cssName]);
 
-  async function getCurrentTab () {
+  async function getCurrentTab() {
     let queryOptions = { active: true, currentWindow: true };
     let [tab] = await chrome.tabs.query(queryOptions);
     return tab;
   }
 
-  let currentTab = await getCurrentTab()
+  let currentTab = await getCurrentTab();
 
-  onTabQuery(currentTab)
+  onTabQuery(currentTab);
 
-  chrome.runtime.onMessage.addListener(onMessage)
+  chrome.runtime.onMessage.addListener(onMessage);
 
-  function createView (cssObj) {
+  function createView(cssObj) {
+
+    const sortImgs = (a, b) => {
+      return a[1].style.length === b[1].style.length
+        ? 0
+        : a[1].style.length > b[1].style.length
+          ? -1
+          : 1
+    }
+
     for (const type in cssObj) {
-      let sortedObjArr
+      let sortedObjArr;
       if (type === 'imageSource') {
-        sortedObjArr = Object.entries(cssObj[type]).filter(([key, value]) => key === 'images')
+        sortedObjArr = Object.entries(cssObj[type]).filter(([key, value]) => key === 'images');
       } else {
-        sortedObjArr = Object.entries(cssObj[type]).sort(sortImgs)
+        sortedObjArr = Object.entries(cssObj[type]).sort(sortImgs);
       }
 
-      anchor.appendChild(createViewElements(type, sortedObjArr))
+      anchor.appendChild(createViewElements(type, sortedObjArr));
     }
   }
 
-  function createViewElements (name, arr) {
-    const title = document.createElement('h3')
-    title.textContent = `${getProperName(name)}(s) used on page`
-    const orderedList = document.createElement('ul')
+  function createViewElements(name, arr) {
+    const title = document.createElement('h3');
+    title.textContent = `${getProperName(name)}(s) used on page`;
+    const orderedList = document.createElement('ul');
     arr.forEach((prop) => {
-      const createdListEl = createElementsByProp(name, prop)
-      orderedList.appendChild(createdListEl)
-    })
-    orderedList.prepend(title)
-    anchor.style.width = '420px'
-    return orderedList
+      const createdListEl = createElementsByProp(name, prop);
+      orderedList.appendChild(createdListEl);
+    });
+    orderedList.prepend(title);
+    anchor.style.width = '420px';
+    return orderedList;
   }
 
-  function createElementsByProp (name, prop) {
-    const [style, freq] = prop
+  function createElementsByProp(name, prop) {
+    const [style, freq] = prop;
 
     switch (name) {
       case 'backgroundColor':
-        return createColorElement({ freq, style, rgbToHex, copyToClipboard })
+        return createColorElement({ freq, style, rgbToHex, copyToClipboard });
       case 'color':
-        return createColorElement({ freq, style, rgbToHex, copyToClipboard })
+        return createColorElement({ freq, style, rgbToHex, copyToClipboard });
       case 'fontFamily':
-        return createFontElement({ freq, style, hightLightFontOnPage })
+        return createFontElement({ freq, style, hightLightFontOnPage });
       case 'imageSource':
-        return createImgSrcElement({ freq, style, downloadImage })
+        return createImgSrcElement({ freq, style, downloadImage });
       case 'backgroundImage':
-        return createBgImageElement({ freq, style, downloadImage })
+        return createBgImageElement({ freq, style, downloadImage });
       default:
-        return createDefaultElement({ style })
+        return createDefaultElement({ style });
     }
   }
 
-  function hightLightFontOnPage (e) {
+  function hightLightFontOnPage(e) {
     chrome.tabs.sendMessage(
       currentTab.id,
       { styleId: `${e.target.value}` },
       function (response) {
         console.log('****Message Response****', response);
       }
-    )
+    );
 
   }
 
-  function rgbToHex (rbgStr) {
-    const rgbArr = rbgStr.split('(')[1].split(')').join('').split(',')
-    if (rgbArr.length === 4) rgbArr.pop()
+  function rgbToHex(rbgStr) {
+    const rgbArr = rbgStr.split('(')[1].split(')').join('').split(',');
+    if (rgbArr.length === 4) rgbArr.pop();
 
     const hexConvert = rgbArr
       .map((value) => {
         switch (true) {
           case +value < 0:
-            return 0
+            return 0;
           case +value > 255:
-            return 255
+            return 255;
           default:
-            return +value
+            return +value;
         }
       })
       .map((val) => {
-        const hexVal = parseInt(val).toString(16).toUpperCase().trim()
-        return hexVal.length === 1 ? '0' + hexVal : hexVal
+        const hexVal = parseInt(val).toString(16).toUpperCase().trim();
+        return hexVal.length === 1 ? '0' + hexVal : hexVal;
       })
-      .join('')
-    return `#${hexConvert}`
+      .join('');
+    return `#${hexConvert}`;
   }
 
-  function createNotification (title, message, buttons, interaction) {
+  function createNotification(title, message, buttons, interaction) {
     const options = {
       type: 'basic',
       iconUrl: '../images/CSS-Getter-Icon-16px.png',
       title: title,
       message: message,
       requireInteraction: interaction || false
-    }
+    };
     if (buttons) {
-      options.buttons = buttons
+      options.buttons = buttons;
     }
-    chrome.notifications.create(options)
+    chrome.notifications.create(options);
   }
 
-  async function copyToClipboard (e) {
+  async function copyToClipboard(e) {
     if (!navigator.clipboard) {
-      console.error('Clipboard is unavailable')
-      return
+      console.error('Clipboard is unavailable');
+      return;
     }
 
-    let text
+    let text;
 
     if (e.target.innerText) {
-      text = e.target.innerText
+      text = e.target.innerText;
     } else {
-      text = rgbToHex(e.target.style.backgroundColor)
+      text = rgbToHex(e.target.style.backgroundColor);
     }
 
     try {
-      await navigator.clipboard.writeText(text)
+      await navigator.clipboard.writeText(text);
       createNotification(
         'Copied to Clipboard!',
         `${text} has been copied to the clipboard.`
-      )
+      );
     } catch (err) {
-      console.error('Failed to copy!', err)
+      console.error('Failed to copy!', err);
     }
   }
 
-  function downloadImage (_e, image) {
-    setItem({ currentImage: image })
+  function downloadImage(_e, image) {
+    setItem({ currentImage: image });
 
     const buttons = [{
       title: 'View image'
     }, {
       title: 'Download image'
-    }]
+    }];
 
-    createNotification('Image Notification', 'What would you like to do?', buttons, true)
+    createNotification('Image Notification', 'What would you like to do?', buttons, true);
   }
 
-  function inspectDomForChanges (domEl, domElRemove) {
-    const config = { attributes: true, childList: true, subtree: true }
+  function inspectDomForChanges(domEl, domElRemove) {
+    const config = { attributes: true, childList: true, subtree: true };
     // Create an observer instance linked to the callback function
-    const observer = new MutationObserver(callback)
+    const observer = new MutationObserver(callback);
     // Callback function to execute when mutations are observed
-    function callback (mutationsList, obs) {
+    function callback(mutationsList, obs) {
       for (const mutation of mutationsList) {
         if (mutation.type === 'childList') {
-          domElRemove.style.display = 'none'
-          obs.disconnect()
+          domElRemove.style.display = 'none';
+          obs.disconnect();
         }
       }
     }
     // Start observing the target node for configured mutations
     if (domEl) {
-      observer.observe(domEl, config)
+      observer.observe(domEl, config);
     }
   }
 
-  function onMessage (request, sender, sendResponse) {
+  function onMessage(request, sender, sendResponse) {
     switch (request.action) {
       case 'getState':
-        createView(request.payload)
-        break
+        createView(request.payload);
+        break;
       case 'getNotif':
-        createNotification(request.payload.title, request.payload.message)
-        break
+        createNotification(request.payload.title, request.payload.message);
+        break;
       case 'getCurrentResults':
-        createView(request.payload)
-        break
+        createView(request.payload);
+        break;
       default:
-        break
+        break;
     }
   }
 
 
 
-  function onTabQuery (tab) {
+  function onTabQuery(tab) {
     chrome.scripting.executeScript({
       target: { tabId: tab.id, },
       files: ['crawlPage.js']
-    })
+    });
   }
 
-})()
+})();
