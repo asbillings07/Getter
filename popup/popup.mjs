@@ -30,8 +30,6 @@ import helpers from '../utils/helperFunctions.mjs';
 
   onTabQuery(currentTab)
 
-  // chrome.tabs.query({ active: true, currentWindow: true }, onTabQuery)
-
   chrome.runtime.onMessage.addListener(onMessage)
 
   function createView (cssObj) {
@@ -85,15 +83,6 @@ import helpers from '../utils/helperFunctions.mjs';
   }
 
   function hightLightFontOnPage (e) {
-    // chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-    //   chrome.tabs.sendMessage(
-    //     currentTab.id,
-    //     { styleId: `${e.target.value}` },
-    //     function (response) {
-    //       return
-    //     }
-    //   )
-    // })
     chrome.tabs.sendMessage(
       currentTab.id,
       { styleId: `${e.target.value}` },
