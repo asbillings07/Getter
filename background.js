@@ -11,12 +11,12 @@
   let cssValues
 
   getItem('cssGetters', ({ cssGetters }) => {
-    // console.log('getters', cssGetters)
+
     cssValues = cssGetters
   })
 
   chrome.storage.onChanged.addListener((changes) => {
-    // console.log(changes)
+
     if ('cssGetters' in changes && changes.cssGetters.newValue) {
       getItem('cssGetters', ({ cssGetters }) => {
         cssValues = cssGetters

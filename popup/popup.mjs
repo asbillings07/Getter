@@ -38,13 +38,7 @@ import helpers from '../utils/helperFunctions.mjs';
       if (type === 'imageSource') {
         sortedObjArr = Object.entries(cssObj[type]).filter(([key, value]) => key === 'images')
       } else {
-        sortedObjArr = Object.entries(cssObj[type]).sort((a, b) => {
-          return a[1].style.length === b[1].style.length
-            ? 0
-            : a[1].style.length > b[1].style.length
-              ? -1
-              : 1
-        })
+        sortedObjArr = Object.entries(cssObj[type]).sort(sortImgs)
       }
 
       anchor.appendChild(createViewElements(type, sortedObjArr))
@@ -66,6 +60,7 @@ import helpers from '../utils/helperFunctions.mjs';
 
   function createElementsByProp (name, prop) {
     const [style, freq] = prop
+
     switch (name) {
       case 'backgroundColor':
         return createColorElement({ freq, style, rgbToHex, copyToClipboard })
@@ -90,6 +85,7 @@ import helpers from '../utils/helperFunctions.mjs';
         console.log('****Message Response****', response);
       }
     )
+
   }
 
   function rgbToHex (rbgStr) {
@@ -138,7 +134,6 @@ import helpers from '../utils/helperFunctions.mjs';
     let text
 
     if (e.target.innerText) {
-
       text = e.target.innerText
     } else {
       text = rgbToHex(e.target.style.backgroundColor)

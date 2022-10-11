@@ -1,19 +1,12 @@
 
 /* global chrome, getComputedStyle  */
 (function () {
-  let hasScriptRun
-  let cssValues
-  // grab all initial state in the beginning
-  getItem(null, (data) => {
-    const { hasScriptRunOnPage } = data
-    hasScriptRun = hasScriptRunOnPage
-  })
   getItem('hasScriptRunOnPage', ({ hasScriptRunOnPage }) => {
     if (hasScriptRunOnPage) {
       getItem('currentResults', ({ currentResults }) => chrome.runtime.sendMessage({ action: 'getCurrentResults', payload: currentResults }))
     } else {
       chrome.runtime.sendMessage({ action: 'getValues', payload: null }, (response) => {
-        getValuesFromPage(response.getters, getStyleOnPage)
+        getValuesFromPage(response.getters, getStylesOnPage)
       })
     }
   })
@@ -29,7 +22,7 @@
     }
   })
 
-  function getStyleOnPage (css, pseudoEl) {
+  function getStylesOnPage (css, pseudoEl) {
     if (typeof window.getComputedStyle === 'undefined') {
       window.getComputedStyle = function (elem) {
         return elem.currentStyle
