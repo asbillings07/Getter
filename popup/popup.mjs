@@ -2,7 +2,7 @@
 import createColorElements from '../utils/createElement.mjs'
 import helpers from '../utils/helperFunctions.mjs';
 
-(function () {
+(async function () {
   const { setItem } = helpers
   const { createColorElement, createImgSrcElement, createBgImageElement, createFontElement, createDefaultElement } = createColorElements()
   const anchor = document.getElementById('main')
@@ -20,22 +20,19 @@ import helpers from '../utils/helperFunctions.mjs';
     backgroundImage: 'Background Image'
   }[cssName])
 
-  chrome.tabs.query({ active: true, currentWindow: true }, onTabQuery)
+  async function getCurrentTab () {
+    let queryOptions = { active: true, currentWindow: true };
+    let [tab] = await chrome.tabs.query(queryOptions);
+    return tab;
+  }
+
+  let currentTab = await getCurrentTab()
+
+  onTabQuery(currentTab)
 
   chrome.runtime.onMessage.addListener(onMessage)
 
   function createView (cssObj) {
-<<<<<<< HEAD
-    const sortImgs = (a, b) => {
-      return a[1].style.length === b[1].style.length
-        ? 0
-        : a[1].style.length > b[1].style.length
-          ? -1
-          : 1
-    }
-
-=======
->>>>>>> ec133386ac2381a45f3578411ce2d6bab436044d
     for (const type in cssObj) {
       let sortedObjArr
       if (type === 'imageSource') {
@@ -81,15 +78,14 @@ import helpers from '../utils/helperFunctions.mjs';
   }
 
   function hightLightFontOnPage (e) {
-    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-      chrome.tabs.sendMessage(
-        tabs[0].id,
-        { styleId: `${e.target.value}` },
-        function (response) {
-          return
-        }
-      )
-    })
+    chrome.tabs.sendMessage(
+      currentTab.id,
+      { styleId: `${e.target.value}` },
+      function (response) {
+        console.log('****Message Response****', response);
+      }
+    )
+
   }
 
   function rgbToHex (rbgStr) {
@@ -138,10 +134,6 @@ import helpers from '../utils/helperFunctions.mjs';
     let text
 
     if (e.target.innerText) {
-<<<<<<< HEAD
-=======
-
->>>>>>> ec133386ac2381a45f3578411ce2d6bab436044d
       text = e.target.innerText
     } else {
       text = rgbToHex(e.target.style.backgroundColor)
@@ -158,7 +150,7 @@ import helpers from '../utils/helperFunctions.mjs';
     }
   }
 
-  function downloadImage (e, image) {
+  function downloadImage (_e, image) {
     setItem({ currentImage: image })
 
     const buttons = [{
@@ -205,9 +197,13 @@ import helpers from '../utils/helperFunctions.mjs';
     }
   }
 
-  function onTabQuery (tabs) {
-    chrome.tabs.executeScript(tabs[0].id, {
-      file: 'crawlPage.js'
+
+
+  function onTabQuery (tab) {
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id, },
+      files: ['crawlPage.js']
     })
   }
+
 })()
