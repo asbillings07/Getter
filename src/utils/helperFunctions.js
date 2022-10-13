@@ -1,135 +1,151 @@
 /* global chrome */
 
-function getItem (item, func = (data) => false) {
-  chrome.storage.local.get(item, func)
+function getItem(key, func = (data) => false) {
+  chrome.storage.sync.get(key, func);
 }
-function setItem (item, func = () => false) {
-  chrome.storage.local.set(item, func)
+function setItem(item, func = () => false) {
+  chrome.storage.sync.set(item, func);
 }
-function createNotification ({ title, message, buttons, interaction }) {
+
+function sendMessage(message) {
+  return chrome.runtime.sendMessage({ action: 'getCSSValues', payload: null });
+}
+function createNotification({ title, message, buttons, interaction }) {
   const options = {
     type: 'basic',
     iconUrl: 'CSS-Getter-Icon-16px.png',
     title: title,
     message: message,
     requireInteraction: interaction || false
-  }
+  };
   if (buttons) {
-    options.buttons = buttons
+    options.buttons = buttons;
   }
-  chrome.notifications.create(options)
+  chrome.notifications.create(options);
 }
 
 const hasNodeRenderedBefore = (id) => {
-  const node = document.getElementById(id)
+  const node = document.getElementById(id);
   return node !== null ? true : false;
-}
+};
 
-function rgbToHex (rbgStr) {
-  const rgbArr = rbgStr.split('(')[1].split(')').join('').split(',')
-  if (rgbArr.length === 4) rgbArr.pop()
+function rgbToHex(rbgStr) {
+  const rgbArr = rbgStr.split('(')[1].split(')').join('').split(',');
+  if (rgbArr.length === 4) rgbArr.pop();
 
   const hexConvert = rgbArr
     .map((value) => {
       switch (true) {
         case +value < 0:
-          return 0
+          return 0;
         case +value > 255:
-          return 255
+          return 255;
         default:
-          return +value
+          return +value;
       }
     })
     .map((val) => {
-      const hexVal = parseInt(val).toString(16).toUpperCase().trim()
-      return hexVal.length === 1 ? '0' + hexVal : hexVal
+      const hexVal = parseInt(val).toString(16).toUpperCase().trim();
+      return hexVal.length === 1 ? '0' + hexVal : hexVal;
     })
-    .join('')
-  return `#${hexConvert}`
+    .join('');
+  return `#${hexConvert}`;
 }
 
-async function getCurrentTab () {
+async function getCurrentTab() {
   let queryOptions = { active: true, currentWindow: true };
   let [tab] = await chrome.tabs.query(queryOptions);
   return tab;
 }
 
-function isObjEmpty (obj) {
+function isObjEmpty(obj) {
   return obj && Object.keys(obj).length === 0 && obj.constructor === Object;
 }
 
-async function copyToClipboard (e) {
+async function copyToClipboard(e) {
   if (!navigator.clipboard) {
-    console.error('Clipboard is unavailable')
-    return
+    console.error('Clipboard is unavailable');
+    return;
   }
 
-  let text
+  let text;
 
   if (e.target.innerText) {
 
-    text = e.target.innerText
+    text = e.target.innerText;
   } else {
-    text = rgbToHex(e.target.style.backgroundColor)
+    text = rgbToHex(e.target.style.backgroundColor);
   }
 
   try {
-    await navigator.clipboard.writeText(text)
+    await navigator.clipboard.writeText(text);
     createNotification({
       title: 'Copied to Clipboard!',
       message: `${text} has been copied to the clipboard.`
-    })
+    });
   } catch (err) {
-    console.error('Failed to copy!', err)
+    console.error('Failed to copy!', err);
   }
 }
 
-function downloadImage (_e, image) {
-  setItem({ currentImage: image })
+function downloadImage(_e, image) {
+  setItem({ currentImage: image });
 
   const buttons = [{
     title: 'View image'
   }, {
     title: 'Download image'
-  }]
+  }];
 
-  createNotification({ title: 'Image Notification', message: 'What would you like to do?', buttons, interaction: true })
+  createNotification({ title: 'Image Notification', message: 'What would you like to do?', buttons, interaction: true });
 }
 
-const grabItem = (item) => {
+const grabItem = (item = null) => {
   return new Promise((resolve, reject) => {
-    try {
-      chrome.storage.local.get(item, (data) => {
-        resolve(data[item])
-      })
-    } catch (e) {
-      reject('error getting item from local storage', e)
-    }
-  })
-}
+    chrome.storage.sync.get(item, (data) => {
+      if (chrome.runtime.lastError) {
+        return reject(chrome.runtime.lastError);
+      }
+      if (data[item]) {
+        resolve(data[item]);
+      }
+      resolve(data);
+    });
+  });
+};
 
-function inspectDomForChanges (domEl, domElRemove) {
-  const config = { attributes: true, childList: true, subtree: true }
+async function isCacheEmpty(cache, key) {
+
+  if (isObjEmpty(cache)) {
+    return true;
+  }
+  return false;
+
+};
+function inspectDomForChanges(domEl, domElRemove) {
+  const config = { attributes: true, childList: true, subtree: true };
   // Create an observer instance linked to the callback function
-  const observer = new MutationObserver(callback)
+  const observer = new MutationObserver(callback);
   // Callback function to execute when mutations are observed
-  function callback (mutationsList, obs) {
+  function callback(mutationsList, obs) {
     for (const mutation of mutationsList) {
       if (mutation.type === 'childList') {
-        domElRemove.style.display = 'none'
-        obs.disconnect()
+        domElRemove.style.display = 'none';
+        obs.disconnect();
       }
     }
   }
   // Start observing the target node for configured mutations
   if (domEl) {
-    observer.observe(domEl, config)
+    observer.observe(domEl, config);
   }
 }
 
 export {
   getItem,
+  isCacheEmpty,
   grabItem,
+  sendMessage,
   setItem,
   createNotification,
   rgbToHex,

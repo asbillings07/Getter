@@ -7,8 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "webpack": "webpack",
     "clean": "rimraf ./dist/",
-    "dev": "webpack --config webpack/webpack.dev.js",
-    "build": "webpack --config webpack/webpack.prod.js"
+    "build:dev": "yarn clean && webpack --config webpack/webpack.dev.js",
+    "build:prod": "yarn clean && webpack --config webpack/webpack.prod.js"
   },
   "repository": {
     "type": "git",

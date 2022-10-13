@@ -1,194 +1,173 @@
-import { getItem, setItem, isObjEmpty } from './utils/helperFunctions.js'
+import { getItem, setItem, isObjEmpty, checkCache, grabItem } from './utils/helperFunctions.js';
 import "regenerator-runtime/runtime.js";
 /* global chrome, getComputedStyle  */
 
+const state = await chrome.runtime.sendMessage({ action: 'getInitialState', payload: null });
+const { cssGetters: cssValues, filteredElements: filteredNodes, fontDict } = state;
 
-
-let tab
-let filteredNodes
-let fontDict = {}
-// grab all initial state in the beginning
-getItem('currentTab', ({ currentTab }) => {
-  tab = currentTab
-}
-)
-chrome.runtime.sendMessage({ action: 'getElementValues', payload: null }, (response) => {
-  filteredNodes = response.filteredElementValues
-})
-getItem('hasScriptRunOnPage', ({ hasScriptRunOnPage }) => {
-  console.log('DID Script run???', hasScriptRunOnPage)
-
-  if (hasScriptRunOnPage) {
-    getItem('currentResults', ({ currentResults }) => chrome.runtime.sendMessage({ action: 'getCurrentResults', payload: currentResults }))
-  } else {
-    chrome.runtime.sendMessage({ action: 'getCSSValues', payload: null }, ({ cssValues }) => {
-      console.log('ARE WE GETTING VALUES?', cssValues)
-      getValuesFromPage(cssValues, getStyleOnPage)
-    })
-  }
-})
+await getValuesFromPage(cssValues, getStyleOnPage);
 
 chrome.runtime.onMessage.addListener(function (
   request,
   sender,
   sendResponse
 ) {
-  console.log('Is this message coming through?', request)
+  console.log('Is this message coming through?', request);
   if (request.fontStyleIds) {
-    highlightInPage(request.fontStyleIds)
-    sendResponse({ action: 'notif', payload: { title: 'Font Highlighted', message: 'The selected Font has been highlighted in the page' } })
+    highlightInPage(request.fontStyleIds);
+    sendResponse({ action: 'notif', payload: { title: 'Font Highlighted', message: 'The selected Font has been highlighted in the page' } });
   }
-})
+});
 
-function getStyleOnPage (css, pseudoEl) {
+function getStyleOnPage(css, pseudoEl) {
   if (typeof window.getComputedStyle === 'undefined') {
     window.getComputedStyle = function (elem) {
-      return elem.currentStyle
-    }
+      return elem.currentStyle;
+    };
   }
-  const nodes = document.body.getElementsByTagName('*')
-  const allStyles = {}
+  const nodes = document.body.getElementsByTagName('*');
+  const allStyles = {};
   // need to get frequency of used colors
   Array.from(nodes).forEach((nodeElement, i) => {
     // todo - I should make this list part of the options.
 
     if (!filteredNodes.includes(nodeElement.localName)) {
       if (nodeElement.style) {
-        captureEls({ css, nodeElement, allStyles })
+        captureEls({ css, nodeElement, allStyles });
         if (pseudoEl) {
-          capturePseudoEls({ pseudoEl, css, allStyles, nodeElement })
+          capturePseudoEls({ pseudoEl, css, allStyles, nodeElement });
         }
       }
     }
-  })
+  });
 
-  return allStyles
+  return allStyles;
 }
 
-function getValuesFromPage (values, getStyles) {
-  const valueObj = {}
+async function getValuesFromPage(values, getStyles) {
+  const valueObj = {};
   values.forEach((value) => {
-    const styleObj = getStyles(value)
-    if (!isObjEmpty(styleObj)) valueObj[value] = styleObj
-  })
-  chrome.runtime.sendMessage({ action: 'setState', payload: valueObj })
-  chrome.runtime.sendMessage({ action: 'getCurrentResults', payload: valueObj })
-  setItem({ hasScriptRunOnPage: true })
-  return valueObj
+    const styleObj = getStyles(value);
+    if (!isObjEmpty(styleObj)) valueObj[value] = styleObj;
+  });
+  await chrome.runtime.sendMessage({ action: 'getCurrentResults', payload: valueObj });
+  return valueObj;
 }
 
 
 
-function capturePseudoEls (elementInfo) {
-  const { pseudoEl, css, allStyles, nodeElement } = elementInfo
-  const pseudoProp = getComputedStyle(nodeElement, pseudoEl)[css]
+function capturePseudoEls(elementInfo) {
+  const { pseudoEl, css, allStyles, nodeElement } = elementInfo;
+  const pseudoProp = getComputedStyle(nodeElement, pseudoEl)[css];
 
   if (pseudoProp) {
     if (!allStyles.includes(pseudoProp)) {
-      allStyles.push(pseudoProp)
+      allStyles.push(pseudoProp);
     }
   }
 }
 
-function captureEls (elementInfo) {
-  const { css, nodeElement, allStyles } = elementInfo
-  const filterFonts = new Set(['sans-serif', 'serif', 'Arial'])
+function captureEls(elementInfo) {
+  const { css, nodeElement, allStyles } = elementInfo;
+  const filterFonts = new Set(['sans-serif', 'serif', 'Arial']);
 
-  let elementStyle
+  let elementStyle;
   if (css === 'fontFamily') {
     if (nodeElement.textContent) {
-      elementStyle = getComputedStyle(nodeElement, '')[css].split(',').map(font => font.trim()).filter(font => !filterFonts.has(font))
+      elementStyle = getComputedStyle(nodeElement, '')[css].split(',').map(font => font.trim()).filter(font => !filterFonts.has(font));
     } else {
-      elementStyle = 'none'
+      elementStyle = 'none';
     }
   } else if (css === 'imageSource' && nodeElement.localName === 'img') {
-    elementStyle = 'images'
+    elementStyle = 'images';
   } else if (css === 'backgroundImage') {
-    const bgStyle = getComputedStyle(nodeElement, '')[css]
+    const bgStyle = getComputedStyle(nodeElement, '')[css];
     if (bgStyle.includes('url')) {
-      elementStyle = bgStyle
+      elementStyle = bgStyle;
     } else {
-      elementStyle = 'none'
+      elementStyle = 'none';
     }
 
   } else {
-    elementStyle = getComputedStyle(nodeElement, '')[css]
+    elementStyle = getComputedStyle(nodeElement, '')[css];
   }
 
-  createStyleArray(allStyles, elementStyle, nodeElement)
+  createStyleArray(allStyles, elementStyle, nodeElement);
 }
 
-function captureImageSrc (imageEl) {
-  const imageInfo = {}
+function captureImageSrc(imageEl) {
+  const imageInfo = {};
 
   if (imageEl.srcset) {
-    imageInfo.multiple = { src: imageEl.srcset.split(','), name: imageEl.alt }
+    imageInfo.multiple = { src: imageEl.srcset.split(','), name: imageEl.alt };
   }
 
   if (imageEl.src) {
-    imageInfo.single = { src: imageEl.src, name: imageEl.alt }
+    imageInfo.single = { src: imageEl.src, name: imageEl.alt };
   }
 
-  return imageInfo
+  return imageInfo;
 }
 
-function createStyleArray (allStyles, elementStyle, nodeElement) {
+function createStyleArray(allStyles, elementStyle, nodeElement) {
   switch (elementStyle) {
     case 'images':
       if (allStyles[elementStyle]) {
-        allStyles[elementStyle].images.push(captureImageSrc(nodeElement))
+        allStyles[elementStyle].images.push(captureImageSrc(nodeElement));
       } else {
-        allStyles[elementStyle] = { images: [elementStyle], id: getId(nodeElement) }
-        nodeElement.dataset.styleId = `${allStyles[elementStyle].id}`
+        allStyles[elementStyle] = { images: [elementStyle], id: getId(nodeElement) };
+        nodeElement.dataset.styleId = `${allStyles[elementStyle].id}`;
       }
-      break
+      break;
     case 'none':
-      break
+      break;
     default:
       if (allStyles[elementStyle]) {
-        allStyles[elementStyle].style.push(elementStyle)
+        allStyles[elementStyle].style.push(elementStyle);
       } else if (Array.isArray(elementStyle)) {
         elementStyle.forEach(el => {
-          allStyles[el] = { style: [el], id: getId(nodeElement) }
-          nodeElement.dataset.styleId = `${allStyles[el].id}`
-          createFontNodeList(el, allStyles[el].id)
+          allStyles[el] = { style: [el], id: getId(nodeElement) };
+          nodeElement.dataset.styleId = `${allStyles[el].id}`;
+          createFontNodeList(el, allStyles[el].id);
 
-        })
-        setItem({ fontDict })
+        });
+        setItem({ fontDict });
       } else {
-        allStyles[elementStyle] = { style: [elementStyle], id: getId(nodeElement) }
-        nodeElement.dataset.styleId = `${allStyles[elementStyle].id}`
+        allStyles[elementStyle] = { style: [elementStyle], id: getId(nodeElement) };
+        nodeElement.dataset.styleId = `${allStyles[elementStyle].id}`;
       }
   }
 
 
 }
 
-function getId (el) {
+function getId(el) {
   if (el.id) {
-    return el.id
+    return el.id;
   } else {
-    el.id = createNodeId(5)
-    return el.id
+    el.id = createNodeId(5);
+    return el.id;
   }
 }
 
-function createFontNodeList (font, elementId) {
+function createFontNodeList(font, elementId) {
+
+  if (!isObjEmpty(fontDict)) return;
 
   if (fontDict[font] && font !== 'root') {
-    fontDict[font].push(elementId)
+    fontDict[font].push(elementId);
   } else {
-    fontDict[font] = []
+    fontDict[font] = [];
   }
 }
 
-function highlightInPage (fontArr) {
-  const allNodes = document.body.getElementsByTagName('*')
+function highlightInPage(fontArr) {
+  const allNodes = document.body.getElementsByTagName('*');
 
   // remove previous highlights
 
-  Array.from(allNodes).forEach(node => removeHighlight(node, 'red'))
-  fontArr.forEach(id => addHighlight(document.getElementById(id), 'red'))
+  Array.from(allNodes).forEach(node => removeHighlight(node, 'red'));
+  fontArr.forEach(id => addHighlight(document.getElementById(id), 'red'));
 
   // add highlight to specified nodes
   // Array.from(nodes).forEach(node => {
@@ -199,14 +178,14 @@ function highlightInPage (fontArr) {
 }
 
 
-function addHighlight (node, color) {
-  node.style.backgroundColor = color
+function addHighlight(node, color) {
+  node.style.backgroundColor = color;
 }
 
-function removeHighlight (node, color) {
-  const nodeColor = node.style.backgroundColor
+function removeHighlight(node, color) {
+  const nodeColor = node.style.backgroundColor;
   if (nodeColor === color) {
-    node.style.backgroundColor = ""
+    node.style.backgroundColor = "";
   }
 }
 
@@ -246,14 +225,14 @@ function removeHighlight (node, color) {
 
 
 
-function createNodeId (length) {
-  let result = ''
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-  const charactersLength = characters.length
+function createNodeId(length) {
+  let result = '';
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+  const charactersLength = characters.length;
   for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * charactersLength))
+    result += characters.charAt(Math.floor(Math.random() * charactersLength));
   }
-  return result
+  return result;
 }
 
 // const css = '.style-highlight { background-color: red; }';
