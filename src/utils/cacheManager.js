@@ -23,7 +23,7 @@ export class CacheManager {
 
     setState = (name, data) => {
         this.state = { ...this.state, [name]: data }
-        console.log(this.state[name])
+        this.save()
         return this.state
     }
 
