@@ -55,15 +55,15 @@ export const createElementType = (type, elObj) => ({
         const rootDiv = document.createElement('div')
 
         return renderEl(containerDiv, rootDiv)
-    },
-    default: function (elObj) {
-
-        const { style } = elObj
-
-        const listItem = createElement('div', { textContent: style })
-        const containerDiv = createElement('div', { id: 'liContainer' }, listItem)
-        const rootDiv = document.createElement('div')
-        return renderEl(containerDiv, rootDiv)
     }
-}[type](elObj))
+}[type]?.(elObj) ?? defaultType(elObj))
 
+function defaultType (elObj) {
+
+    const { style } = elObj
+
+    const listItem = createElement('div', { textContent: style })
+    const containerDiv = createElement('div', { id: 'liContainer' }, listItem)
+    const rootDiv = document.createElement('div')
+    return renderEl(containerDiv, rootDiv)
+}

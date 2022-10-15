@@ -50,12 +50,15 @@ module.exports = {
         new HtmlWebpackPlugin({
             filename: "popup.html",
             template: "src/popup/index.html",
-            chunks: ['popup']
+            chunks: ['popup'],
+            inject: false
+
         }),
         new HtmlWebpackPlugin({
             filename: "options.html",
             template: "src/options/index.html",
-            chunks: ['options']
+            chunks: ['options'],
+            inject: false
         }),
         new CopyWebpackPlugin({
             patterns: [

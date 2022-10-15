@@ -18,9 +18,9 @@ const highlightAnchor = document.getElementById('anchor-highlight');
 
 let settings = await getSettings();
 
-function regClick(e) {
+function regClick (e) {
   const checked = e.target.checked;
-  const settingId = e.target.id;
+  const settingId = e.target.getAttribute('data-id');
   if (checked) {
     if (!settings.includes(settingId)) {
       settings.push(settingId);
@@ -42,7 +42,7 @@ const toggle = (source, boolean) => {
   });
 };
 
-function toggleCheckAll(source) {
+function toggleCheckAll (source) {
   if (source.target.checked) {
     toggle(source, true);
   } else {
@@ -50,20 +50,24 @@ function toggleCheckAll(source) {
   }
 }
 
-async function saveSettings(e) {
+async function saveSettings (e) {
   console.log('target', e.target);
   console.log('SETTINGS', settings);
-  setItem({ cssGetters: settings });
-  settings = await getSettings();
+  settings = await setSettings(settings);
   if (settings) {
     createNotification({ title: 'Settings Saved Successfully', message: 'The settings have been updated and will take effect the next time open Getter.' });
   }
 
 }
 
-async function getSettings() {
+async function getSettings () {
   const { cssValues } = await sendMessage({ action: 'getCSSValues', payload: null });
   return cssValues;
+}
+
+async function setSettings (settings) {
+  const updatedSettings = await chrome.runtime.sendMessage({ action: 'setCSSValues', payload: settings });
+  return updatedSettings
 }
 
 const saveButton = document.getElementById('save');
@@ -79,7 +83,7 @@ settings.forEach(setting => {
 
 saveButton.addEventListener('click', saveSettings);
 
-function createInput(id, labelName, type, rootEl) {
+function createInput (id, labelName, type, rootEl) {
   if (!hasNodeRenderedBefore(`${labelName} - ${id}`)) {
     const div = document.createElement('div');
     div.id = `${labelName} - ${id}`;
@@ -108,6 +112,7 @@ function createInput(id, labelName, type, rootEl) {
 
     input.value = labelName;
     input.id = labelName;
+    input.dataset.id = `${id}`
 
 
 

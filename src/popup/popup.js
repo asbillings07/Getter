@@ -24,7 +24,7 @@ onTabQuery(currentTab);
 
 chrome.runtime.onMessage.addListener(onMessage);
 
-function createView(cssObj) {
+function createView (cssObj) {
   const sortStyles = (a, b) => {
     return a[1].style.length === b[1].style.length
       ? 0
@@ -47,7 +47,7 @@ function createView(cssObj) {
 
 }
 
-function createViewElements(name, arr) {
+function createViewElements (name, arr) {
   const styleName = getProperName(name);
   if (!hasNodeRenderedBefore(styleName)) {
     const title = document.createElement('h3');
@@ -64,7 +64,7 @@ function createViewElements(name, arr) {
   }
 }
 
-function createElementsByProp(name, prop) {
+function createElementsByProp (name, prop) {
   const [style, freq] = prop;
   const elementProps = {
     freq, style, rgbToHex, copyToClipboard, hightLightFontOnPage, downloadImage
@@ -72,7 +72,7 @@ function createElementsByProp(name, prop) {
   return createElementType(name, { ...elementProps });
 }
 
-async function hightLightFontOnPage(e) {
+async function hightLightFontOnPage (e) {
   console.log('Is this actually working????', e.target.textContent);
   const fontIds = await grabItem('fontDict');
   const response = await chrome.tabs.sendMessage(
@@ -82,16 +82,16 @@ async function hightLightFontOnPage(e) {
   console.log('****Message Response****', response);
 }
 
-function onMessage(request, _sender, _sendResponse) {
+function onMessage (request, _sender, _sendResponse) {
   return {
     'getNotif': (request) => createNotification({ title: request.payload.title, message: request.payload.message }),
     'getCurrentResults': (request) => createView(request.payload)
-  }[request.action](request);
+  }[request.action]?.(request);
 }
 
 
 
-function onTabQuery(tab) {
+function onTabQuery (tab) {
   chrome.scripting.executeScript({
     target: { tabId: tab.id, },
     files: ['crawlPage.js']
