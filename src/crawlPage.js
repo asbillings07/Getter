@@ -19,7 +19,7 @@ chrome.runtime.onMessage.addListener(function (
   }
 });
 
-function getStyleOnPage(css, pseudoEl) {
+function getStyleOnPage (css, pseudoEl) {
   if (typeof window.getComputedStyle === 'undefined') {
     window.getComputedStyle = function (elem) {
       return elem.currentStyle;
@@ -44,9 +44,9 @@ function getStyleOnPage(css, pseudoEl) {
   return allStyles;
 }
 
-async function getValuesFromPage(values, getStyles) {
+async function getValuesFromPage (values, getStyles) {
   const valueObj = {};
-  values.forEach((value) => {
+  values.css.forEach((value) => {
     const styleObj = getStyles(value);
     if (!isObjEmpty(styleObj)) valueObj[value] = styleObj;
   });
@@ -56,7 +56,7 @@ async function getValuesFromPage(values, getStyles) {
 
 
 
-function capturePseudoEls(elementInfo) {
+function capturePseudoEls (elementInfo) {
   const { pseudoEl, css, allStyles, nodeElement } = elementInfo;
   const pseudoProp = getComputedStyle(nodeElement, pseudoEl)[css];
 
@@ -67,7 +67,7 @@ function capturePseudoEls(elementInfo) {
   }
 }
 
-function captureEls(elementInfo) {
+function captureEls (elementInfo) {
   const { css, nodeElement, allStyles } = elementInfo;
   const filterFonts = new Set(['sans-serif', 'serif', 'Arial']);
 
@@ -95,7 +95,7 @@ function captureEls(elementInfo) {
   createStyleArray(allStyles, elementStyle, nodeElement);
 }
 
-function captureImageSrc(imageEl) {
+function captureImageSrc (imageEl) {
   const imageInfo = {};
 
   if (imageEl.srcset) {
@@ -109,7 +109,7 @@ function captureImageSrc(imageEl) {
   return imageInfo;
 }
 
-function createStyleArray(allStyles, elementStyle, nodeElement) {
+function createStyleArray (allStyles, elementStyle, nodeElement) {
   switch (elementStyle) {
     case 'images':
       if (allStyles[elementStyle]) {
@@ -141,7 +141,7 @@ function createStyleArray(allStyles, elementStyle, nodeElement) {
 
 }
 
-function getId(el) {
+function getId (el) {
   if (el.id) {
     return el.id;
   } else {
@@ -150,7 +150,7 @@ function getId(el) {
   }
 }
 
-function createFontNodeList(font, elementId) {
+function createFontNodeList (font, elementId) {
 
   if (!isObjEmpty(fontDict)) return;
 
@@ -161,7 +161,7 @@ function createFontNodeList(font, elementId) {
   }
 }
 
-function highlightInPage(fontArr) {
+function highlightInPage (fontArr) {
   const allNodes = document.body.getElementsByTagName('*');
 
   // remove previous highlights
@@ -178,11 +178,11 @@ function highlightInPage(fontArr) {
 }
 
 
-function addHighlight(node, color) {
+function addHighlight (node, color) {
   node.style.backgroundColor = color;
 }
 
-function removeHighlight(node, color) {
+function removeHighlight (node, color) {
   const nodeColor = node.style.backgroundColor;
   if (nodeColor === color) {
     node.style.backgroundColor = "";
@@ -225,7 +225,7 @@ function removeHighlight(node, color) {
 
 
 
-function createNodeId(length) {
+function createNodeId (length) {
   let result = '';
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
   const charactersLength = characters.length;

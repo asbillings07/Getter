@@ -6,11 +6,14 @@ import "regenerator-runtime/runtime.js";
 const initialState = {
   currentImage: null,
   pageRefreshed: false,
-  cssGetters: [
-    'fontFamily',
-    'backgroundColor',
-    'color'
-  ],
+  cssGetters: {
+    css: [
+      'fontFamily',
+      'backgroundColor',
+      'color'
+    ],
+    color: 'yellow'
+  },
   filteredElements: ['time', 'iframe', 'input', 'br', 'form'],
   fontDict: {}
 }
