@@ -48,13 +48,7 @@ export default (function () {
                 return renderEl(containerDiv, rootDiv)
             },
             createDefaultElement: function (elObj) {
-<<<<<<< HEAD
                 const { style } = elObj
-=======
-
-                const { style } = elObj
-
->>>>>>> ec133386ac2381a45f3578411ce2d6bab436044d
                 const listItem = createElement('div', { textContent: style })
                 const containerDiv = createElement('div', { id: 'liContainer' }, listItem)
                 const rootDiv = document.createElement('div')

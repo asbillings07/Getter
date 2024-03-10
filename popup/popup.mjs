@@ -33,6 +33,14 @@ import helpers from '../utils/helperFunctions.mjs';
   chrome.runtime.onMessage.addListener(onMessage)
 
   function createView (cssObj) {
+    const sortImgs = (a, b) => {
+      return a[1].style.length === b[1].style.length
+        ? 0
+        : a[1].style.length > b[1].style.length
+          ? -1
+          : 1
+    }
+
     for (const type in cssObj) {
       let sortedObjArr
       if (type === 'imageSource') {
