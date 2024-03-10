@@ -42,6 +42,16 @@ import helpers from '../utils/helperFunctions.mjs';
           : 1
     }
 
+
+  function createView (cssObj) {
+    const sortImgs = (a, b) => {
+      return a[1].style.length === b[1].style.length
+        ? 0
+        : a[1].style.length > b[1].style.length
+          ? -1
+          : 1
+    }
+
     for (const type in cssObj) {
       let sortedObjArr;
       if (type === 'imageSource') {
