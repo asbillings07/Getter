@@ -1,6 +1,7 @@
-
 /* global chrome, getComputedStyle  */
-(function () {
+import { getItem, setItem } from '../utils/helperFunctions'
+
+export function crawlPage () {
   getItem('hasScriptRunOnPage', ({ hasScriptRunOnPage }) => {
     if (hasScriptRunOnPage) {
       getItem('currentResults', ({ currentResults }) => chrome.runtime.sendMessage({ action: 'getCurrentResults', payload: currentResults }))
@@ -58,12 +59,6 @@
     return valueObj
   }
 
-  function getItem (item, func = (data) => false) {
-    chrome.storage.local.get(item, func)
-  }
-  function setItem (item, func = () => false) {
-    chrome.storage.local.set(item)
-  }
 
   function capturePseudoEls (elementInfo) {
     const { pseudoEl, css, allStyles, nodeElement } = elementInfo
@@ -204,4 +199,4 @@
   }
 
   addCSSRule(sheet, '.style-highlight', 'background-color: yellow')
-})()
+}
