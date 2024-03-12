@@ -1,13 +1,16 @@
 /* global chrome MutationObserver */
-import { setItem, createNotification, createColorElement, createImgSrcElement, createBgImageElement, createFontElement, createDefaultElement } from '../../utils/helperFunctions';
+import { setItem, createNotification } from '../../utils/helperFunctions';
+import { createColorElement, createImgSrcElement, createBgImageElement, createFontElement, createDefaultElement } from '../components/helpers';
 import { crawlPage } from '../crawlPage';
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, Children } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faSpinner } from '@fortawesome/free-solid-svg-icons'
 
-export const popup = () => {
+export const Popup = () => {
     const [currentTab, setCurrentTab] = useState(null);
     const [cssData, setCssData] = useState(null);
+
+    chrome.runtime.onMessage.addListener(onMessage);
 
     const getProperName = (cssName) =>
     ({
@@ -32,15 +35,11 @@ export const popup = () => {
         } else {
             getCurrentTab();
         }
-        console.log('currentTab', currentTab)
     }, [currentTab])
 
-    useEffect(() => {
-        chrome.runtime.onMessage.addListener(onMessage);
-    }, [])
 
     function createView(cssObj) {
-
+        const viewElements = [];
         const sortImgs = (a, b) => {
             return a[1].style.length === b[1].style.length
                 ? 0
@@ -57,20 +56,21 @@ export const popup = () => {
                 sortedObjArr = Object.entries(cssObj[type]).sort(sortImgs);
             }
 
-            createViewElements(type, sortedObjArr)
+           viewElements.push(createViewElements(type, sortedObjArr))
         }
+
+        return (
+            <>
+                {viewElements}
+            </>
+        )
     }
 
     function createViewElements(name, arr) {
-            const title = <h3>{`${getProperName(name)}(s) used on page`}</h3>;
-            const listItems = arr.map((prop) => {
-                const createdListEl = createElementsByProp(name, prop);
-                return <li key={prop[0]}>{createdListEl}</li>;
-            });
             return (
                 <ul>
-                    {title}
-                    {listItems}
+                    <h3>{`${getProperName(name)}(s) used on page`}</h3>
+                    {Children.toArray(arr.map((prop) => <li>{createElementsByProp(name, prop)}</li>))}
                 </ul>
             );
     }
@@ -166,25 +166,6 @@ export const popup = () => {
         createNotification('Image Notification', 'What would you like to do?', buttons, true);
     }
 
-    function inspectDomForChanges(domEl, domElRemove) {
-        const config = { attributes: true, childList: true, subtree: true };
-        // Create an observer instance linked to the callback function
-        const observer = new MutationObserver(callback);
-        // Callback function to execute when mutations are observed
-        function callback(mutationsList, obs) {
-            for (const mutation of mutationsList) {
-                if (mutation.type === 'childList') {
-                    domElRemove.style.display = 'none';
-                    obs.disconnect();
-                }
-            }
-        }
-        // Start observing the target node for configured mutations
-        if (domEl) {
-            observer.observe(domEl, config);
-        }
-    }
-
     function onMessage(request, sender, sendResponse) {
         switch (request.action) {
             case 'getState':
@@ -211,9 +192,9 @@ export const popup = () => {
     }
 
   return (
-    <div id='main' style={{ width: '420px'}}>
+    <div id='main'>
         {
-              cssData ? createView(cssData) : <FontAwesomeIcon icon={faSpinner} />
+              cssData ? createView(cssData) : <div id='spinner'><FontAwesomeIcon icon={faSpinner} spin /></div>
         }
     </div>
   )

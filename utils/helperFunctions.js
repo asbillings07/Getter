@@ -1,13 +1,13 @@
 /* global chrome */
 
-  function getItem (item, func = (data) => false) {
+  const getItem = (item, func = (data) => false) => {
     chrome.storage.local.get(item, func)
   }
-  function setItem (item, func = () => false) {
+  const setItem = (item, func = () => false) => {
     chrome.storage.local.set(item, func)
   }
 
-function createNotification(title, message, buttons = false, interaction = false) {
+const createNotification = (title, message, buttons = false, interaction = false) => {
   const options = {
     type: 'basic',
     iconUrl: '../images/CSS-Getter-Icon-16px.png',
@@ -21,65 +21,82 @@ function createNotification(title, message, buttons = false, interaction = false
   chrome.notifications.create(options);
 }
 
-const createColorElement = ({ freq, style, rgbToHex, copyToClipboard }) => {
-  return (
-    <div id="liContainer">
-      <div id="colorDiv" className="mr pointer" style={`background-color: ${rgbToHex(style)}`} onclick={copyToClipboard}></div>
-      <div id="listItem" className="mr pointer" onclick={copyToClipboard}>{style}</div>
-      <div id="hexDiv" className="mr pointer" onclick={copyToClipboard}>{rgbToHex(style)}</div>
-      <p id="listDesc">used {freq.style.length} time(s)</p>
-    </div>
-  )
-};
+function rgbToHex(rbgStr) {
+  const rgbArr = rbgStr.split('(')[1].split(')').join('').split(',');
+  if (rgbArr.length === 4) rgbArr.pop();
 
-const createFontElement = ({ freq, style, hightLightFontOnPage }) => {
-  return (
-    <div id="liContainer">
-      <div id="fontItem" className="pointer" value={freq.id} onclick={hightLightFontOnPage}>{style}</div>
-    </div>
-  )
-};
-
-const createImgSrcElement = ({ freq, downloadImage }) => {
-
-  return freq.images.filter(i => i !== 'images').map((image) => {
-    return (
-      <div className='container'>
-        <img id="imageDiv" className="mr pointer" src={image.single.src} onclick={downloadImage} />
-        <p id="imageDesc">{image.single.name}</p>
-      </div>
-    );
-  })
-
+  const hexConvert = rgbArr
+    .map((value) => {
+      switch (true) {
+        case +value < 0:
+          return 0;
+        case +value > 255:
+          return 255;
+        default:
+          return +value;
+      }
+    })
+    .map((val) => {
+      const hexVal = parseInt(val).toString(16).toUpperCase().trim();
+      return hexVal.length === 1 ? '0' + hexVal : hexVal;
+    })
+    .join('');
+  return `#${hexConvert}`;
 }
 
-const createBgImageElement = ({ freq, downloadImage }) => {
+const copyToClipboard = async (e) => {
+  if (!navigator.clipboard) {
+    console.error('Clipboard is unavailable');
+    return;
+  }
 
-  return (
-    <div id='liContainer'>
-      <img id="bgDiv" className="mr pointer" style={`background-image: ${freq.style[0]}`} onclick={() => downloadImage(e, freq.style[0])} />
-      <p id="listDesc"></p>
-    </div>
-  )
-};
-const createDefaultElement = (elObj) => {
-  const { style } = elObj;
+  let text;
 
-  return (
-    <div id='liContainer'>
-      <div id="listItem">{style}</div>
-    </div>
-  )
-};
+  if (e.target.innerText) {
+    text = e.target.innerText;
+  } else {
+    text = rgbToHex(e.target.style.backgroundColor);
+  }
 
+  try {
+    await navigator.clipboard.writeText(text);
+    createNotification(
+      'Copied to Clipboard!',
+      `${text} has been copied to the clipboard.`
+    );
+  } catch (err) {
+    console.error('Failed to copy!', err);
+  }
+}
+
+const downloadImage = (_e, image) => {
+  setItem({ currentImage: image });
+
+  const buttons = [{
+    title: 'View image'
+  }, {
+    title: 'Download image'
+  }];
+
+  createNotification('Image Notification', 'What would you like to do?', buttons, true);
+}
+
+const hightLightFontOnPage = (e) => {
+  chrome.tabs.sendMessage(
+    currentTab.id,
+    { styleId: `${e.target.value}` },
+    (response) => {
+      console.log('****Message Response****', response);
+    }
+  );
+
+}
 
   export {
     getItem,
     setItem,
-    createNotification,
-  createColorElement,
-  createFontElement,
-  createImgSrcElement,
-  createBgImageElement,
-  createDefaultElement
+    rgbToHex,
+    copyToClipboard,
+    downloadImage,
+    createNotification
   }

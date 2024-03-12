@@ -37,8 +37,6 @@ import { setItem, getItem, createNotification } from '../../utils/helperFunction
                     })
                 }
 
-                const saveButton = document.getElementById('save')
-
 
                 getItem('cssGetters', ({ cssGetters }) => {
                     settings = cssGetters
@@ -46,8 +44,6 @@ import { setItem, getItem, createNotification } from '../../utils/helperFunction
                         document.getElementById(setting).checked = true
                     })
                 })
-
-                saveButton.addEventListener('click', saveSettings)
 
             const createCheckBoxes = () => {
                 const labels = ['backgroundColor', 'color', 'fontFamily', 'fontSize', 'fontWeight', 'imageSource', 'backgroundImage']

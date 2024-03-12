@@ -1,13 +1,16 @@
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const CopyPlugin = require("copy-webpack-plugin")
-const { join, resolve } = require('path')
+const { resolve } = require('path')
 
 module.exports = ({ mode } = { mode: 'developement' }) => ({
     mode,
     entry: {
-        options: resolve(__dirname, 'src', 'options', 'options.js'),
-        popup: resolve(__dirname, 'src', 'popup', 'popup.js'),
+        options: resolve(__dirname, 'src', 'options', 'index.js'),
+        popup: resolve(__dirname, 'src', 'popup', 'index.js'),
         background: resolve(__dirname, 'src', 'background.js'),
+    },
+    resolve: {
+        extensions: [".js", ".jsx"],
     },
     output: {
         filename: '[name].js',
@@ -60,7 +63,7 @@ function getHtmlPlugins(chunks) {
     return chunks.map(
         (chunk) =>
             new HtmlWebpackPlugin({
-                title: "Chrome Extension with ReactJs",
+                title: `${chunk} page`,
                 filename: `${chunk}.html`,
                 chunks: [chunk],
             })

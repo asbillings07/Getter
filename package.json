@@ -5,10 +5,11 @@
   "main": "background.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "webpack serve --mode development --open",
-    "webpack": "webpack --mode production",
+    "prod": "webpack --mode production",
+    "dev": "webpack --mode development",
     "clean": "rimraf ./dist/",
-    "build": "npm run clean && npm run webpack"
+    "build:prod": "npm run clean && npm run prod",
+    "build:dev": "npm run clean && npm run dev"
   },
   "repository": {
     "type": "git",

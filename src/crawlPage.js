@@ -1,7 +1,14 @@
 /* global chrome, getComputedStyle  */
-import { getItem, setItem } from '../utils/helperFunctions'
 
 export function crawlPage () {
+
+  function getItem(item, func = (data) => false) {
+    chrome.storage.local.get(item, func)
+  }
+  function setItem(item, func = () => false) {
+    chrome.storage.local.set(item)
+  }
+
   getItem('hasScriptRunOnPage', ({ hasScriptRunOnPage }) => {
     if (hasScriptRunOnPage) {
       getItem('currentResults', ({ currentResults }) => chrome.runtime.sendMessage({ action: 'getCurrentResults', payload: currentResults }))
