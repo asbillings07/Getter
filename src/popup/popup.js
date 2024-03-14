@@ -1,12 +1,12 @@
 /* global chrome MutationObserver */
-import { setItem, createNotification } from '../../utils/helperFunctions';
-import { createColorElement, createImgSrcElement, createBgImageElement, createFontElement, createDefaultElement } from '../components/helpers';
+import { createNotification, rgbToHex, copyToClipboard, downloadImage } from '../../utils/helperFunctions';
+import { createColorElement, createImgSrcElement, createBgImageElement, createFontElement, createDefaultElement } from '../components/builder';
 import { crawlPage } from '../crawlPage';
 import React, { useEffect, useState, Children } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faSpinner } from '@fortawesome/free-solid-svg-icons'
 
-export const Popup = () => {
+export function Popup() {
     const [currentTab, setCurrentTab] = useState(null);
     const [cssData, setCssData] = useState(null);
 
@@ -38,7 +38,14 @@ export const Popup = () => {
     }, [currentTab])
 
 
-    function createView(cssObj) {
+    const onTabQuery = (tab) => {
+        chrome.scripting.executeScript({
+            target: { tabId: tab.id, },
+            func: crawlPage
+        });
+    }
+
+    const createView = (cssObj) => {
         const viewElements = [];
         const sortImgs = (a, b) => {
             return a[1].style.length === b[1].style.length
@@ -61,12 +68,12 @@ export const Popup = () => {
 
         return (
             <>
-                {viewElements}
+                {Children.toArray(viewElements)}
             </>
         )
     }
 
-    function createViewElements(name, arr) {
+    const createViewElements = (name, arr) => {
             return (
                 <ul>
                     <h3>{`${getProperName(name)}(s) used on page`}</h3>
@@ -75,95 +82,15 @@ export const Popup = () => {
             );
     }
 
-    function createElementsByProp(name, prop) {
-        const [style, freq] = prop;
-
-        switch (name) {
-            case 'backgroundColor':
-                return createColorElement({ freq, style, rgbToHex, copyToClipboard });
-            case 'color':
-                return createColorElement({ freq, style, rgbToHex, copyToClipboard });
-            case 'fontFamily':
-                return createFontElement({ freq, style, hightLightFontOnPage });
-            case 'imageSource':
-                return createImgSrcElement({ freq, style, downloadImage });
-            case 'backgroundImage':
-                return createBgImageElement({ freq, style, downloadImage });
-            default:
-                return createDefaultElement({ style });
-        }
-    }
-
-    function hightLightFontOnPage(e) {
-        chrome.tabs.sendMessage(
-            currentTab.id,
-            { styleId: `${e.target.value}` },
-            function (response) {
-                console.log('****Message Response****', response);
-            }
-        );
-
-    }
-
-    function rgbToHex(rbgStr) {
-        const rgbArr = rbgStr.split('(')[1].split(')').join('').split(',');
-        if (rgbArr.length === 4) rgbArr.pop();
-
-        const hexConvert = rgbArr
-            .map((value) => {
-                switch (true) {
-                    case +value < 0:
-                        return 0;
-                    case +value > 255:
-                        return 255;
-                    default:
-                        return +value;
-                }
-            })
-            .map((val) => {
-                const hexVal = parseInt(val).toString(16).toUpperCase().trim();
-                return hexVal.length === 1 ? '0' + hexVal : hexVal;
-            })
-            .join('');
-        return `#${hexConvert}`;
-    }
-
-
-    async function copyToClipboard(e) {
-        if (!navigator.clipboard) {
-            console.error('Clipboard is unavailable');
-            return;
-        }
-
-        let text;
-
-        if (e.target.innerText) {
-            text = e.target.innerText;
-        } else {
-            text = rgbToHex(e.target.style.backgroundColor);
-        }
-
-        try {
-            await navigator.clipboard.writeText(text);
-            createNotification(
-                'Copied to Clipboard!',
-                `${text} has been copied to the clipboard.`
-            );
-        } catch (err) {
-            console.error('Failed to copy!', err);
-        }
-    }
-
-    function downloadImage(_e, image) {
-        setItem({ currentImage: image });
-
-        const buttons = [{
-            title: 'View image'
-        }, {
-            title: 'Download image'
-        }];
-
-        createNotification('Image Notification', 'What would you like to do?', buttons, true);
+    const createElementsByProp = (name, prop) => {
+        console.log('Prop', prop)
+        return {
+            'backgroundColor': (prop) => createColorElement(prop),
+            'color': (prop) => createColorElement(prop),
+            'fontFamily': (prop) => createFontElement(prop),
+            'imageSource': (prop) => createImgSrcElement(prop),
+            'backgroundImage': (prop) => createBgImageElement(prop),
+        }[name](prop) ?? createDefaultElement(prop);
     }
 
     function onMessage(request, sender, sendResponse) {
@@ -180,15 +107,6 @@ export const Popup = () => {
             default:
                 break;
         }
-    }
-
-
-
-    function onTabQuery(tab) {
-        chrome.scripting.executeScript({
-            target: { tabId: tab.id, },
-            func: crawlPage
-        });
     }
 
   return (

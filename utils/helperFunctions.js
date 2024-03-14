@@ -22,7 +22,7 @@ const createNotification = (title, message, buttons = false, interaction = false
 }
 
 function rgbToHex(rbgStr) {
-  const rgbArr = rbgStr.split('(')[1].split(')').join('').split(',');
+  const rgbArr = rbgStr.split('(')[1].split(')').join('').split(',') ?? [];
   if (rgbArr.length === 4) rgbArr.pop();
 
   const hexConvert = rgbArr
@@ -97,6 +97,7 @@ const hightLightFontOnPage = (e) => {
     setItem,
     rgbToHex,
     copyToClipboard,
+    hightLightFontOnPage,
     downloadImage,
     createNotification
   }

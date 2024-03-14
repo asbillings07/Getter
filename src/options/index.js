@@ -3,16 +3,12 @@ import { createRoot } from "react-dom/client";
 import "./options.css";
 import { Options } from './options';
 
-function init() {
-    const appContainer = document.createElement("div");
-    document.body.appendChild(appContainer);
 
-    if (!appContainer) {
-        throw new Error("Cannot find appContainer");
-    }
+const appContainer = document.createElement("div");
+document.body.appendChild(appContainer);
 
-    const root = createRoot(appContainer);
-    root.render(<Options />);
+if (!appContainer) {
+    throw new Error("Cannot find appContainer");
 }
 
-init()
+createRoot(appContainer).render(<Options />);

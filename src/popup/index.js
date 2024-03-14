@@ -3,15 +3,12 @@ import { createRoot } from "react-dom/client";
 import "./popup.css";
 import { Popup } from "./popup";
 
-(function () {
-    console.log('IS THIS WORKING???')
-    const appContainer = document.createElement("div");
-    document.body.appendChild(appContainer);
 
-    if (!appContainer) {
-        throw new Error("Cannot find appContainer");
-    }
+const appContainer = document.createElement("div");
+document.body.appendChild(appContainer);
 
-    const root = createRoot(appContainer);
-    root.render(<Popup />);
-}());
+if (!appContainer) {
+    throw new Error("Cannot find appContainer");
+}
+
+createRoot(appContainer).render(<Popup />);

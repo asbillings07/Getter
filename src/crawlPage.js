@@ -30,29 +30,28 @@ export function crawlPage () {
     }
   })
 
-  function getStylesOnPage (css, pseudoEl) {
+  function getStylesOnPage(css, pseudoEl) {
     if (typeof window.getComputedStyle === 'undefined') {
       window.getComputedStyle = function (elem) {
-        return elem.currentStyle
-      }
+        return elem.currentStyle;
+      };
     }
-    const nodes = document.body.getElementsByTagName('*')
-    const allStyles = {}
-    // need to get frequency of used colors
+    const nodes = document.body.getElementsByTagName('*');
+    const allStyles = {};
+
     Array.from(nodes).forEach((nodeElement, i) => {
-      // todo - I should make this list part of the options.
-      const filteredNodes = ['time', 'iframe', 'input', 'br', 'form']
+      const filteredNodes = ['time', 'iframe', 'input', 'br', 'form'];
       if (!filteredNodes.includes(nodeElement.localName)) {
         if (nodeElement.style) {
-          captureEls({ css, nodeElement, allStyles })
+          captureEls({ css, nodeElement, allStyles });
           if (pseudoEl) {
-            capturePseudoEls({ pseudoEl, css, allStyles, nodeElement })
+            capturePseudoEls({ pseudoEl, css, allStyles, nodeElement });
           }
         }
       }
-    })
+    });
 
-    return allStyles
+    return allStyles;
   }
 
   function getValuesFromPage (values, getStyleOnPage) {
@@ -78,9 +77,24 @@ export function crawlPage () {
     }
   }
 
-  function captureEls (elementInfo) {
-    const { css, nodeElement, allStyles } = elementInfo
-    const filterFonts = new Set(['sans-serif', 'serif', 'Arial'])
+  function captureEls(elementInfo) {
+    const { css, nodeElement, allStyles } = elementInfo;
+    const filterFonts = new Set([
+      'sans-serif',
+      'serif',
+      'Arial',
+      '-apple-system',
+      'BlinkMacSystemFont',
+      'Segoe UI',
+      'Roboto',
+      'monospace',
+      'cursive',
+      'fantasy',
+      'system-ui',
+      'inherit',
+      'initial',
+      'unset'
+    ]);
 
     let elementStyle
     if (css === 'fontFamily') {
@@ -99,7 +113,7 @@ export function crawlPage () {
       elementStyle = getComputedStyle(nodeElement, '')[css]
     }
 
-    createStyleArray(allStyles, elementStyle, nodeElement)
+    createStyleArray(allStyles, elementStyle, nodeElement);
   }
 
   function captureImageSrc (imageEl) {
