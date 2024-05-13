@@ -26,7 +26,6 @@ import { getItem, setItem, createNotification } from '../utils/helperFunctions'
   })
 
   chrome.webNavigation.onDOMContentLoaded.addListener((object) => {
-    console.log('Object', object)
     setItem({ hasScriptRunOnPage: false })
   })
 

@@ -83,7 +83,6 @@ export function Popup() {
     }
 
     const createElementsByProp = (name, prop) => {
-        console.log('Prop', prop)
         return {
             'backgroundColor': (prop) => createColorElement(prop),
             'color': (prop) => createColorElement(prop),
