@@ -1,5 +1,6 @@
 /* global chrome  */
-(function () {
+import { getItem, setItem, createNotification } from '../utils/helperFunctions'
+
   const rule1 = {
     conditions: [
       new chrome.declarativeContent.PageStateMatcher({
@@ -26,7 +27,6 @@
 
   chrome.webNavigation.onDOMContentLoaded.addListener((object) => {
     setItem({ hasScriptRunOnPage: false })
-    // createNotification('Page Has Refreshed', 'Extension results have been updated')
   })
 
   chrome.tabs.onActivated.addListener(function () {
@@ -70,12 +70,6 @@
     })
   })
 
-  function getItem (item, func = (data) => false) {
-    chrome.storage.local.get(item, func)
-  }
-  function setItem (item, func = () => false) {
-    chrome.storage.local.set(item)
-  }
 
   function onNotifButtonPress (id, buttonIdx) {
     getItem('currentImage', ({ currentImage }) => {
@@ -112,4 +106,4 @@
   }
 
   chrome.notifications.onButtonClicked.addListener(onNotifButtonPress)
-})()
+

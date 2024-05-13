@@ -7,12 +7,25 @@ button:hover {
 }
 
 #main {
+  height: 250px;
+  width: calc(250px * 2);
   display: flex;
   flex-direction: column;
+  align-items: center;
+}
+
+#main:has(#spinner) {
+  height: 60px;
+  width: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 ul {
   font-size: 15px;
+  list-style-type: none;
 }
 
 #colorDiv {
