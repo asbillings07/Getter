@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { setItem, getItem, createNotification } from '../../utils/helperFunctions'
+import { setItem, getItem, createNotification } from '../../utils'
         export const Options = () => {
             const [settings, setSettings] = useState([])
             

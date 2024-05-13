@@ -1,26 +1,54 @@
-
-
-
+@import '../../utils/variables.css';
 
 button:hover {
   cursor: pointer;
 }
 
 #main {
-  height: 250px;
-  width: calc(250px * 2);
+  height: 580px;
+  width: 464px;
   display: flex;
+  overflow: hidden;
   flex-direction: column;
   align-items: center;
 }
 
-#main:has(#spinner) {
-  height: 60px;
-  width: 60px;
+.sidebar {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  width: 100%;
+  height: 100%;
+  background-color: #f5f5f5;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+#main:has(#spinner) {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  top: 0;
+  padding: 5px;
+  width: 100%;
+  height: 72px;
+  background-image: var(--background-gradient);
 }
 
 ul {

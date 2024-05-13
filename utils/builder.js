@@ -1,5 +1,5 @@
 import React from 'react';
-import { copyToClipboard, rgbToHex, hightLightFontOnPage, downloadImage } from '../../utils/helperFunctions';
+import { copyToClipboard, rgbToHex, hightLightFontOnPage, downloadImage } from './helperFunctions';
 
 export const createColorElement = ([style, freq]) => {
     return (

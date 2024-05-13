@@ -1,10 +1,10 @@
 /* global chrome MutationObserver */
-import { createNotification, rgbToHex, copyToClipboard, downloadImage } from '../../utils/helperFunctions';
-import { createColorElement, createImgSrcElement, createBgImageElement, createFontElement, createDefaultElement } from '../components/builder';
+import { createColorElement, createImgSrcElement, createBgImageElement, createFontElement, createDefaultElement, createNotification } from '../../utils';
 import { crawlPage } from '../crawlPage';
 import React, { useEffect, useState, Children } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faSpinner } from '@fortawesome/free-solid-svg-icons'
+import Header from '../components/Header';
 
 export function Popup() {
     const [currentTab, setCurrentTab] = useState(null);
@@ -110,8 +110,12 @@ export function Popup() {
 
   return (
     <div id='main'>
+        <Header />
         {
-              cssData ? createView(cssData) : <div id='spinner'><FontAwesomeIcon icon={faSpinner} spin /></div>
+              cssData ? 
+              <div className='content'> 
+                    {createView(cssData)}
+              </div> : <div id='spinner'><FontAwesomeIcon icon={faSpinner} spin /></div>
         }
     </div>
   )

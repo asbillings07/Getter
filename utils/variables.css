@@ -1,0 +1,10 @@
+:root {
+    --background-gradient: linear-gradient(to right, #912381, #CD186D, #EA2634, #F95535);
+}
+
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: transparent;
+}
