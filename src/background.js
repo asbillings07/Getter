@@ -64,7 +64,7 @@ import { getItem, setItem, createNotification } from '../utils/helperFunctions'
         cssGetters: [
           'fontFamily',
           'backgroundColor',
-          'color'
+          'imageSource'
         ]
       })
     })

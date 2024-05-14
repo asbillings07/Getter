@@ -2,12 +2,14 @@
 import { createColorElement, createImgSrcElement, createBgImageElement, createFontElement, createDefaultElement, createNotification } from '../../utils';
 import { crawlPage } from '../crawlPage';
 import React, { useEffect, useState, Children } from 'react'
+import { useGetterContext } from '../Store';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faSpinner } from '@fortawesome/free-solid-svg-icons'
 
-export const Popup = ({ propName }) => {
+export const Popup = () => {
     const [currentTab, setCurrentTab] = useState(null);
     const [cssData, setCssData] = useState(null);
+    const { propName } = useGetterContext();
 
     chrome.runtime.onMessage.addListener(onMessage);
 
@@ -67,6 +69,7 @@ export const Popup = ({ propName }) => {
 
         return (
             <>
+                {console.log('PROPNAME', propName, viewElements)}
                 {Children.toArray(viewElements[propName])}
             </>
         )
@@ -74,21 +77,22 @@ export const Popup = ({ propName }) => {
 
     const createViewElements = (name, arr) => {
             return (
-                <ul>
+                <div>
                     <h3>{`${getProperName(name)}(s) used on page`}</h3>
-                    {Children.toArray(arr.map((prop) => <li>{createElementsByProp(name, prop)}</li>))}
-                </ul>
+                    {Children.toArray(arr.map((prop) => createElementsByProp(name, prop)))}
+                </div>
             );
     }
 
     const createElementsByProp = (name, prop) => {
+        console.log('PROP', name, prop)
         return {
-            'backgroundColor': (prop) => createColorElement(prop),
-            'color': (prop) => createColorElement(prop),
-            'fontFamily': (prop) => createFontElement(prop),
-            'imageSource': (prop) => createImgSrcElement(prop),
-            'backgroundImage': (prop) => createBgImageElement(prop),
-        }[name](prop) ?? createDefaultElement(prop);
+            'backgroundColor': (name, prop) => createColorElement(name, prop),
+            'color': (name, prop) => createColorElement(name, prop),
+            'fontFamily': (name, prop) => createFontElement(name, prop),
+            'imageSource': (name, prop) => createImgSrcElement(name, prop),
+            'backgroundImage': (name, prop) => createBgImageElement(name, prop),
+        }[name](name, prop) ?? createDefaultElement(name, prop);
     }
 
     function onMessage(request, sender, sendResponse) {
