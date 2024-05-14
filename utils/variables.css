@@ -1,5 +1,11 @@
 :root {
-    --background-gradient: linear-gradient(to right, #912381, #CD186D, #EA2634, #F95535);
+    --purple: #912381;
+    --red: #EA2634;
+    --orange: #F95535;
+    --pink: #CD186D;
+    --white: #FFF;
+    --grey: #444444;
+    --background-gradient: linear-gradient(to right, var(--purple), var(--pink),var(--red), var(--orange));
 }
 
 

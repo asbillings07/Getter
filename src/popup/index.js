@@ -1,7 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import "./popup.css";
-import { Popup } from "./popup";
+import { App } from "./App";
 
 
 const appContainer = document.createElement("div");
@@ -11,4 +11,4 @@ if (!appContainer) {
     throw new Error("Cannot find appContainer");
 }
 
-createRoot(appContainer).render(<Popup />);
+createRoot(appContainer).render(<App />);

@@ -1,12 +1,10 @@
 import React from 'react'
-import { Logo } from './Logo'
+import { HeaderLogo } from './Logos'
 
-const Header = () => {
+export const Header = () => {
   return (
     <div className='header'>
-        <Logo />
+      <HeaderLogo />
     </div>
   )
 }
-
-export default Header

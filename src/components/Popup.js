@@ -4,9 +4,8 @@ import { crawlPage } from '../crawlPage';
 import React, { useEffect, useState, Children } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faSpinner } from '@fortawesome/free-solid-svg-icons'
-import Header from '../components/Header';
 
-export function Popup() {
+export const Popup = ({ propName }) => {
     const [currentTab, setCurrentTab] = useState(null);
     const [cssData, setCssData] = useState(null);
 
@@ -46,7 +45,7 @@ export function Popup() {
     }
 
     const createView = (cssObj) => {
-        const viewElements = [];
+        const viewElements = {};
         const sortImgs = (a, b) => {
             return a[1].style.length === b[1].style.length
                 ? 0
@@ -63,12 +62,12 @@ export function Popup() {
                 sortedObjArr = Object.entries(cssObj[type]).sort(sortImgs);
             }
 
-           viewElements.push(createViewElements(type, sortedObjArr))
+            viewElements[type] = createViewElements(type, sortedObjArr)
         }
 
         return (
             <>
-                {Children.toArray(viewElements)}
+                {Children.toArray(viewElements[propName])}
             </>
         )
     }
@@ -109,14 +108,10 @@ export function Popup() {
     }
 
   return (
-    <div id='main'>
-        <Header />
+    <>
         {
-              cssData ? 
-              <div className='content'> 
-                    {createView(cssData)}
-              </div> : <div id='spinner'><FontAwesomeIcon icon={faSpinner} spin /></div>
+              cssData ? <div className='css-content'>{createView(cssData)}</div> : <div id='spinner'><FontAwesomeIcon icon={faSpinner} spin /></div>
         }
-    </div>
+    </>
   )
 }
