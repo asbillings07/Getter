@@ -1,6 +1,6 @@
 {
   "name": "getter",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "description": "chrome extension that gets css info",
   "main": "background.js",
   "scripts": {

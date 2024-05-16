@@ -5,6 +5,7 @@ import {
     copyToClipboard,
     hightLightFontOnPage,
     downloadImage,
+    splitRgb,
     createNotification
 } from './helperFunctions'
 
@@ -15,6 +16,7 @@ export {
     setItem,
     rgbToHex,
     copyToClipboard,
+    splitRgb,
     hightLightFontOnPage,
     downloadImage,
     createNotification,

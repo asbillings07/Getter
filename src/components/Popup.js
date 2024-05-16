@@ -15,13 +15,13 @@ export const Popup = () => {
 
     const getProperName = (cssName) =>
     ({
-        backgroundColor: 'Background Color',
-        color: 'Color',
-        fontFamily: 'Font Family',
+        backgroundColor: 'COLORS',
+        color: 'COLORS',
+        fontFamily: 'FONTS',
         fontWeight: 'Font Weight',
         fontSize: 'Font Size',
-        imageSource: 'Image Source',
-        backgroundImage: 'Background Image'
+        imageSource: 'IMAGES',
+        backgroundImage: 'IMAGES'
     }[cssName]);
 
 
@@ -69,7 +69,6 @@ export const Popup = () => {
 
         return (
             <>
-                {console.log('PROPNAME', propName, viewElements)}
                 {Children.toArray(viewElements[propName])}
             </>
         )
@@ -78,14 +77,13 @@ export const Popup = () => {
     const createViewElements = (name, arr) => {
             return (
                 <div>
-                    <h3>{`${getProperName(name)}(s) used on page`}</h3>
+                    <h1>{`${getProperName(name)}`}</h1>
                     {Children.toArray(arr.map((prop) => createElementsByProp(name, prop)))}
                 </div>
             );
     }
 
     const createElementsByProp = (name, prop) => {
-        console.log('PROP', name, prop)
         return {
             'backgroundColor': (name, prop) => createColorElement(name, prop),
             'color': (name, prop) => createColorElement(name, prop),

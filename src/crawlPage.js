@@ -1,6 +1,33 @@
 /* global chrome, getComputedStyle  */
 
-export function crawlPage () {
+export function crawlPage() {
+
+  const filterFonts = new Set([
+    'sans-serif',
+    'serif',
+    'Arial',
+    '-apple-system',
+    'BlinkMacSystemFont',
+    'Segoe UI',
+    'monospace',
+    'cursive',
+    'fantasy',
+    'system-ui',
+    'inherit',
+    'initial',
+    'unset'
+  ]);
+
+  const searchNodes = new Set([
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+    'p',
+    'button'
+  ])
 
   function getItem(item, func = (data) => false) {
     chrome.storage.local.get(item, func)
@@ -40,8 +67,7 @@ export function crawlPage () {
     const allStyles = {};
 
     Array.from(nodes).forEach((nodeElement, i) => {
-      const filteredNodes = ['time', 'iframe', 'input', 'br', 'form'];
-      if (!filteredNodes.includes(nodeElement.localName)) {
+      if (searchNodes.has(nodeElement.localName)) {
         if (nodeElement.style) {
           captureEls({ css, nodeElement, allStyles });
           if (pseudoEl) {
@@ -51,10 +77,27 @@ export function crawlPage () {
       }
     });
 
+    for (const style in allStyles) {
+      if (Array.isArray(allStyles[style].style)) {
+        // add count to style object
+        allStyles[style].count = allStyles[style].style.length
+
+        // remove styles if there isn't an element associated with it
+        if (!allStyles[style].nodeElement) {
+          delete allStyles[style]
+        }
+      }
+
+      if (allStyles['images'] && Array.isArray(allStyles['images'].images)) {
+        // filter all null values
+        allStyles['images'].images = allStyles['images'].images.filter(image => image !== undefined).filter(image => image !== 'images')
+      }
+    }
+    console.log('allStyles', allStyles)
     return allStyles;
   }
 
-  function getValuesFromPage (values, getStyleOnPage) {
+  function getValuesFromPage(values, getStyleOnPage) {
     const valueObj = {}
     values.forEach((value) => {
       const styleObj = getStyleOnPage(value)
@@ -66,7 +109,7 @@ export function crawlPage () {
   }
 
 
-  function capturePseudoEls (elementInfo) {
+  function capturePseudoEls(elementInfo) {
     const { pseudoEl, css, allStyles, nodeElement } = elementInfo
     const pseudoProp = getComputedStyle(nodeElement, pseudoEl)[css]
 
@@ -79,27 +122,12 @@ export function crawlPage () {
 
   function captureEls(elementInfo) {
     const { css, nodeElement, allStyles } = elementInfo;
-    const filterFonts = new Set([
-      'sans-serif',
-      'serif',
-      'Arial',
-      '-apple-system',
-      'BlinkMacSystemFont',
-      'Segoe UI',
-      'Roboto',
-      'monospace',
-      'cursive',
-      'fantasy',
-      'system-ui',
-      'inherit',
-      'initial',
-      'unset'
-    ]);
 
     let elementStyle
+    const imageNames = ['img', 'imageSource', 'backgroundImage']
     if (css === 'fontFamily') {
       elementStyle = getComputedStyle(nodeElement, '')[css].split(',').map(font => font.trim()).filter(font => !filterFonts.has(font))
-    } else if (css === 'imageSource' && nodeElement.localName === 'img') {
+    } else if (imageNames.includes(css)) {
       elementStyle = 'images'
     } else if (css === 'backgroundImage') {
       const bgStyle = getComputedStyle(nodeElement, '')[css]
@@ -114,9 +142,12 @@ export function crawlPage () {
     }
 
     createStyleArray(allStyles, elementStyle, nodeElement);
+    addNodeElement(allStyles, elementStyle, nodeElement)
   }
 
-  function captureImageSrc (imageEl) {
+  function captureImageSrc(imageEl) {
+    if (!imageEl.src && !imageEl.srcset) return
+
     const imageInfo = {}
 
     if (imageEl.srcset) {
@@ -130,7 +161,17 @@ export function crawlPage () {
     return imageInfo
   }
 
-  function createStyleArray (allStyles, elementStyle, nodeElement) {
+  const addNodeElement = (styles, elementStyle, element) => {
+    if (!styles[elementStyle]) return
+
+    if (styles[elementStyle].nodeElement) {
+      styles[elementStyle].nodeElement.add(element.localName)
+    } else {
+      styles[elementStyle].nodeElement = new Set([element.localName])
+    }
+  }
+
+  function createStyleArray(allStyles, elementStyle, nodeElement) {
     switch (elementStyle) {
       case 'images':
         if (allStyles[elementStyle]) {
@@ -145,19 +186,22 @@ export function crawlPage () {
       default:
         if (allStyles[elementStyle]) {
           allStyles[elementStyle].style.push(elementStyle)
+          // console.log('allStyles[elementStyle].style', allStyles[elementStyle].style)
         } else if (Array.isArray(elementStyle)) {
           elementStyle.forEach(el => {
             allStyles[el] = { style: [el], id: getId(nodeElement) }
             nodeElement.dataset.styleId = `${allStyles[el].id}`
           })
+          // console.log('allStyles isARRAY', elementStyle)
         } else {
           allStyles[elementStyle] = { style: [elementStyle], id: getId(nodeElement) }
           nodeElement.dataset.styleId = `${allStyles[elementStyle].id}`
+          // console.log('allStyles isNOTARRAY', allStyles[elementStyle].style.length)
         }
     }
   }
 
-  function getId (el) {
+  function getId(el) {
     if (el.id) {
       return el.id
     } else {
@@ -166,7 +210,7 @@ export function crawlPage () {
     }
   }
 
-  function highlightInPage (styleId) {
+  function highlightInPage(styleId) {
     const allNodes = document.body.getElementsByTagName('*')
 
     const nodes = document.body.querySelectorAll(`[data-style-id="${styleId}"]`)
@@ -197,7 +241,7 @@ export function crawlPage () {
     return style.sheet
   })()
 
-  function addCSSRule (sheet, selector, rules, index = 0) {
+  function addCSSRule(sheet, selector, rules, index = 0) {
     if ('insertRule' in sheet) {
       sheet.insertRule(selector + '{' + rules + '}', index)
     } else if ('addRule' in sheet) {
@@ -205,11 +249,11 @@ export function crawlPage () {
     }
   }
 
-  function isObjEmpty (obj) {
+  function isObjEmpty(obj) {
     return Object.keys(obj).length === 0
   }
 
-  function createNodeId (length) {
+  function createNodeId(length) {
     let result = ''
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
     const charactersLength = characters.length

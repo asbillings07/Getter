@@ -21,8 +21,12 @@ const createNotification = (title, message, buttons = false, interaction = false
   chrome.notifications.create(options);
 }
 
+const splitRgb = (rgbStr) => { 
+  return rgbStr.split('(')[1].split(')').join('').split(',') ?? [];
+}
+
 function rgbToHex(rbgStr) {
-  const rgbArr = rbgStr.split('(')[1].split(')').join('').split(',') ?? [];
+  const rgbArr = splitRgb(rbgStr);
   if (rgbArr.length === 4) rgbArr.pop();
 
   const hexConvert = rgbArr
@@ -99,5 +103,6 @@ const hightLightFontOnPage = (e) => {
     copyToClipboard,
     hightLightFontOnPage,
     downloadImage,
+    splitRgb,
     createNotification
   }

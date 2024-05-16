@@ -1,3 +1,4 @@
+/* the threshold at which colors are considered "light." Range: integers from 0 to 100, recommended 50 - 70 */
 :root {
     --purple: #912381;
     --red: #EA2634;
@@ -6,11 +7,21 @@
     --white: #FFF;
     --grey: #444444;
     --background-gradient: linear-gradient(to right, var(--purple), var(--pink),var(--red), var(--orange));
-}
 
+    --hue: 220;
+    --sat: 100;
+    --light: 50;
+    --threshold: 65;
+    --switch: calc((var(--light) - var(--threshold)) * -100%);
+
+    --large: 20px;
+    --medium: 14px;
+    --fontFamily: 'Roboto', sans-serif;
+}
 
 body {
   margin: 0;
+  font-family: var(--fontFamily);
   padding: 0;
   background-color: transparent;
 }
