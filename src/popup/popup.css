@@ -1,9 +1,5 @@
 @import '../../utils/variables.css';
 
-button:hover {
-  cursor: pointer;
-}
-
 .main {
   height: 580px;
   width: 464px;
@@ -40,6 +36,7 @@ h1 {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  padding-left: 10px;
   width: 100%;
   height: 100%;
   overflow-y: scroll;
@@ -47,94 +44,65 @@ h1 {
 
 }
 
-.backgroundColor-container {
+.spinner {
+  border: 16px solid #f3f3f3; /* Light grey */
+  border-top: 16px solid #3498db; /* Blue */
+  border-radius: 50%;
+  width: 120px;
+  height: 120px;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.colors-container {
     display: flex;
     border-radius: 10px;
     padding: 0 10px 0 10px;
-    box-shadow: 0px 4px 13px 0px rgba(0, 0, 0, 0.05), 0px 1px 2px 0px rgba(0, 0, 0, 0.05);
-    margin-bottom: 5px;
+    margin-bottom: 10px;
     width: 357px;
     height: 54px;
+    box-shadow: 0px 4px 13px 0px var(--light-grey), 0px 1px 2px 0px var(--light-grey);
 
   p {
     font-style: italic;
   }
+
+  &:hover {
+    cursor: pointer;
+    box-shadow: 0px 0px 1px 1px var(--very-light-orange), 0px 0px 10px 0px var(--light-orange);
+  }
 }
 
-.backgroundColor-container:hover {
-  cursor: pointer;
-  border: 3px solid;
-  border-image-slice: 1;
-  border-image-source: var(--background-gradient);
-}
 
 .font-content {}
 
 .image-content {}
 
-// LOGO STYLES START
-.font-logo:hover {
-  cursor: pointer;
-  svg {
-    fill: var(--purple);
-  }
+.divider {
+  width: 357px;
+  height: 0.5px;
+  background-color: var(--light-grey-2);
+  margin: 10px 0;
 }
 
-.font-logo {
-  border: none;
-  svg {
+svg {
     fill: var(--grey);
+    &:hover {
+      fill: var(--purple);
+      transition: fill 0.3s;
+    }
   }
-}
-
-.font-logo .active {
-  border: none;
-  svg {
-    fill: url(#logo-gradient);
-  }
-}
-
-.image-logo:hover {
-  cursor: pointer;
-  svg {
-    fill: var(--purple);
-  }
-}
-
-.image-logo {
-  border: none;
-  svg {
-    fill: var(--grey);
-  }
-}
-
-.image-logo .active {
-  border: none;
-  svg {
-    fill: url(#logo-gradient);
-  }
-}
-
-.color-logo:hover {
-  cursor: pointer;
-  svg {
-    fill: var(--purple);
-  }
-}
-
-.color-logo {
-  border: none;
-  svg {
-    fill: var(--grey);
-  }
-}
 
 .active {
   svg {
     fill: url(#logo-gradient);
   }
 }
-// LOGO STYLES END
+
 
 .main:has(#spinner) {
   display: flex;
@@ -205,10 +173,35 @@ ul {
 
 }
 
+.li-font {
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 10px 0;
+}
+
+
+#font-heading {
+  font-size: var(--large);
+  font-style: normal;
+  font-weight: 600;
+  line-height: 150%;
+}
+
+#font-element {
+  font-size: var(--small);
+  font-style: normal;
+  font-weight: 400;
+  line-height: 150%;
+
+}
+
+.li-color {
+  font-size: var(--large);
+  align-items: center;
+}
+
 #liContainer {
   display: flex;
-  align-items: center;
-  font-size: var(--large);
   font-style: normal;
   font-weight: 600;
   line-height: normal;
@@ -220,8 +213,22 @@ ul {
   margin: 5px 0;
 }
 
+#fontElement {
+  color: var(--black);
+  font-size: var(--medium);
+  font-style: normal;
+  font-weight: 600;
+  line-height: 150%; /* 22.5px */
+}
+
 #fontItem {
   margin-top: 10px;
+  color: var(--black);
+  font-family: Roboto;
+  font-size: var(--small);
+  font-style: normal;
+  font-weight: 400;
+  line-height: 150%;
 }
 
 

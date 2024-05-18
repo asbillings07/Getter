@@ -3,9 +3,14 @@
     --purple: #912381;
     --red: #EA2634;
     --orange: #F95535;
+    --very-light-orange: rgba(249, 85, 53, 0.2);
+    --light-orange: rgba(249, 85, 53, 0.5);
     --pink: #CD186D;
     --white: #FFF;
+    --black: #1E1E1E;
     --grey: #444444;
+    --light-grey: rgba(0, 0, 0, 0.05);
+    --light-grey-2: #C3C4C7;
     --background-gradient: linear-gradient(to right, var(--purple), var(--pink),var(--red), var(--orange));
 
     --hue: 220;
@@ -16,6 +21,7 @@
 
     --large: 20px;
     --medium: 14px;
+    --small: 12px;
     --fontFamily: 'Roboto', sans-serif;
 }
 
@@ -23,5 +29,13 @@ body {
   margin: 0;
   font-family: var(--fontFamily);
   padding: 0;
+  background-color: transparent;
+}
+
+button {
+  font-family: var(--fontFamily);
+  font-size: var(--medium);
+  cursor: pointer;
+  border: none;
   background-color: transparent;
 }

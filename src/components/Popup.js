@@ -1,29 +1,20 @@
 /* global chrome MutationObserver */
-import { createColorElement, createImgSrcElement, createBgImageElement, createFontElement, createDefaultElement, createNotification } from '../../utils';
+import {
+    createColorElement,
+    createImgSrcElement,
+    createBgImageElement,
+    createFontElement,
+    createNotification,
+    noItemsElement
+} from '../../utils';
 import { crawlPage } from '../crawlPage';
 import React, { useEffect, useState, Children } from 'react'
 import { useGetterContext } from '../Store';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faSpinner } from '@fortawesome/free-solid-svg-icons'
 
 export const Popup = () => {
-    const [currentTab, setCurrentTab] = useState(null);
-    const [cssData, setCssData] = useState(null);
-    const { propName } = useGetterContext();
+    const { propName, cssData, setCssData, currentTab, setCurrentTab } = useGetterContext();
 
     chrome.runtime.onMessage.addListener(onMessage);
-
-    const getProperName = (cssName) =>
-    ({
-        backgroundColor: 'COLORS',
-        color: 'COLORS',
-        fontFamily: 'FONTS',
-        fontWeight: 'Font Weight',
-        fontSize: 'Font Size',
-        imageSource: 'IMAGES',
-        backgroundImage: 'IMAGES'
-    }[cssName]);
-
 
     useEffect(() => {
         const getCurrentTab = async () => {
@@ -47,21 +38,22 @@ export const Popup = () => {
     }
 
     const createView = (cssObj) => {
+        console.log('CSS OBJ', cssObj)
         const viewElements = {};
-        const sortImgs = (a, b) => {
-            return a[1].style.length === b[1].style.length
+        const sortFn = (a, b) => {
+            return a[1].count === b[1].count
                 ? 0
-                : a[1].style.length > b[1].style.length
+                : a[1].count > b[1].count
                     ? -1
                     : 1
         }
 
         for (const type in cssObj) {
             let sortedObjArr;
-            if (type === 'imageSource') {
-                sortedObjArr = Object.entries(cssObj[type]).filter(([key, value]) => key === 'images');
+            if (type === 'colors') {
+                sortedObjArr = Object.entries(cssObj[type]).sort(sortFn);
             } else {
-                sortedObjArr = Object.entries(cssObj[type]).sort(sortImgs);
+                sortedObjArr = Object.entries(cssObj[type]);
             }
 
             viewElements[type] = createViewElements(type, sortedObjArr)
@@ -69,39 +61,44 @@ export const Popup = () => {
 
         return (
             <>
-                {Children.toArray(viewElements[propName])}
+                {
+                    viewElements[propName] ?
+                        Children.toArray(viewElements[propName]) : noItemsElement()
+                }
             </>
         )
     }
 
     const createViewElements = (name, arr) => {
-            return (
-                <div>
-                    <h1>{`${getProperName(name)}`}</h1>
-                    {Children.toArray(arr.map((prop) => createElementsByProp(name, prop)))}
-                </div>
-            );
+        return (
+            <div>
+                <h1>{name.toUpperCase()}</h1>
+                <div className='divider'></div>
+                {Children.toArray(arr.map((prop) => createElementsByProp(name, prop)))}
+            </div>
+        );
     }
 
     const createElementsByProp = (name, prop) => {
+        console.log('NAME', name)
         return {
-            'backgroundColor': (name, prop) => createColorElement(name, prop),
-            'color': (name, prop) => createColorElement(name, prop),
-            'fontFamily': (name, prop) => createFontElement(name, prop),
-            'imageSource': (name, prop) => createImgSrcElement(name, prop),
-            'backgroundImage': (name, prop) => createBgImageElement(name, prop),
-        }[name](name, prop) ?? createDefaultElement(name, prop);
+            'colors': (name, prop) => createColorElement(name, prop),
+            'fonts': (name, prop) => createFontElement(name, prop),
+            'images': (name, prop) => createImgSrcElement(name, prop)
+        }[name](name, prop)
     }
 
     function onMessage(request, sender, sendResponse) {
         switch (request.action) {
             case 'getState':
-                setCssData(request.payload);    
+                console.log('GET STATE', request.payload)
+                setCssData(request.payload);
                 break;
             case 'getNotif':
                 createNotification(request.payload.title, request.payload.message);
                 break;
             case 'getCurrentResults':
+                console.log('GET CURRENT RESULTS', request.payload)
                 setCssData(request.payload);
                 break;
             default:
@@ -109,11 +106,11 @@ export const Popup = () => {
         }
     }
 
-  return (
-    <>
-        {
-              cssData ? <div className='css-content'>{createView(cssData)}</div> : <div id='spinner'><FontAwesomeIcon icon={faSpinner} spin /></div>
-        }
-    </>
-  )
+    return (
+        <>
+            {
+                cssData ? <div className='css-content'>{createView(cssData)}</div> : <div id='spinner'></div>
+            }
+        </>
+    )
 }

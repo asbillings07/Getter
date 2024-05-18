@@ -41,9 +41,11 @@ import { getItem, setItem, createNotification } from '../utils/helperFunctions'
   ) {
     switch (request.action) {
       case 'getValues':
+        console.log('GET VALUES', request.payload)
         sendResponse({ getters: cssValues })
         break
       case 'getState':
+        console.log('GET STATE', request.payload)
         setItem({
           [sender.tab.url]: request.payload,
           currentResults: request.payload
@@ -63,8 +65,10 @@ import { getItem, setItem, createNotification } from '../utils/helperFunctions'
         pageRefreshed: false,
         cssGetters: [
           'fontFamily',
+          'color',
           'backgroundColor',
-          'imageSource'
+          'images',
+          'backgroundImage'
         ]
       })
     })

@@ -1,9 +1,10 @@
 import React, { Children } from 'react';
 import { copyToClipboard, rgbToHex, hightLightFontOnPage, downloadImage, splitRgb } from './helperFunctions';
+import { useGetterContext } from '../src/Store';
 
 export const createColorElement = (name, prop) => {
-    const [style, freq] = prop;
-
+    const [style, data] = prop;
+    console.log('COLORS', style, data )
     const setTextColor = (style) => {
         const rgbValue = splitRgb(style);
         var color = Math.round(((parseInt(rgbValue[0]) * 299) +
@@ -14,50 +15,65 @@ export const createColorElement = (name, prop) => {
 
     return (
             <div className={`${name}-container`} style={{ background: `${rgbToHex(style)}` }}>
-                <div id="liContainer" style={{ color: setTextColor(style)}}>
+                <div id="liContainer" className='li-color' style={{ color: setTextColor(style)}}>
                     <div id="hexDiv" className="mr pointer" onClick={copyToClipboard}>{rgbToHex(style)}</div>
                     <div id="listItem" className="mr pointer" onClick={copyToClipboard}>{style}</div>
-                    <p id="listDesc">used {freq.style.length} time(s)</p>
+                    <p id="listDesc">used {data.count} time(s)</p>
                 </div>
             </div>
     )};
 
 export const createFontElement = (name, prop) => {
-    const [style, freq] = prop;
+    const [element, data] = prop;
+    console.log('FONTS', element, data)
+    
+    const styles = Children.toArray(Object.entries(data).map(([key, value]) => {
+        if (key === 'id') return;
+        return (
+            <div id="font-element" >{key}:&nbsp;{value}</div>
+        )
+    }));
+    
     return (
         <div className={`${name}-container`}>
-        <div id="liContainer">
-            <div id="fontItem" className="pointer" value={freq.id} onClick={hightLightFontOnPage}>{style}</div>
+            <div id="liContainer" className='li-font'>
+                <div id="font-heading" value={data.id} onClick={hightLightFontOnPage}>{element}</div>
+                {styles}
+            </div>
         </div>
-        </div>
-    )};
+    )
+
+}
+
 
 export const createImgSrcElement = (name, prop) => {
-    const [, freq] = prop;
-    console.log('FREQ: ', freq)
-    const images = Children.toArray(freq.images.filter(i => i !== 'images' && i !== null).map((image) => {
-        console.log('IMAGE: ', image)
-        return (
-            <div className='container'>
-                <img id="imageDiv" className="mr pointer" src={image?.single?.src} onClick={downloadImage} />
-                <p id="imageDesc">{image.single.name}</p>
-            </div>
-        )}))
+    const { currentTab } = useGetterContext();
+    const [, image] = prop;
+    console.log('DATA', image)
 
-        return (
-            <div className={`${name}-container`}>
-                {images}
-            </div>
-        )
+    const getImageSrc = (imageSrc) => {
+        if (imageSrc.includes('http')) {
+            return imageSrc;
+        }
+
+        return `${currentTab.url}${imageSrc}`;
+    }
+    
+    return (
+        <div className={`${name}-container`}>
+            <img id="imageDiv" className="mr pointer" src={getImageSrc(image.src)} onClick={downloadImage} />
+            <p id="imageDesc">{image.name}</p>;
+        </div>
+    )
 
 }
 
 export const createBgImageElement = (name, prop) => {
-    const [, freq] = prop;
+    const [, data] = prop;
     return (
         <div className={`${name}-container`}>
         <div id='liContainer'>
-            <img id="bgDiv" className="mr pointer" style={{ backgroundImage: `${freq.style[0]}`}} onClick={() => downloadImage(e, freq.style[0])} />
+            <img id="bgDiv" className="mr pointer" style={{ backgroundImage: `${data.style[0]}`}} onClick={() => downloadImage(e, data.style[0])} />
             <p id="listDesc"></p>
         </div>
         </div>
@@ -72,3 +88,13 @@ export const createDefaultElement = (name, prop) => {
         </div>
         </div>
     )};
+
+export const noItemsElement = (name) => {
+    return (
+        <div className={`${name}-container`}>
+            <div id='liContainer'>
+                <div id="listItem"> No {name} items found </div>
+            </div>
+        </div>
+    )
+};

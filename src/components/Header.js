@@ -1,10 +1,10 @@
 import React from 'react'
-import { HeaderLogo } from './Logos'
+import { Logos } from './Logos'
 
 export const Header = () => {
   return (
     <div className='header'>
-      <HeaderLogo />
+      <Logos logo='header' />
     </div>
   )
 }

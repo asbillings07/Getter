@@ -2,32 +2,36 @@
 
 export function crawlPage() {
 
-  const filterFonts = new Set([
-    'sans-serif',
-    'serif',
-    'Arial',
-    '-apple-system',
-    'BlinkMacSystemFont',
-    'Segoe UI',
-    'monospace',
-    'cursive',
-    'fantasy',
-    'system-ui',
-    'inherit',
-    'initial',
-    'unset'
-  ]);
+  const getterStyles = new Set([
+    'fontFamily',
+    'fontWeight',
+    'fontSize',
+    'textSize',
+    'lineHeight',
+    'letterSpacing',
+    'color',
+    'backgroundColor',
+  ])
 
-  const searchNodes = new Set([
+  const elementTags = new Set([
     'h1',
     'h2',
     'h3',
     'h4',
     'h5',
     'h6',
+    'header',
+    'nav',
+    'body',
+    'section',
+    'article',
+    'nav',
+    'aside',
+    'main',
     'p',
     'button'
   ])
+
 
   function getItem(item, func = (data) => false) {
     chrome.storage.local.get(item, func)
@@ -57,7 +61,14 @@ export function crawlPage() {
     }
   })
 
-  function getStylesOnPage(css, pseudoEl) {
+  function getValuesFromPage(values, getStyleOnPage) {
+    const styleObj = getStyleOnPage()
+    // console.log('STYLE OBJ', styleObj)
+    chrome.runtime.sendMessage({ action: 'getState', payload: styleObj })
+    setItem({ hasScriptRunOnPage: true })
+  }
+
+  function getStylesOnPage(pseudoEl = false) {
     if (typeof window.getComputedStyle === 'undefined') {
       window.getComputedStyle = function (elem) {
         return elem.currentStyle;
@@ -67,47 +78,16 @@ export function crawlPage() {
     const allStyles = {};
 
     Array.from(nodes).forEach((nodeElement, i) => {
-      if (searchNodes.has(nodeElement.localName)) {
-        if (nodeElement.style) {
-          captureEls({ css, nodeElement, allStyles });
-          if (pseudoEl) {
-            capturePseudoEls({ pseudoEl, css, allStyles, nodeElement });
-          }
+      if (nodeElement.style) {
+        captureEls({ nodeElement, allStyles });
+        if (pseudoEl) {
+          capturePseudoEls({ pseudoEl, allStyles, nodeElement });
         }
       }
     });
 
-    for (const style in allStyles) {
-      if (Array.isArray(allStyles[style].style)) {
-        // add count to style object
-        allStyles[style].count = allStyles[style].style.length
-
-        // remove styles if there isn't an element associated with it
-        if (!allStyles[style].nodeElement) {
-          delete allStyles[style]
-        }
-      }
-
-      if (allStyles['images'] && Array.isArray(allStyles['images'].images)) {
-        // filter all null values
-        allStyles['images'].images = allStyles['images'].images.filter(image => image !== undefined).filter(image => image !== 'images')
-      }
-    }
-    console.log('allStyles', allStyles)
     return allStyles;
   }
-
-  function getValuesFromPage(values, getStyleOnPage) {
-    const valueObj = {}
-    values.forEach((value) => {
-      const styleObj = getStyleOnPage(value)
-      if (!isObjEmpty(styleObj)) valueObj[value] = styleObj
-    })
-    chrome.runtime.sendMessage({ action: 'getState', payload: valueObj })
-    setItem({ hasScriptRunOnPage: true })
-    return valueObj
-  }
-
 
   function capturePseudoEls(elementInfo) {
     const { pseudoEl, css, allStyles, nodeElement } = elementInfo
@@ -123,82 +103,77 @@ export function crawlPage() {
   function captureEls(elementInfo) {
     const { css, nodeElement, allStyles } = elementInfo;
 
-    let elementStyle
-    const imageNames = ['img', 'imageSource', 'backgroundImage']
-    if (css === 'fontFamily') {
-      elementStyle = getComputedStyle(nodeElement, '')[css].split(',').map(font => font.trim()).filter(font => !filterFonts.has(font))
-    } else if (imageNames.includes(css)) {
-      elementStyle = 'images'
-    } else if (css === 'backgroundImage') {
-      const bgStyle = getComputedStyle(nodeElement, '')[css]
-      if (bgStyle.includes('url')) {
-        elementStyle = bgStyle
-      } else {
-        elementStyle = 'none'
-      }
-
-    } else {
-      elementStyle = getComputedStyle(nodeElement, '')[css]
+    if (elementTags.has(nodeElement.localName)) {
+      handleTagStyles(allStyles, 'fonts', nodeElement)
     }
 
-    createStyleArray(allStyles, elementStyle, nodeElement);
-    addNodeElement(allStyles, elementStyle, nodeElement)
+    if (nodeElement.localName === 'img') {
+      handleImages(allStyles, nodeElement)
+    }
+      
+    handleColors(allStyles, nodeElement)
   }
 
-  function captureImageSrc(imageEl) {
+  const handleColors = (allStyles, nodeElement) => {
+    allStyles['colors'] = allStyles['colors'] || {}
+
+
+    const color = getComputedStyle(nodeElement, '')['color']
+    const bgColor = getComputedStyle(nodeElement, '')['backgroundColor']
+
+    if (allStyles.colors[color]) {
+      allStyles.colors[color].count += 1
+    } else {
+      allStyles.colors[color] = { id: getId(nodeElement), count: 1 }
+      nodeElement.dataset.styleId = `${allStyles.colors[color].id}`
+    }
+
+    if (allStyles.colors[color] !== bgColor) { 
+      if (allStyles.colors[bgColor]) {
+        allStyles.colors[bgColor].count += 1
+      } else {
+        allStyles.colors[bgColor] = { id: getId(nodeElement), count: 1 }
+        nodeElement.dataset.styleId = `${allStyles.colors[bgColor].id}`
+      }
+    }
+  }
+
+  const handleTagStyles = (allStyles, key, nodeElement) => {
+    const tagStyles = {
+      id: getId(nodeElement),
+    };
+    allStyles[key] = allStyles[key] || {}
+
+    getterStyles.forEach(style => {
+      if (getComputedStyle(nodeElement, '')[style]) {
+        tagStyles[style] = getComputedStyle(nodeElement, '')[style]
+      }
+    })
+
+
+    allStyles[key][nodeElement.localName] = tagStyles
+
+  }
+
+  const handleImages = (allStyles, nodeElement) => {
+    let image;
+    const imageEl = nodeElement;
+
     if (!imageEl.src && !imageEl.srcset) return
 
-    const imageInfo = {}
-
     if (imageEl.srcset) {
-      imageInfo.multiple = { src: imageEl.srcset.split(','), name: imageEl.alt }
+      image = { src: imageEl.srcset.split(',')[0].split(' ')[0], name: imageEl.alt }
+    } else if (imageEl.src) {
+      image = { src: imageEl.src, name: imageEl.alt }
     }
 
-    if (imageEl.src) {
-      imageInfo.single = { src: imageEl.src, name: imageEl.alt }
-    }
 
-    return imageInfo
-  }
-
-  const addNodeElement = (styles, elementStyle, element) => {
-    if (!styles[elementStyle]) return
-
-    if (styles[elementStyle].nodeElement) {
-      styles[elementStyle].nodeElement.add(element.localName)
+    if (allStyles['images']) {
+      allStyles['images'].push(image)
     } else {
-      styles[elementStyle].nodeElement = new Set([element.localName])
+      allStyles['images'] = [image]
     }
-  }
 
-  function createStyleArray(allStyles, elementStyle, nodeElement) {
-    switch (elementStyle) {
-      case 'images':
-        if (allStyles[elementStyle]) {
-          allStyles[elementStyle].images.push(captureImageSrc(nodeElement))
-        } else {
-          allStyles[elementStyle] = { images: [elementStyle], id: getId(nodeElement) }
-          nodeElement.dataset.styleId = `${allStyles[elementStyle].id}`
-        }
-        break
-      case 'none':
-        break
-      default:
-        if (allStyles[elementStyle]) {
-          allStyles[elementStyle].style.push(elementStyle)
-          // console.log('allStyles[elementStyle].style', allStyles[elementStyle].style)
-        } else if (Array.isArray(elementStyle)) {
-          elementStyle.forEach(el => {
-            allStyles[el] = { style: [el], id: getId(nodeElement) }
-            nodeElement.dataset.styleId = `${allStyles[el].id}`
-          })
-          // console.log('allStyles isARRAY', elementStyle)
-        } else {
-          allStyles[elementStyle] = { style: [elementStyle], id: getId(nodeElement) }
-          nodeElement.dataset.styleId = `${allStyles[elementStyle].id}`
-          // console.log('allStyles isNOTARRAY', allStyles[elementStyle].style.length)
-        }
-    }
   }
 
   function getId(el) {

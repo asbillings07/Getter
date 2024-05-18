@@ -7,9 +7,10 @@ import {
     downloadImage,
     splitRgb,
     createNotification
+    
 } from './helperFunctions'
 
-import { createColorElement, createImgSrcElement, createBgImageElement, createFontElement, createDefaultElement } from './builder'
+import { createColorElement, createImgSrcElement, createBgImageElement, createFontElement, createDefaultElement, noItemsElement } from './builder'
 
 export {
     getItem,
@@ -24,5 +25,6 @@ export {
     createImgSrcElement,
     createBgImageElement,
     createFontElement,
-    createDefaultElement
+    createDefaultElement,
+    noItemsElement
 }

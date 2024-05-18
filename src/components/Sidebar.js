@@ -1,11 +1,11 @@
 import React from 'react'
-import { ColorsLogo, FontsLogo, ImagesLogo } from './Logos'
+import { Logos } from './Logos'
 export const Sidebar = () => {
   return (
     <div className='sidebar'>
-      <FontsLogo />
-      <ColorsLogo />
-      <ImagesLogo />
+      <Logos logo='fonts' />
+      <Logos logo='colors' />
+      <Logos logo='images' />
     </div>
   )
 }

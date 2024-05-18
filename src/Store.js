@@ -14,11 +14,17 @@ export function useGetterContext() {
 }
 
 export function Provider({ children }) {
-    const [propName, setPropName] = useState('backgroundColor')
+    const [propName, setPropName] = useState('fonts')
+    const [currentTab, setCurrentTab] = useState(null);
+    const [cssData, setCssData] = useState(null);
 
     const value = {
         propName,
-        setPropName
+        setPropName,
+        currentTab,
+        setCurrentTab,
+        cssData,
+        setCssData
     }
 
     return <GetterContext.Provider value={value}>{children}</GetterContext.Provider>
