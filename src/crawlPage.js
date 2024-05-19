@@ -145,14 +145,33 @@ export function crawlPage() {
     allStyles[key] = allStyles[key] || {}
 
     getterStyles.forEach(style => {
-      if (getComputedStyle(nodeElement, '')[style]) {
-        tagStyles[style] = getComputedStyle(nodeElement, '')[style]
+      const styleVal = getComputedStyle(nodeElement, '')[style]
+      if (styleVal) {
+        if (style === 'fontFamily') {
+          tagStyles[style] = transformFonts(styleVal)
+        } else {
+          tagStyles[style] = styleVal
+        }
       }
     })
 
 
     allStyles[key][nodeElement.localName] = tagStyles
 
+  }
+
+  function toCapitalize(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+  }
+
+  const transformFonts = (fonts) => {
+    return fonts.split(',').map(font => {
+      if (font.includes('_')) {
+        return toCapitalize(font.split('_').filter(str => str !== '')[0])
+      } else {
+        return toCapitalize(font)
+      }
+    }).filter(font => font !== ' ').join(',')
   }
 
   const handleImages = (allStyles, nodeElement) => {

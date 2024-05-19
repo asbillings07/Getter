@@ -2,48 +2,32 @@
 import {
     createColorElement,
     createImgSrcElement,
-    createBgImageElement,
     createFontElement,
     createNotification,
     noItemsElement
 } from '../../utils';
-import { crawlPage } from '../crawlPage';
 import React, { useEffect, useState, Children } from 'react'
 import { useGetterContext } from '../Store';
 
 export const Popup = () => {
-    const { propName, cssData, setCssData, currentTab, setCurrentTab } = useGetterContext();
+    const { propName } = useGetterContext();
+    const [cssData, setCssData] = useState(null);
 
     chrome.runtime.onMessage.addListener(onMessage);
 
-    useEffect(() => {
-        const getCurrentTab = async () => {
-            let queryOptions = { active: true, currentWindow: true };
-            let [tab] = await chrome.tabs.query(queryOptions);
-            setCurrentTab(tab)
-        }
-        if (currentTab) {
-            onTabQuery(currentTab);
-        } else {
-            getCurrentTab();
-        }
-    }, [currentTab])
-
-
-    const onTabQuery = (tab) => {
-        chrome.scripting.executeScript({
-            target: { tabId: tab.id, },
-            func: crawlPage
-        });
-    }
-
     const createView = (cssObj) => {
-        console.log('CSS OBJ', cssObj)
         const viewElements = {};
-        const sortFn = (a, b) => {
+        const sortFnCount = (a, b) => {
             return a[1].count === b[1].count
                 ? 0
                 : a[1].count > b[1].count
+                    ? -1
+                    : 1
+        }
+        const sortFn = (a, b) => {
+            return a[0] === b[0]
+                ? 0
+                : a[0] < b[0]
                     ? -1
                     : 1
         }
@@ -51,9 +35,9 @@ export const Popup = () => {
         for (const type in cssObj) {
             let sortedObjArr;
             if (type === 'colors') {
-                sortedObjArr = Object.entries(cssObj[type]).sort(sortFn);
+                sortedObjArr = Object.entries(cssObj[type]).sort(sortFnCount);
             } else {
-                sortedObjArr = Object.entries(cssObj[type]);
+                sortedObjArr = Object.entries(cssObj[type]).sort(sortFn);
             }
 
             viewElements[type] = createViewElements(type, sortedObjArr)
@@ -80,7 +64,6 @@ export const Popup = () => {
     }
 
     const createElementsByProp = (name, prop) => {
-        console.log('NAME', name)
         return {
             'colors': (name, prop) => createColorElement(name, prop),
             'fonts': (name, prop) => createFontElement(name, prop),
@@ -91,14 +74,12 @@ export const Popup = () => {
     function onMessage(request, sender, sendResponse) {
         switch (request.action) {
             case 'getState':
-                console.log('GET STATE', request.payload)
                 setCssData(request.payload);
                 break;
             case 'getNotif':
                 createNotification(request.payload.title, request.payload.message);
                 break;
             case 'getCurrentResults':
-                console.log('GET CURRENT RESULTS', request.payload)
                 setCssData(request.payload);
                 break;
             default:

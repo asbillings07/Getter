@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState } from 'react'
+import { crawlPage } from './crawlPage';
 
 const GetterContext = createContext()
 
@@ -16,15 +17,32 @@ export function useGetterContext() {
 export function Provider({ children }) {
     const [propName, setPropName] = useState('fonts')
     const [currentTab, setCurrentTab] = useState(null);
-    const [cssData, setCssData] = useState(null);
+
+    useEffect(() => {
+        const getCurrentTab = async () => {
+            let queryOptions = { active: true, currentWindow: true };
+            let [tab] = await chrome.tabs.query(queryOptions);
+            setCurrentTab(tab)
+        }
+
+        if (currentTab) {
+            onTabQuery(currentTab);
+        } else {
+            getCurrentTab();
+        }
+    }, [currentTab])
+
+    const onTabQuery = (tab) => {
+        chrome.scripting.executeScript({
+            target: { tabId: tab.id, },
+            func: crawlPage
+        });
+    }
 
     const value = {
         propName,
         setPropName,
-        currentTab,
-        setCurrentTab,
-        cssData,
-        setCssData
+        currentTab
     }
 
     return <GetterContext.Provider value={value}>{children}</GetterContext.Provider>

@@ -20,7 +20,9 @@
     --switch: calc((var(--light) - var(--threshold)) * -100%);
 
     --large: 20px;
-    --medium: 14px;
+    --medium-large: 18px;
+    --medium: 16px;
+    --small-medium: 14px;
     --small: 12px;
     --fontFamily: 'Roboto', sans-serif;
 }

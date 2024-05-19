@@ -1,10 +1,34 @@
 import React, { Children } from 'react';
 import { copyToClipboard, rgbToHex, hightLightFontOnPage, downloadImage, splitRgb } from './helperFunctions';
 import { useGetterContext } from '../src/Store';
+import { Logos } from '../src/components/Logos';
+
+export const createFontElement = (name, prop) => {
+    const [element, data] = prop;
+    const fontHref = `https://fonts.google.com/specimen/${data.fontFamily.split(',')[0]}`;
+    const styles = Children.toArray(Object.entries(data).map(([key, value]) => {
+        if (key === 'id') return;
+        return (
+            <div id="font-element" >
+                {key}:&nbsp;{value}&nbsp;
+                {key === 'fontFamily' ? <Logos logo='link' href={fontHref} /> : null}
+            </div>
+        )
+    }));
+
+    return (
+        <div className={`${name}-container`} id='font-card'>
+                <div id="liContainer" className='li-font'>
+                    <div id="font-heading" value={data.id} onClick={hightLightFontOnPage}>{element}</div>
+                    {styles}
+                </div>
+        </div>
+    )
+
+}
 
 export const createColorElement = (name, prop) => {
     const [style, data] = prop;
-    console.log('COLORS', style, data )
     const setTextColor = (style) => {
         const rgbValue = splitRgb(style);
         var color = Math.round(((parseInt(rgbValue[0]) * 299) +
@@ -23,33 +47,11 @@ export const createColorElement = (name, prop) => {
             </div>
     )};
 
-export const createFontElement = (name, prop) => {
-    const [element, data] = prop;
-    console.log('FONTS', element, data)
-    
-    const styles = Children.toArray(Object.entries(data).map(([key, value]) => {
-        if (key === 'id') return;
-        return (
-            <div id="font-element" >{key}:&nbsp;{value}</div>
-        )
-    }));
-    
-    return (
-        <div className={`${name}-container`}>
-            <div id="liContainer" className='li-font'>
-                <div id="font-heading" value={data.id} onClick={hightLightFontOnPage}>{element}</div>
-                {styles}
-            </div>
-        </div>
-    )
-
-}
-
 
 export const createImgSrcElement = (name, prop) => {
     const { currentTab } = useGetterContext();
     const [, image] = prop;
-    console.log('DATA', image)
+    // console.log('DATA', image)
 
     const getImageSrc = (imageSrc) => {
         if (imageSrc.includes('http')) {

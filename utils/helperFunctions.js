@@ -68,6 +68,8 @@ const copyToClipboard = async (e) => {
       'Copied to Clipboard!',
       `${text} has been copied to the clipboard.`
     );
+
+    // todo we want to show a tool tip if the user has copied the text
   } catch (err) {
     console.error('Failed to copy!', err);
   }

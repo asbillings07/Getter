@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useGetterContext } from '../Store'
 
 
-export const Logos = ({ logo }) => {
+export const Logos = ({ logo, href }) => {
 
     const { setPropName, propName } = useGetterContext()
     const [className, setClassName] = useState({
@@ -98,9 +98,19 @@ export const Logos = ({ logo }) => {
     )
 
     const link = (
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M7 2.5H2.5C2.10218 2.5 1.72064 2.65804 1.43934 2.93934C1.15804 3.22064 1 3.60218 1 4V11.5C1 11.8978 1.15804 12.2794 1.43934 12.5607C1.72064 12.842 2.10218 13 2.5 13H10C10.3978 13 10.7794 12.842 11.0607 12.5607C11.342 12.2794 11.5 11.8978 11.5 11.5V7M6.25 7.75L13 1M13 1H9.25M13 1V4.75" stroke="#CD186D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
+        <a href={href} target="_blank" className='link-logo'>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="transparent">
+                <path d="M7 2.5H2.5C2.10218 2.5 1.72064 2.65804 1.43934 2.93934C1.15804 3.22064 1 3.60218 1 4V11.5C1 11.8978 1.15804 12.2794 1.43934 12.5607C1.72064 12.842 2.10218 13 2.5 13H10C10.3978 13 10.7794 12.842 11.0607 12.5607C11.342 12.2794 11.5 11.8978 11.5 11.5V7M6.25 7.75L13 1M13 1H9.25M13 1V4.75" stroke="#CD186D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <defs>
+                    <linearGradient id="logo-gradient" x1="0" y1="12" x2="24" y2="12" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#912381" />
+                        <stop offset="0.33" stopColor="#CD186D" />
+                        <stop offset="0.66" stopColor="#EA2634" />
+                        <stop offset="1" stopColor="#F95535" />
+                    </linearGradient>
+                </defs>
+            </svg>
+        </a>
     )
 
     const colors = (
