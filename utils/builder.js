@@ -1,5 +1,6 @@
 import React, { Children } from 'react';
 import { copyToClipboard, rgbToHex, hightLightFontOnPage, downloadImage, splitRgb } from './helperFunctions';
+import { Tooltip } from 'react-tooltip';
 import { useGetterContext } from '../src/Store';
 import { Logos } from '../src/components/Logos';
 
@@ -40,10 +41,15 @@ export const createColorElement = (name, prop) => {
     return (
             <div className={`${name}-container`} style={{ background: `${rgbToHex(style)}` }}>
                 <div id="liContainer" className='li-color' style={{ color: setTextColor(style)}}>
-                    <div id="hexDiv" className="mr pointer" onClick={copyToClipboard}>{rgbToHex(style)}</div>
-                    <div id="listItem" className="mr pointer" onClick={copyToClipboard}>{style}</div>
-                    <p id="listDesc">used {data.count} time(s)</p>
-                </div>
+                <div id="hexDiv" data-tooltip-id="color-div-tooltip-click" data-tooltip-delay-hide={1000} data-tooltip-variant="success" className="mr pointer" onClick={copyToClipboard}>{rgbToHex(style)}</div>
+                <div id="listItem" data-tooltip-id="color-div-tooltip-click" data-tooltip-delay-hide={1000} data-tooltip-variant="success" className="mr pointer" onClick={copyToClipboard}>{style}</div>
+                <p id="listDesc">used {data.count} time(s)</p>
+            </div>
+            <Tooltip
+                id="color-div-tooltip-click"
+                content="Copied to clipboard!"
+                openOnClick={true}
+            />
             </div>
     )};
 
@@ -63,8 +69,11 @@ export const createImgSrcElement = (name, prop) => {
     
     return (
         <div className={`${name}-container`}>
-            <img id="imageDiv" className="mr pointer" src={getImageSrc(image.src)} onClick={downloadImage} />
-            <p id="imageDesc">{image.name}</p>;
+            <img id="image-div" className="mr pointer" data-tooltip-id="image-div-tooltip-click" src={getImageSrc(image.src)} alt={image.name} onClick={downloadImage} />
+            <Tooltip clickable id="image-div-tooltip-click">
+                    <button>download</button>
+                    <button>view</button>
+            </Tooltip>
         </div>
     )
 

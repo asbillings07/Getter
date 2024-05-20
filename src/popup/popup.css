@@ -158,6 +158,21 @@ ul {
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
 }
 
+#main-images-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.images-container {
+
+}
+
+#image-div {
+  width: 169px;
+  height: 120.714px;
+}
+
 .mr {
   margin-right: 10px;
 }
@@ -268,9 +283,9 @@ ul {
   font-size: 35px;
 }
 
-#imageDiv {
-  width: 20%;
-  height: 65px;
+.h1-container:has(button) {
+  display: flex;
+  align-items: center;
 }
 
 #bgDiv {
@@ -279,4 +294,19 @@ ul {
   background-size: cover;
   background-repeat: no-repeat;
   margin: 5px 5px;
+}
+
+.download-button {
+  display: flex;
+  width: 120px;
+  height: 30px;
+  align-items: center;
+  margin-left: 17em;
+  border-radius: 8px;
+  background: var(--purple);
+  color: #FFF;
+  font-size: var(--smaller);
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
 }

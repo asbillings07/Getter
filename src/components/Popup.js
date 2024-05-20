@@ -7,6 +7,7 @@ import {
     noItemsElement
 } from '../../utils';
 import React, { useEffect, useState, Children } from 'react'
+import { Logos } from './Logos';
 import { useGetterContext } from '../Store';
 
 export const Popup = () => {
@@ -55,11 +56,16 @@ export const Popup = () => {
 
     const createViewElements = (name, arr) => {
         return (
-            <div>
-                <h1>{name.toUpperCase()}</h1>
+            <>
+                <div className='h1-container'>
+                    <h1>{name.toUpperCase()}</h1>
+                    {name === 'images' ? <Logos logo='download' /> : null}
+                </div>
                 <div className='divider'></div>
-                {Children.toArray(arr.map((prop) => createElementsByProp(name, prop)))}
-            </div>
+                <div id={`main-${name}-container`}>
+                    {Children.toArray(arr.map((prop) => createElementsByProp(name, prop)))}
+                </div>
+            </>
         );
     }
 
