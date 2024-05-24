@@ -32,6 +32,7 @@ export function crawlPage() {
     'button'
   ])
 
+  let tab;
 
   function getItem(item, func = (data) => false) {
     chrome.storage.local.get(item, func)
@@ -174,26 +175,43 @@ export function crawlPage() {
     }).filter(font => font !== ' ').join(',')
   }
 
-  const handleImages = (allStyles, nodeElement) => {
-    let image;
+  const handleImages = (allStyles, nodeElement) => {    
     const imageEl = nodeElement;
 
     if (!imageEl.src && !imageEl.srcset) return
 
-    if (imageEl.srcset) {
-      image = { src: imageEl.srcset.split(',')[0].split(' ')[0], name: imageEl.alt }
-    } else if (imageEl.src) {
-      image = { src: imageEl.src, name: imageEl.alt }
-    }
-
+    const image = getImageData(imageEl)
 
     if (allStyles['images']) {
       allStyles['images'].push(image)
     } else {
       allStyles['images'] = [image]
     }
-
   }
+
+  function getImageData (imageEl) {
+    let image = { 
+      src: '', 
+      name: imageEl.alt,
+      height: imageEl.height, 
+      width: imageEl.width
+    }
+    
+    if (imageEl.src) {
+      image.src = imageEl.src
+    } else if (imageEl.srcset) {
+      image.src = imageEl.srcset.split(',')[0].split(' ')[0]
+    }
+
+    if (!image.src.includes('http')) {
+      getItem('currentTab', ({ currentTab }) => {
+        image.src = `${currentTab.url}${image.src}`;
+      })
+    }
+
+    return image;
+  }
+
 
   function getId(el) {
     if (el.id) {

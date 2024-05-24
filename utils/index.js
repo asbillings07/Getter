@@ -4,13 +4,14 @@ import {
     rgbToHex,
     copyToClipboard,
     hightLightFontOnPage,
+    downloadAllImages,
     downloadImage,
     splitRgb,
     createNotification
     
 } from './helperFunctions'
 
-import { createColorElement, createImgSrcElement, createBgImageElement, createFontElement, createDefaultElement, noItemsElement } from './builder'
+import { ColorElement, ImageElement, BgImageElement, FontElement, DefaultElement, NoItemsElement } from './builder'
 
 export {
     getItem,
@@ -20,11 +21,12 @@ export {
     splitRgb,
     hightLightFontOnPage,
     downloadImage,
+    downloadAllImages,
     createNotification,
-    createColorElement,
-    createImgSrcElement,
-    createBgImageElement,
-    createFontElement,
-    createDefaultElement,
-    noItemsElement
+    ColorElement,
+    ImageElement,
+    BgImageElement,
+    FontElement,
+    DefaultElement,
+    NoItemsElement
 }

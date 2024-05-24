@@ -1,4 +1,4 @@
-import React from "react";
+import React, { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Provider } from "../Store";
 import "./popup.css";
@@ -14,9 +14,11 @@ if (!appContainer) {
 }
 
 createRoot(appContainer).render(
-    <ErrorBoundary>
-        <Provider>
-            <App />
-        </Provider>
-    </ErrorBoundary>
+    <StrictMode>
+        <ErrorBoundary>
+            <Provider>
+                <App />
+            </Provider>
+        </ErrorBoundary>
+    </StrictMode>
 );

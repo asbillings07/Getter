@@ -17,6 +17,7 @@ export function useGetterContext() {
 export function Provider({ children }) {
     const [propName, setPropName] = useState('fonts')
     const [currentTab, setCurrentTab] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const getCurrentTab = async () => {
@@ -34,15 +35,17 @@ export function Provider({ children }) {
 
     const onTabQuery = (tab) => {
         chrome.scripting.executeScript({
-            target: { tabId: tab.id, },
+            target: { tabId: tab.id, allFrames: true},
             func: crawlPage
-        });
+        })
     }
 
     const value = {
         propName,
         setPropName,
-        currentTab
+        currentTab,
+        loading, 
+        setLoading
     }
 
     return <GetterContext.Provider value={value}>{children}</GetterContext.Provider>

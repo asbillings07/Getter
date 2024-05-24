@@ -1,17 +1,18 @@
 /* global chrome MutationObserver */
 import {
-    createColorElement,
-    createImgSrcElement,
-    createFontElement,
+    ColorElement,
+    ImageElement,
+    FontElement,
     createNotification,
-    noItemsElement
+    NoItemsElement,
+    downloadAllImages
 } from '../../utils';
-import React, { useEffect, useState, Children } from 'react'
-import { Logos } from './Logos';
+import React, { useState, Children, Suspense } from 'react'
 import { useGetterContext } from '../Store';
+import { Logos } from './Logos';
 
 export const Popup = () => {
-    const { propName } = useGetterContext();
+    const { propName, currentTab } = useGetterContext();
     const [cssData, setCssData] = useState(null);
 
     chrome.runtime.onMessage.addListener(onMessage);
@@ -48,7 +49,7 @@ export const Popup = () => {
             <>
                 {
                     viewElements[propName] ?
-                        Children.toArray(viewElements[propName]) : noItemsElement()
+                        Children.toArray(viewElements[propName]) : NoItemsElement()
                 }
             </>
         )
@@ -59,7 +60,7 @@ export const Popup = () => {
             <>
                 <div className='h1-container'>
                     <h1>{name.toUpperCase()}</h1>
-                    {name === 'images' ? <Logos logo='download' /> : null}
+                    {name === 'images' ? <Logos logo='download' onclick={() => downloadAllImages(cssData['images'])} /> : null}
                 </div>
                 <div className='divider'></div>
                 <div id={`main-${name}-container`}>
@@ -70,11 +71,16 @@ export const Popup = () => {
     }
 
     const createElementsByProp = (name, prop) => {
-        return {
-            'colors': (name, prop) => createColorElement(name, prop),
-            'fonts': (name, prop) => createFontElement(name, prop),
-            'images': (name, prop) => createImgSrcElement(name, prop)
-        }[name](name, prop)
+        switch (name) {
+            case 'colors':
+                return ColorElement(name, prop);
+            case 'fonts':
+                return FontElement(name, prop);
+            case 'images':
+                return ImageElement(name, prop);
+            default:
+                return null;
+        }
     }
 
     function onMessage(request, sender, sendResponse) {
@@ -94,10 +100,8 @@ export const Popup = () => {
     }
 
     return (
-        <>
-            {
-                cssData ? <div className='css-content'>{createView(cssData)}</div> : <div id='spinner'></div>
-            }
-        </>
+        <Suspense fallback={<div id='spinner'></div>}>
+            <div className='css-content'>{createView(cssData)}</div>
+        </Suspense>
     )
 }

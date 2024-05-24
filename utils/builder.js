@@ -1,10 +1,9 @@
-import React, { Children } from 'react';
+import React, { Children, Suspense } from 'react';
 import { copyToClipboard, rgbToHex, hightLightFontOnPage, downloadImage, splitRgb } from './helperFunctions';
 import { Tooltip } from 'react-tooltip';
-import { useGetterContext } from '../src/Store';
 import { Logos } from '../src/components/Logos';
 
-export const createFontElement = (name, prop) => {
+export const FontElement = (name, prop) => {
     const [element, data] = prop;
     const fontHref = `https://fonts.google.com/specimen/${data.fontFamily.split(',')[0]}`;
     const styles = Children.toArray(Object.entries(data).map(([key, value]) => {
@@ -28,7 +27,7 @@ export const createFontElement = (name, prop) => {
 
 }
 
-export const createColorElement = (name, prop) => {
+export const ColorElement = (name, prop) => {
     const [style, data] = prop;
     const setTextColor = (style) => {
         const rgbValue = splitRgb(style);
@@ -41,45 +40,58 @@ export const createColorElement = (name, prop) => {
     return (
             <div className={`${name}-container`} style={{ background: `${rgbToHex(style)}` }}>
                 <div id="liContainer" className='li-color' style={{ color: setTextColor(style)}}>
-                <div id="hexDiv" data-tooltip-id="color-div-tooltip-click" data-tooltip-delay-hide={1000} data-tooltip-variant="success" className="mr pointer" onClick={copyToClipboard}>{rgbToHex(style)}</div>
-                <div id="listItem" data-tooltip-id="color-div-tooltip-click" data-tooltip-delay-hide={1000} data-tooltip-variant="success" className="mr pointer" onClick={copyToClipboard}>{style}</div>
+                <div id="hexDiv" data-tooltip-id="color-div-tooltip-click" data-tooltip-delay-hide={1000} data-tooltip-variant="success" className="mr pointer" onClick={() => copyToClipboard(e)}>{rgbToHex(style)}</div>
+                <div id="listItem" data-tooltip-id="color-div-tooltip-click" data-tooltip-delay-hide={1000} data-tooltip-variant="success" className="mr pointer" onClick={() => copyToClipboard(e)}>{style}</div>
                 <p id="listDesc">used {data.count} time(s)</p>
             </div>
             <Tooltip
                 id="color-div-tooltip-click"
-                content="Copied to clipboard!"
+                content="Color copied to clipboard!"
                 openOnClick={true}
             />
             </div>
     )};
 
 
-export const createImgSrcElement = (name, prop) => {
-    const { currentTab } = useGetterContext();
+export const ImageElement = (name, prop) => {
     const [, image] = prop;
-    // console.log('DATA', image)
+    
+    const getImageSize = async (url) => {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        return `${Math.floor(blob.size / 1024)}MB`
+    };
 
-    const getImageSrc = (imageSrc) => {
-        if (imageSrc.includes('http')) {
-            return imageSrc;
-        }
+    getImageSize(image.src).then(size => {
+        image.size = size;
+    })
 
-        return `${currentTab.url}${imageSrc}`;
-    }
     
     return (
-        <div className={`${name}-container`}>
-            <img id="image-div" className="mr pointer" data-tooltip-id="image-div-tooltip-click" src={getImageSrc(image.src)} alt={image.name} onClick={downloadImage} />
-            <Tooltip clickable id="image-div-tooltip-click">
-                    <button>download</button>
-                    <button>view</button>
-            </Tooltip>
+        <div className={`${name}-container`} onClick={() => downloadImage(image.src)} >
+                <img 
+                    loading='lazy'
+                    id="image-div" 
+                    className="mr pointer" 
+                    data-tooltip-id="image-div-tooltip-click" 
+                    src={image.src}
+                    alt={image.name} 
+                />
+                <div id='image-overlay'>
+                    <Logos logo='download_icon' />
+                    <div id='image-name'>
+                        {image.name}
+                    </div>
+                    <div id='image-size'>
+                        {image.size}
+                    </div>
+                </div>
         </div>
     )
 
 }
 
-export const createBgImageElement = (name, prop) => {
+export const BgImageElement = (name, prop) => {
     const [, data] = prop;
     return (
         <div className={`${name}-container`}>
@@ -90,7 +102,7 @@ export const createBgImageElement = (name, prop) => {
         </div>
     )};
 
-export const createDefaultElement = (name, prop) => {
+export const DefaultElement = (name, prop) => {
     const [style] = prop;
     return (
         <div className={`${name}-container`}>
@@ -100,7 +112,7 @@ export const createDefaultElement = (name, prop) => {
         </div>
     )};
 
-export const noItemsElement = (name) => {
+export const NoItemsElement = (name) => {
     return (
         <div className={`${name}-container`}>
             <div id='liContainer'>

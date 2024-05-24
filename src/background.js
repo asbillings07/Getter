@@ -55,11 +55,13 @@ import { getItem, setItem, createNotification } from '../utils/helperFunctions'
   })
 
   chrome.runtime.onInstalled.addListener(function () {
-    chrome.declarativeContent.onPageChanged.removeRules(undefined, function () {
+    chrome.declarativeContent.onPageChanged.removeRules(undefined, async function () {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       chrome.declarativeContent.onPageChanged.addRules([rule1])
       setItem({
         hasScriptRunOnPage: false,
         currentImage: null,
+        currentTab: tab,
         pageRefreshed: false,
         cssGetters: [
           'fontFamily',

@@ -19,6 +19,10 @@
     --threshold: 65;
     --switch: calc((var(--light) - var(--threshold)) * -100%);
 
+    --shadow-elevation-1: inset 0 7px 9px -7px rgba(0,0,0, 0.7);
+    --shadow-elevation-2: 0 1px 3px rgba(0,0,0, 0.12), 0 1px 3px rgba(0,0,0, 0.24);
+    --shadow-elevation-3: 0 3px 6px rgba(0,0,0, 0.16), 0 3px 6px rgba(0,0,0, 0.23);
+
     --large: 20px;
     --medium-large: 18px;
     --medium: 16px;

@@ -26,6 +26,10 @@
   background-color: #ddd;
 }
 
+:is(#main-fonts-container, #main-colors-container, #main-images-container) {
+  margin-bottom: 30px;
+}
+
 h1 {
   color: var(--purple);
   font-size: var(--medium);
@@ -54,7 +58,38 @@ h1 {
   box-shadow: 0px 4px 13px 0px rgba(0, 0, 0, 0.05), 0px 1px 2px 0px rgba(0, 0, 0, 0.05);
 }
 
-.spinner {
+.skeleton-image {
+  display: inline-block;
+  position: relative;
+  overflow: hidden;
+  width: 169px;
+  height: 120.714px;
+  background-color: var(--light-grey);
+
+  &:before {
+    content: '';
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, transparent 0%, rgba(255, 255, 255, 0.2) 20%, transparent 40%, transparent 100%);
+    animation: shimmer 2s infinite;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+#spinner {
   border: 16px solid #f3f3f3; /* Light grey */
   border-top: 16px solid #3498db; /* Blue */
   border-radius: 50%;
@@ -165,12 +200,67 @@ ul {
 }
 
 .images-container {
+  position: relative;
 
+  &:hover {
+    cursor: pointer;
+
+    #image-overlay {
+      display: block;
+    }
+  }
+}
+
+.image-download-tooltip {
+  background-color: var(--purple);
+
+  button {
+    margin-right: 10px;
+    color: white;
+    padding: 5px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+  }
 }
 
 #image-div {
-  width: 169px;
-  height: 120.714px;
+  width: 174px;
+  height: 115.714px;
+  object-fit: fill;
+}
+
+#image-overlay {
+  position: absolute;
+  width: 95%;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.50) 0%, rgba(0, 0, 0, 0.50) 100%);
+  top: 0;
+  display: none;
+  height: 99%;
+
+  svg {
+    position: absolute;
+    right: 5px;
+    top: 5px;
+  }
+
+  #image-name {
+    color: var(--white);
+    font-size: var(--small);
+    font-weight: 400;
+    position: absolute;
+    bottom: 20px;
+    padding: 5px;
+  }
+
+  #image-size {
+    position: absolute;
+    bottom: 0;
+    padding: 5px;
+    color: var(--white);
+    font-size: var(--smaller);
+    font-weight: 400;
+  }
 }
 
 .mr {
@@ -186,6 +276,7 @@ ul {
   font-style: normal;
   font-weight: 600;
   line-height: normal;
+
   &:hover {
     text-decoration: underline;
   }
@@ -196,6 +287,7 @@ ul {
   font-style: normal;
   font-weight: 400;
   line-height: normal;
+
   &:hover {
     text-decoration: underline;
   }
@@ -215,6 +307,7 @@ ul {
 
   &:hover {
     cursor: pointer;
+
     svg {
       fill: url(#logo-gradient);
       transition: fill 0.3s;
@@ -279,10 +372,6 @@ ul {
   line-height: 150%;
 }
 
-#spinner {
-  font-size: 35px;
-}
-
 .h1-container:has(button) {
   display: flex;
   align-items: center;
@@ -304,7 +393,7 @@ ul {
   margin-left: 17em;
   border-radius: 8px;
   background: var(--purple);
-  color: #FFF;
+  color: #fff;
   font-size: var(--smaller);
   font-style: normal;
   font-weight: 400;

@@ -69,22 +69,23 @@ const copyToClipboard = async (e) => {
       `${text} has been copied to the clipboard.`
     );
 
+
     // todo we want to show a tool tip if the user has copied the text
   } catch (err) {
     console.error('Failed to copy!', err);
   }
 }
 
-const downloadImage = (_e, image) => {
-  setItem({ currentImage: image });
+const downloadImage = async (image, callback) => {
+  return chrome.downloads.download({ url: image, saveAs: false, conflictAction: 'uniquify' }, callback);
+}
 
-  const buttons = [{
-    title: 'View image'
-  }, {
-    title: 'Download image'
-  }];
-
-  createNotification('Image Notification', 'What would you like to do?', buttons, true);
+const downloadAllImages = (images) => {
+  images.forEach((image) => {
+    downloadImage(image.src, (response) => {
+      console.log('Download Response', response);
+    });
+  });
 }
 
 const hightLightFontOnPage = (e) => {
@@ -103,6 +104,7 @@ const hightLightFontOnPage = (e) => {
     setItem,
     rgbToHex,
     copyToClipboard,
+    downloadAllImages,
     hightLightFontOnPage,
     downloadImage,
     splitRgb,

@@ -3,8 +3,7 @@ import { Tooltip } from 'react-tooltip'
 import { useGetterContext } from '../Store'
 
 
-export const Logos = ({ logo, href }) => {
-
+export const Logos = ({ logo, href, onclick }) => {
     const { setPropName, propName } = useGetterContext()
     const [className, setClassName] = useState({
         colors: 'logo',
@@ -115,15 +114,24 @@ export const Logos = ({ logo, href }) => {
     )
 
     const download = (
-        <button className='download-button'>
+        <button className='download-button' onClick={onclick}>
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
                 <path d="M10 13.3333L5.83337 9.16668L7.00004 7.95834L9.16671 10.125V3.33334H10.8334V10.125L13 
                 7.95834L14.1667 9.16668L10 13.3333ZM5.00004 16.6667C4.54171 16.6667 4.14948 16.5036 3.82337 16.1775C3.49726 
                 15.8514 3.33393 15.4589 3.33337 15V12.5H5.00004V15H15V12.5H16.6667V15C16.6667 15.4583 16.5037 15.8508 16.1775 
                 16.1775C15.8514 16.5042 15.4589 16.6672 15 16.6667H5.00004Z" fill="#F7F7F7" />
             </svg>
-            <div>DONWLOAD ALL</div>
+            <div>DOWNLOAD ALL</div>
         </button>
+    )
+
+    const download_icon = (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M10 13.3333L5.83337 9.16668L7.00004 7.95834L9.16671 10.125V3.33334H10.8334V10.125L13 
+                7.95834L14.1667 9.16668L10 13.3333ZM5.00004 16.6667C4.54171 16.6667 4.14948 16.5036 3.82337 16.1775C3.49726 
+                15.8514 3.33393 15.4589 3.33337 15V12.5H5.00004V15H15V12.5H16.6667V15C16.6667 15.4583 16.5037 15.8508 16.1775 
+                16.1775C15.8514 16.5042 15.4589 16.6672 15 16.6667H5.00004Z" fill="#F7F7F7" />
+        </svg>
     )
 
     const colors = (
@@ -217,6 +225,7 @@ export const Logos = ({ logo, href }) => {
             header: header,
             link: link,
             download: download,
+            download_icon: download_icon
         }[logo]
     }
 
