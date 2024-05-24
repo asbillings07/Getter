@@ -47,10 +47,16 @@ h1 {
   overflow-x: clip;
   scrollbar-width: none;
 
-  &:has(#spinner) {
+  &:has(#spinner, .no-items-container) {
     justify-content: center;
     align-items: center;
   }
+}
+
+.no-items-container {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
 }
 
 #font-card {
@@ -99,8 +105,8 @@ h1 {
   border: 16px solid var(--light-grey-2);
   border-top: 16px solid var(--light-orange);
   border-radius: 50%;
-  width: 120px;
-  height: 120px;
+  width: 90px;
+  height: 90px;
   animation: spin 1s linear infinite;
 }
 

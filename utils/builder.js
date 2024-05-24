@@ -5,7 +5,7 @@ import { Logos } from '../src/components/Logos';
 
 export const FontElement = (name, prop) => {
     const [element, data] = prop;
-    const fontHref = `https://fonts.google.com/specimen/${data.fontFamily.split(',')[0]}`;
+    const fontHref = `https://fonts.google.com/?query=${data.fontFamily.split(',')[0]}`;
     const styles = Children.toArray(Object.entries(data).map(([key, value]) => {
         if (key === 'id') return;
         return (
@@ -112,28 +112,28 @@ export const DefaultElement = (name, prop) => {
 
 export const NoItemsElement = (name) => {
     const noImages = (
-        <div id='liContainer'>
-            <div id="listItem">
+        <>
+            <div id="logoContainer">
                 <Logos logo='no_images' />
-                There are No Images Found 
             </div>
-        </div>
+            <div id="text-container">hmmmmmm.... We couldn't find any Images</div>
+        </>
     )
     const noFonts = (
-        <div id='liContainer'>
-            <div id="listItem">
-                <Logos logo='no_fonts' />
-                There are No Fonts Found 
+        <>
+            <div id="logoContainer">
+                <Logos logo='fonts' />
             </div>
-        </div>
+            <div id="text-container">hmmmmmm.... We couldn't find any Fonts</div>
+        </>
     )
     const noColors = (
-        <div id='liContainer'>
-            <div id="listItem">
-                <Logos logo='no_colors' />
-                There are No Colors Found 
+        <>
+            <div id="logoContainer">
+                <Logos logo='colors' />
             </div>
-        </div>
+            <div id="text-container">hmmmmmm.... We couldn't find any Colors</div>
+        </>
     )
 
     const getNoItems = (name) => {
@@ -150,7 +150,7 @@ export const NoItemsElement = (name) => {
     }
 
     return (
-        <div className={`${name}-container`}>
+        <div className={`no-items-container`}>
             {getNoItems(name)}
         </div>
     )

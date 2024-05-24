@@ -5,15 +5,22 @@ import {
     FontElement,
     createNotification,
     NoItemsElement,
-    downloadAllImages
+    downloadAllImages,
+    deepEqual
 } from '../../utils';
-import React, { useState, Children, Suspense } from 'react'
+import React, { useState, Children } from 'react'
 import { useGetterContext } from '../Store';
-import { Logos } from './Logos';
+import { Logos } from '../components/Logos';
+
+const isObjEmpty = (obj) => {
+    return obj === null || Object.entries(obj).length === 0;
+}
 
 export const Popup = () => {
-    const { propName, currentTab } = useGetterContext();
+    const { propName } = useGetterContext();
     const [cssData, setCssData] = useState(null);
+
+    console.log('CSS DATA', cssData)
 
     chrome.runtime.onMessage.addListener(onMessage);
 
@@ -46,12 +53,12 @@ export const Popup = () => {
         }
 
         return (
-            <Suspense fallback={<div id='spinner'></div>}>
+            <>
                 {
                     viewElements[propName] ?
                         Children.toArray(viewElements[propName]) : NoItemsElement(propName)
                 }
-            </Suspense>
+            </>
         )
     }
 
@@ -86,13 +93,17 @@ export const Popup = () => {
     function onMessage(request, sender, sendResponse) {
         switch (request.action) {
             case 'getState':
-                setCssData(request.payload);
+                if (!deepEqual(request.payload, cssData)) {
+                    setCssData(request.payload);
+                }
                 break;
             case 'getNotif':
                 createNotification(request.payload.title, request.payload.message);
                 break;
             case 'getCurrentResults':
-                setCssData(request.payload);
+                if (!deepEqual(request.payload, cssData)) {
+                    setCssData(request.payload);
+                }
                 break;
             default:
                 break;
@@ -100,6 +111,8 @@ export const Popup = () => {
     }
 
     return (
-        <div className='css-content'>{createView(cssData)}</div>
+        <div className='css-content'>{
+            isObjEmpty(cssData) ? <div id='spinner'></div> : createView(cssData) 
+            }</div>
     )
 }

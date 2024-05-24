@@ -2,6 +2,10 @@
 
 export function crawlPage() {
 
+  const isObjEmpty = (obj) => {
+    return obj === null || Object.entries(obj).length === 0;
+  }
+
   const getterStyles = new Set([
     'fontFamily',
     'fontWeight',
@@ -45,9 +49,7 @@ export function crawlPage() {
     if (hasScriptRunOnPage) {
       getItem('currentResults', ({ currentResults }) => chrome.runtime.sendMessage({ action: 'getCurrentResults', payload: currentResults }))
     } else {
-      chrome.runtime.sendMessage({ action: 'getValues', payload: null }, (response) => {
-        getValuesFromPage(response.getters, getStylesOnPage)
-      })
+      getValuesFromPage(getStylesOnPage)
     }
   })
 
@@ -62,10 +64,14 @@ export function crawlPage() {
     }
   })
 
-  function getValuesFromPage(values, getStyleOnPage) {
+  function getValuesFromPage(getStyleOnPage) {
     const styleObj = getStyleOnPage()
-    chrome.runtime.sendMessage({ action: 'getState', payload: styleObj })
-    setItem({ hasScriptRunOnPage: true })
+    const isObjComplete = styleObj.fonts && styleObj.colors && styleObj.images
+    console.log('STYLE OBJ', styleObj)
+    if (isObjComplete) {
+      chrome.runtime.sendMessage({ action: 'getState', payload: styleObj })
+      setItem({ hasScriptRunOnPage: true })
+    }
   }
 
   function getStylesOnPage(pseudoEl = false) {
@@ -258,10 +264,6 @@ export function crawlPage() {
     } else if ('addRule' in sheet) {
       sheet.addRule(selector, rules, index)
     }
-  }
-
-  function isObjEmpty(obj) {
-    return Object.keys(obj).length === 0
   }
 
   function createNodeId(length) {

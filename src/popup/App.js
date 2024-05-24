@@ -1,5 +1,6 @@
 import React from 'react'
-import { Header, Sidebar, Popup, AlertMessage } from '../components'
+import { Header, Sidebar } from '../components'
+import { Popup } from './Popup'
 
 export const App = () => {
 

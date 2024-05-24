@@ -1,4 +1,28 @@
 // todo FIX ME, I don't work. lol
+
+/*
+Options:
+
+ Fonts:
+ - Headings
+ - Paragraphs
+ - Buttons
+ - Semantic (Article, Aside, etc)
+
+
+ Colors:
+ - Hex
+ - RGB
+ - HSL
+ - Frequency
+
+
+ Images:
+ - Download All?
+ - Image Size
+ - Image Height & Width
+
+*/
 import React, { useState } from 'react';
 import { setItem, getItem, createNotification } from '../../utils'
         export const Options = () => {

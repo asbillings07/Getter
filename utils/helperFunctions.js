@@ -74,6 +74,11 @@ const copyToClipboard = async (e) => {
   }
 }
 
+function deepEqual(obj1, obj2) {
+  // Base case: If both objects are identical, return true.
+  return Object.is(obj1, obj2) && JSON.stringify(obj1) === JSON.stringify(obj2)
+}
+
 const downloadImage = async (image, callback) => {
   return chrome.downloads.download({ url: image, saveAs: false, conflictAction: 'uniquify' }, callback);
 }
@@ -104,5 +109,6 @@ const hightLightFontOnPage = (e) => {
     hightLightFontOnPage,
     downloadImage,
     splitRgb,
+    deepEqual,
     createNotification
   }
