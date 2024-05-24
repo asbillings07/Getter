@@ -44,7 +44,13 @@ h1 {
   width: 100%;
   height: 100%;
   overflow-y: scroll;
+  overflow-x: clip;
   scrollbar-width: none;
+
+  &:has(#spinner) {
+    justify-content: center;
+    align-items: center;
+  }
 }
 
 #font-card {
@@ -90,21 +96,31 @@ h1 {
 }
 
 #spinner {
-  border: 16px solid #f3f3f3; /* Light grey */
-  border-top: 16px solid #3498db; /* Blue */
+  border: 16px solid var(--light-grey-2);
+  border-top: 16px solid var(--light-orange);
   border-radius: 50%;
   width: 120px;
   height: 120px;
-  animation: spin 2s linear infinite;
+  animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
   0% {
     transform: rotate(0deg);
+    border-top: 16px solid var(--purple);
+  }
+
+  25% {
+    border-top: 16px solid var(--pink);
+  }
+
+  50% {
+    border-top: 16px solid var(--red);
   }
 
   100% {
     transform: rotate(360deg);
+    border-top: 16px solid var(--orange);
   }
 }
 
@@ -134,9 +150,10 @@ h1 {
 }
 
 .divider {
-  width: 385px;
+  width: 377px;
   height: 0.5px;
   background-color: var(--light-grey-2);
+  padding: 0.5px 0;
   margin: 10px 0;
 }
 
@@ -200,6 +217,7 @@ ul {
 }
 
 .images-container {
+  width: 184px;
   position: relative;
 
   &:hover {
@@ -225,14 +243,14 @@ ul {
 }
 
 #image-div {
-  width: 174px;
+  width: 184px;
   height: 115.714px;
   object-fit: fill;
 }
 
 #image-overlay {
   position: absolute;
-  width: 95%;
+  width: 100%;
   background: linear-gradient(0deg, rgba(0, 0, 0, 0.50) 0%, rgba(0, 0, 0, 0.50) 100%);
   top: 0;
   display: none;

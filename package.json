@@ -1,7 +1,7 @@
 {
   "name": "getter",
   "version": "2.0.0",
-  "description": "chrome extension that gets css info",
+  "description": "chrome extension that gets css info on any page your on",
   "main": "background.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

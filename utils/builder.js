@@ -1,4 +1,4 @@
-import React, { Children, Suspense } from 'react';
+import React, { Children } from 'react';
 import { copyToClipboard, rgbToHex, hightLightFontOnPage, downloadImage, splitRgb } from './helperFunctions';
 import { Tooltip } from 'react-tooltip';
 import { Logos } from '../src/components/Logos';
@@ -40,8 +40,8 @@ export const ColorElement = (name, prop) => {
     return (
             <div className={`${name}-container`} style={{ background: `${rgbToHex(style)}` }}>
                 <div id="liContainer" className='li-color' style={{ color: setTextColor(style)}}>
-                <div id="hexDiv" data-tooltip-id="color-div-tooltip-click" data-tooltip-delay-hide={1000} data-tooltip-variant="success" className="mr pointer" onClick={() => copyToClipboard(e)}>{rgbToHex(style)}</div>
-                <div id="listItem" data-tooltip-id="color-div-tooltip-click" data-tooltip-delay-hide={1000} data-tooltip-variant="success" className="mr pointer" onClick={() => copyToClipboard(e)}>{style}</div>
+                <div id="hexDiv" data-tooltip-id="color-div-tooltip-click" data-tooltip-delay-hide={1000} data-tooltip-variant="success" className="mr pointer" onClick={copyToClipboard}>{rgbToHex(style)}</div>
+                <div id="listItem" data-tooltip-id="color-div-tooltip-click" data-tooltip-delay-hide={1000} data-tooltip-variant="success" className="mr pointer" onClick={copyToClipboard}>{style}</div>
                 <p id="listDesc">used {data.count} time(s)</p>
             </div>
             <Tooltip
@@ -71,9 +71,7 @@ export const ImageElement = (name, prop) => {
         <div className={`${name}-container`} onClick={() => downloadImage(image.src)} >
                 <img 
                     loading='lazy'
-                    id="image-div" 
-                    className="mr pointer" 
-                    data-tooltip-id="image-div-tooltip-click" 
+                    id="image-div"
                     src={image.src}
                     alt={image.name} 
                 />
@@ -113,11 +111,47 @@ export const DefaultElement = (name, prop) => {
     )};
 
 export const NoItemsElement = (name) => {
+    const noImages = (
+        <div id='liContainer'>
+            <div id="listItem">
+                <Logos logo='no_images' />
+                There are No Images Found 
+            </div>
+        </div>
+    )
+    const noFonts = (
+        <div id='liContainer'>
+            <div id="listItem">
+                <Logos logo='no_fonts' />
+                There are No Fonts Found 
+            </div>
+        </div>
+    )
+    const noColors = (
+        <div id='liContainer'>
+            <div id="listItem">
+                <Logos logo='no_colors' />
+                There are No Colors Found 
+            </div>
+        </div>
+    )
+
+    const getNoItems = (name) => {
+        switch (name) {
+            case 'images':
+                return noImages;
+            case 'fonts':
+                return noFonts;
+            case 'colors':
+                return noColors;
+            default:
+                return null;
+        }
+    }
+
     return (
         <div className={`${name}-container`}>
-            <div id='liContainer'>
-                <div id="listItem"> No {name} items found </div>
-            </div>
+            {getNoItems(name)}
         </div>
     )
 };

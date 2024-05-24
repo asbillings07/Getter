@@ -18,7 +18,12 @@ const createNotification = (title, message, buttons = false, interaction = false
   if (buttons) {
     options.buttons = buttons;
   }
-  chrome.notifications.create(options);
+
+  chrome.notifications.getPermissionLevel((level) => {
+    if (level === 'granted') {
+      chrome.notifications.create(options);
+    }
+  })
 }
 
 const splitRgb = (rgbStr) => { 
@@ -64,13 +69,6 @@ const copyToClipboard = async (e) => {
 
   try {
     await navigator.clipboard.writeText(text);
-    createNotification(
-      'Copied to Clipboard!',
-      `${text} has been copied to the clipboard.`
-    );
-
-
-    // todo we want to show a tool tip if the user has copied the text
   } catch (err) {
     console.error('Failed to copy!', err);
   }
@@ -82,9 +80,7 @@ const downloadImage = async (image, callback) => {
 
 const downloadAllImages = (images) => {
   images.forEach((image) => {
-    downloadImage(image.src, (response) => {
-      console.log('Download Response', response);
-    });
+    downloadImage(image.src);
   });
 }
 

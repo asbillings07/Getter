@@ -20,7 +20,7 @@ import { setItem, getItem, createNotification } from '../../utils'
                     const settingId = e.target.id
                     if (checked) {
                         if (!settings.includes(settingId)) {
-                            setSettings([...settings, settingId])
+                            setSettings((prevState) => [...prevState, settingId])
                         }
                     }
 
@@ -40,9 +40,10 @@ import { setItem, getItem, createNotification } from '../../utils'
 
 
                 getItem('cssGetters', ({ cssGetters }) => {
-                    settings = cssGetters
-                    settings.forEach(setting => {
-                        document.getElementById(setting).checked = true
+                    setSettings(cssGetters)
+                    cssGetters.forEach(setting => {
+                        console.log(setting)
+                        // document.getElementById(setting).checked = true
                     })
                 })
 

@@ -46,12 +46,12 @@ export const Popup = () => {
         }
 
         return (
-            <>
+            <Suspense fallback={<div id='spinner'></div>}>
                 {
                     viewElements[propName] ?
-                        Children.toArray(viewElements[propName]) : NoItemsElement()
+                        Children.toArray(viewElements[propName]) : NoItemsElement(propName)
                 }
-            </>
+            </Suspense>
         )
     }
 
@@ -100,8 +100,6 @@ export const Popup = () => {
     }
 
     return (
-        <Suspense fallback={<div id='spinner'></div>}>
-            <div className='css-content'>{createView(cssData)}</div>
-        </Suspense>
+        <div className='css-content'>{createView(cssData)}</div>
     )
 }

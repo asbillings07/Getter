@@ -10,6 +10,7 @@ export const Logos = ({ logo, href, onclick }) => {
         fonts: 'logo',
         images: 'logo',
     });
+    const toolTipPlace = 'top'
 
     useEffect(() => {
         if (propName === 'colors') {
@@ -136,7 +137,7 @@ export const Logos = ({ logo, href, onclick }) => {
 
     const colors = (
         <button className={className.colors} style={{ border: 'none' }} data-tooltip-content={`${logo}`.toUpperCase()}
-            data-tooltip-place="right" data-tooltip-id="logo-tooltip" name='backgroundColor' onClick={handleColorClick}>
+             data-tooltip-id="logo-tooltip" name='backgroundColor' onClick={handleColorClick}>
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <path d="M19.3333 12C18.8029 12 18.2942 11.7893 17.9191 11.4142C17.544 11.0391 17.3333 10.5304 17.3333 10C17.3333 9.46957 17.544 8.96086 17.9191 8.58579C18.2942 8.21071 18.8029 8 19.3333 8C19.8638 8 20.3725 8.21071 20.7475 8.58579C21.1226 8.96086 21.3333 9.46957 21.3333 10C21.3333 10.5304 21.1226 11.0391 20.7475 11.4142C20.3725 11.7893 19.8638 12 19.3333 12ZM15.3333 6.66667C14.8029 6.66667 14.2942 6.45595 13.9191 6.08088C13.544 5.70581 13.3333 5.1971 13.3333 4.66667C13.3333 4.13623 13.544 3.62753 13.9191 3.25245C14.2942 2.87738 14.8029 2.66667 15.3333 2.66667C15.8638 2.66667 16.3725 2.87738 16.7475 3.25245C17.1226 3.62753 17.3333 4.13623 17.3333 4.66667C17.3333 5.1971 17.1226 5.70581 16.7475 6.08088C16.3725 6.45595 15.8638 6.66667 15.3333 6.66667ZM8.66667 6.66667C8.13623 6.66667 7.62753 6.45595 7.25245 6.08088C6.87738 5.70581 6.66667 5.1971 6.66667 4.66667C6.66667 4.13623 6.87738 3.62753 7.25245 3.25245C7.62753 2.87738 8.13623 2.66667 8.66667 2.66667C9.1971 2.66667 9.70581 2.87738 10.0809 3.25245C10.456 3.62753 10.6667 4.13623 10.6667 4.66667C10.6667 5.1971 10.456 5.70581 10.0809 6.08088C9.70581 6.45595 9.1971 6.66667 8.66667 6.66667ZM4.66667 12C4.13623 12 3.62753 11.7893 3.25245 11.4142C2.87738 11.0391 2.66667 10.5304 2.66667 10C2.66667 9.46957 2.87738 8.96086 3.25245 8.58579C3.62753 8.21071 4.13623 8 4.66667 8C5.1971 8 5.70581 8.21071 6.08088 8.58579C6.45595 8.96086 6.66667 9.46957 6.66667 10C6.66667 10.5304 6.45595 11.0391 6.08088 11.4142C5.70581 11.7893 5.1971 12 4.66667 12ZM12 0C8.8174 0 5.76516 1.26428 3.51472 3.51472C1.26428 5.76516 0 8.8174 0 12C0 15.1826 1.26428 18.2348 3.51472 20.4853C5.76516 22.7357 8.8174 24 12 24C12.5304 24 13.0391 23.7893 13.4142 23.4142C13.7893 23.0391 14 22.5304 14 22C14 21.48 13.8 21.0133 13.48 20.6667C13.1733 20.3067 12.9733 19.84 12.9733 19.3333C12.9733 18.8029 13.184 18.2942 13.5591 17.9191C13.9342 17.544 14.4429 17.3333 14.9733 17.3333H17.3333C19.1014 17.3333 20.7971 16.631 22.0474 15.3807C23.2976 14.1305 24 12.4348 24 10.6667C24 4.77333 18.6267 0 12 0Z" />
                 <defs>
@@ -153,7 +154,7 @@ export const Logos = ({ logo, href, onclick }) => {
 
     const fonts = (
         <button className={className.fonts} style={{ border: 'none' }} data-tooltip-content={`${logo}`.toUpperCase()}
-            data-tooltip-place="right" data-tooltip-id="logo-tooltip" name='fontFamily' onClick={handleFontClick}>
+            data-tooltip-id="logo-tooltip" name='fontFamily' onClick={handleFontClick}>
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <g clipPath="url(#clip0_155_76)">
                     <path fillRule="evenodd"
@@ -188,7 +189,6 @@ export const Logos = ({ logo, href, onclick }) => {
             style={{ border: 'none' }}
             data-tooltip-id="logo-tooltip"
             data-tooltip-content={`${logo}`.toUpperCase()}
-            data-tooltip-place="right"
             name='imageSource'
             onClick={handleImageClick}>
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="21" viewBox="0 0 24 21" fill="none">
@@ -217,22 +217,38 @@ export const Logos = ({ logo, href, onclick }) => {
         </button>
     )
 
+    const no_images = (
+        <svg xmlns="http://www.w3.org/2000/svg" width="33" height="33" viewBox="0 0 33 33" fill="none">
+            <g clipPath="url(#clip0_163_105)">
+                <path d="M28.91 4.93001C28.42 3.88001 27.37 3.22001 26.21 3.21001H6.20996C4.54996 3.21001 3.20996 4.55001 3.20996 6.21001V26.21C3.20996 27.37 3.87996 28.42 4.92996 28.91L6.62996 27.21H6.20996C5.65996 27.21 5.20996 26.76 5.20996 26.21V16.47L5.47996 16.35C7.04996 15.91 8.73996 16.35 9.88996 17.5L13.12 20.73L14.54 19.31L11.31 16.08C9.70996 14.5 7.39996 13.85 5.20996 14.37V6.21001C5.20996 5.66001 5.65996 5.21001 6.20996 5.21001H26.21C26.76 5.21001 27.21 5.66001 27.21 6.21001V6.63001L28.91 4.93001ZM27.21 9.46001V23.46L23.29 19.54C21.65 17.98 19.11 17.89 17.37 19.33L14.54 22.16L14.65 22.27L14.8 22.42C15.11 22.69 15.52 22.83 15.93 22.83C16.33 22.83 16.72 22.69 17.03 22.45L17.21 22.21L18.43 20.99C19.42 20.05 20.98 20.05 21.97 20.99L26.97 25.99C26.67 26.7 25.98 27.18 25.21 27.21H9.45996L7.45996 29.21H25.21C27.42 29.21 29.21 27.42 29.21 25.21V7.46001L27.21 9.46001Z" fill="#444444" />
+                <path d="M20.71 7.21001C18.22 7.21001 16.21 9.23001 16.21 11.71C16.21 13.26 17.01 14.69 18.32 15.52L19.8 14.04C18.51 13.54 17.88 12.09 18.38 10.8C18.88 9.51001 20.33 8.88001 21.62 9.38001C22.27 9.63001 22.78 10.15 23.04 10.8L24.52 9.32001C23.7 8.01001 22.26 7.21001 20.71 7.21001ZM25.21 11.47L20.47 16.21H20.71C23.19 16.21 25.2 14.19 25.21 11.71C25.21 11.63 25.21 11.55 25.21 11.47Z" fill="#444444" />
+                <path d="M31.0071 0.00310942L0.00756836 31.0027L1.42178 32.4169L32.4213 1.41732L31.0071 0.00310942Z" fill="#444444" />
+            </g>
+            <defs>
+                <clipPath id="clip0_163_105">
+                    <rect width="32.41" height="32.41" fill="white" />
+                </clipPath>
+            </defs>
+        </svg>
+    )
+
     const getLogo = (logo) => {
         return {
-            colors: colors,
-            fonts: fonts,
-            images: images,
-            header: header,
-            link: link,
-            download: download,
-            download_icon: download_icon
+            colors,
+            fonts,
+            images,
+            header,
+            link,
+            download,
+            download_icon,
+            no_images
         }[logo]
     }
 
     return (
         <>
             {getLogo(logo)}
-            <Tooltip id="logo-tooltip" />
+            <Tooltip id="logo-tooltip" positionStrategy="fixed" style={{ zIndex: 1000 }} place={toolTipPlace} />
         </>
     )
 }

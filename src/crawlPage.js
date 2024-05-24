@@ -64,7 +64,6 @@ export function crawlPage() {
 
   function getValuesFromPage(values, getStyleOnPage) {
     const styleObj = getStyleOnPage()
-    // console.log('STYLE OBJ', styleObj)
     chrome.runtime.sendMessage({ action: 'getState', payload: styleObj })
     setItem({ hasScriptRunOnPage: true })
   }
