@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { crawlPage } from './crawlPage';
+import { deepEqual, sortData } from '../utils';
 
 const GetterContext = createContext()
 
@@ -18,6 +19,8 @@ export function Provider({ children }) {
     const [propName, setPropName] = useState('fonts')
     const [currentTab, setCurrentTab] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [cssData, setCssData] = useState(null);
+    const [cssOptions, setCssOptions] = useState(null)
 
     useEffect(() => {
         const getCurrentTab = async () => {
@@ -33,6 +36,8 @@ export function Provider({ children }) {
         }
     }, [currentTab])
 
+    chrome.runtime.onMessage.addListener(onMessage);
+
     const onTabQuery = (tab) => {
         chrome.scripting.executeScript({
             target: { tabId: tab.id, allFrames: true},
@@ -40,12 +45,37 @@ export function Provider({ children }) {
         })
     }
 
+    function onMessage(request, sender, sendResponse) {
+        switch (request.action) {
+            case 'getState':
+                if (!deepEqual(sortData(request.payload), cssData)) {
+                    setCssData(sortData(request.payload));
+                }
+                break;
+            case 'getOptions':
+                setCssOptions(request.payload)
+                break
+            case 'getNotif':
+                createNotification(request.payload.title, request.payload.message);
+                break;
+            case 'getCurrentResults':
+                if (!deepEqual(sortData(request.payload), cssData)) {
+                    setCssData(sortData(request.payload));
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
     const value = {
         propName,
         setPropName,
         currentTab,
         loading, 
-        setLoading
+        setLoading,
+        cssData,
+        cssOptions
     }
 
     return <GetterContext.Provider value={value}>{children}</GetterContext.Provider>

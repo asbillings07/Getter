@@ -1,6 +1,37 @@
 /* global chrome  */
 import { getItem, setItem, createNotification } from '../utils/helperFunctions'
 
+
+const fontStyles = [
+  'fontFamily',
+  'fontWeight',
+  'fontSize',
+  'textSize',
+  'lineHeight',
+  'letterSpacing',
+  'color',
+  'backgroundColor',
+]
+
+const elementTags = [
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'header',
+  'nav',
+  'body',
+  'section',
+  'article',
+  'nav',
+  'aside',
+  'main',
+  'p',
+  'button'
+]
+
   const rule1 = {
     conditions: [
       new chrome.declarativeContent.PageStateMatcher({
@@ -9,18 +40,18 @@ import { getItem, setItem, createNotification } from '../utils/helperFunctions'
     ],
     actions: [new chrome.declarativeContent.ShowPageAction()]
   }
-  let cssValues
+  let getterOptions
 
-  getItem('cssGetters', ({ cssGetters }) => {
+getItem('cssGetterOptions', ({ cssGetterOptions }) => {
 
-    cssValues = cssGetters
+    getterOptions = cssGetterOptions
   })
 
   chrome.storage.onChanged.addListener((changes) => {
 
-    if ('cssGetters' in changes && changes.cssGetters.newValue) {
-      getItem('cssGetters', ({ cssGetters }) => {
-        cssValues = cssGetters
+    if ('cssGetterOptions' in changes && changes.cssGetterOptions.newValue) {
+      getItem('cssGetterOptions', ({ cssGetterOptions }) => {
+        getterOptions = cssGetterOptions
       })
     }
   })
@@ -40,8 +71,8 @@ import { getItem, setItem, createNotification } from '../utils/helperFunctions'
     sendResponse
   ) {
     switch (request.action) {
-      case 'getValues':
-        sendResponse({ getters: cssValues })
+      case 'getOptions':
+        sendResponse({ cssGetterOptions: getterOptions })
         break
       case 'getState':
         setItem({
@@ -63,16 +94,25 @@ import { getItem, setItem, createNotification } from '../utils/helperFunctions'
         currentImage: null,
         currentTab: tab,
         pageRefreshed: false,
-        cssGetters: [
-          'fontFamily',
-          'color',
-          'backgroundColor',
-          'images',
-          'backgroundImage'
-        ]
+        cssGetterOptions: {
+          fonts: {
+            fontStyles,
+            elementTags
+          },
+          colors: {
+            type: 'hex'
+          },
+          images: {
+            downloadAll: true,
+            ImageSize: true,
+            ImageDimensions: true
+          }
+        }
       })
     })
   })
+
+
 
 
   function onNotifButtonPress (id, buttonIdx) {

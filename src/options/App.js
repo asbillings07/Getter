@@ -8,8 +8,7 @@ export const App = () => {
         <div className='main'>
             <Header />
             <div className='main-container'>
-                <Sidebar />
-                <Popup />
+                <Options/>
             </div>
         </div>
     )

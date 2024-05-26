@@ -26,6 +26,35 @@ const createNotification = (title, message, buttons = false, interaction = false
   })
 }
 
+export const sortData = (cssObj) => {
+  const viewElements = {};
+  const sortFnCount = (a, b) => {
+    return a[1].count === b[1].count
+      ? 0
+      : a[1].count > b[1].count
+        ? -1
+        : 1
+  }
+  const sortFn = (a, b) => {
+    return a[0] === b[0]
+      ? 0
+      : a[0] < b[0]
+        ? -1
+        : 1
+  }
+
+  for (const type in cssObj) {
+    let sortedObjArr;
+    if (type === 'colors') {
+      sortedObjArr = Object.entries(cssObj[type]).sort(sortFnCount);
+    } else {
+      sortedObjArr = Object.entries(cssObj[type]).sort(sortFn);
+    }
+  }
+
+  return cssObj
+}
+
 const splitRgb = (rgbStr) => { 
   return rgbStr.split('(')[1].split(')').join('').split(',') ?? [];
 }

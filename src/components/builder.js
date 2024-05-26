@@ -1,7 +1,7 @@
 import React, { Children } from 'react';
-import { copyToClipboard, rgbToHex, hightLightFontOnPage, downloadImage, splitRgb } from './helperFunctions';
+import { copyToClipboard, rgbToHex, hightLightFontOnPage, downloadImage, splitRgb } from '../../utils/helperFunctions';
 import { Tooltip } from 'react-tooltip';
-import { Logos } from '../src/components/Logos';
+import { Logos } from './Logos';
 
 export const FontElement = (name, prop) => {
     const [element, data] = prop;
@@ -38,9 +38,9 @@ export const ColorElement = (name, prop) => {
     }
 
     return (
-            <div className={`${name}-container`} style={{ background: `${rgbToHex(style)}` }}>
+            <div className={`${name}-container`} style={{ background: `${style}` }}>
                 <div id="liContainer" className='li-color' style={{ color: setTextColor(style)}}>
-                <div id="hexDiv" data-tooltip-id="color-div-tooltip-click" data-tooltip-delay-hide={1000} data-tooltip-variant="success" className="mr pointer" onClick={copyToClipboard}>{rgbToHex(style)}</div>
+                <div id="hexDiv" data-tooltip-id="color-div-tooltip-click" data-tooltip-delay-hide={1000} data-tooltip-variant="success" className="mr pointer" onClick={copyToClipboard}>{data.colorOption}</div>
                 <div id="listItem" data-tooltip-id="color-div-tooltip-click" data-tooltip-delay-hide={1000} data-tooltip-variant="success" className="mr pointer" onClick={copyToClipboard}>{style}</div>
                 <p id="listDesc">used {data.count} time(s)</p>
             </div>

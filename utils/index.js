@@ -8,15 +8,17 @@ import {
     downloadAllImages,
     downloadImage,
     splitRgb,
-    createNotification
+    createNotification,
+    sortData
     
 } from './helperFunctions'
 
-import { ColorElement, ImageElement, BgImageElement, FontElement, DefaultElement, NoItemsElement } from './builder'
+import { ColorElement, ImageElement, BgImageElement, FontElement, DefaultElement, NoItemsElement } from '../src/components/builder'
 
 export {
     getItem,
     setItem,
+    sortData,
     rgbToHex,
     copyToClipboard,
     splitRgb,

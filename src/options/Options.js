@@ -4,17 +4,13 @@
 Options:
 
  Fonts:
- - Headings
- - Paragraphs
- - Buttons
- - Semantic (Article, Aside, etc)
+- fontStyles
+- Element Tags
 
 
  Colors:
- - Hex
- - RGB
- - HSL
- - Frequency
+  -hex
+  -hsl radio buttons
 
 
  Images:
@@ -26,18 +22,8 @@ Options:
 import React, { useState } from 'react';
 import { setItem, getItem, createNotification } from '../../utils'
         export const Options = () => {
-            const [settings, setSettings] = useState([])
+            const [settings, setSettings] = useState(null)
             
-                const getLabelName = (cssName) =>
-                ({
-                    backgroundColor: 'Background Color',
-                    color: 'Color',
-                    fontFamily: 'Font Family',
-                    fontWeight: 'Font Weight',
-                    fontSize: 'Font Size',
-                    imageSource: 'Image Source',
-                    backgroundImage: 'Background Image'
-                }[cssName])
 
                 function regClick(e) {
                     const checked = e.target.checked
@@ -57,27 +43,24 @@ import { setItem, getItem, createNotification } from '../../utils'
                 }
 
                 function saveSettings() {
-                    setItem({ cssGetters: settings }, () => {
+                    setItem({ cssGetterOptions: settings }, () => {
                         createNotification('Settings Saved Successfully', 'The settings have been updated and will take effect the next time you use the extension.')
                     })
                 }
 
 
-                getItem('cssGetters', ({ cssGetters }) => {
-                    setSettings(cssGetters)
-                    cssGetters.forEach(setting => {
-                        console.log(setting)
-                        // document.getElementById(setting).checked = true
-                    })
+                getItem('cssGetterOptions', ({ cssGetterOptions }) => {
+                    if (!settings) {
+                        console.log(cssGetterOptions)
+                        setSettings(cssGetterOptions)
+                    }
                 })
 
-            const createCheckBoxes = () => {
-                const labels = ['backgroundColor', 'color', 'fontFamily', 'fontSize', 'fontWeight', 'imageSource', 'backgroundImage']
+            const createCheckBoxes = (labels) => {
                 return labels.map(label => {
-                    const labelName = getLabelName(label)
                     return (
                         <div>
-                            <label className="label" htmlFor={label}>{labelName}</label>
+                            <label className="label" htmlFor={label}>{label}</label>
                             <input onChange={regClick} type="checkbox" id={label} />
                         </div>
                     )
@@ -85,10 +68,35 @@ import { setItem, getItem, createNotification } from '../../utils'
             }
 
             return (
+
                 <div>
                     <h4>What CSS properties would you like to search for? (check all that apply)</h4>
-                    <div id="anchor">
-                        {createCheckBoxes()}
+                    {
+                       settings ? ( <>
+                            <div className='font-container'>
+                                <div>Fonts:</div>
+                                <div>
+                                    {createCheckBoxes(settings['fonts'].elementTags)}
+                                </div>
+                                <div>
+                                    {createCheckBoxes(settings['fonts'].fontStyles)}
+                                </div>
+                            </div>
+                            <div className='image-container'>
+                                <div>Images:</div>
+                                <div>
+                                    {createCheckBoxes(Object.keys(settings['images']))}
+                                </div>
+                            </div>
+                        </>) : null
+                    }
+                    <div>
+                        <div></div>
+                        <div></div>
+                    </div>
+                    <div>
+                        <div></div>
+                        <div></div>
                     </div>
                     <div>
                         <button onClick={saveSettings} id="save">Save settings</button>
