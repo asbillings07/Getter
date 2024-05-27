@@ -10,7 +10,7 @@ export const FontView = () => {
 
     useEffect(() => {
         console.log('FONT VIEW', { cssData })
-        if (cssData !== null) {
+        if (cssData !== null || cssData !== undefined) {
             setLoading(false)
         }
     }, [cssData])
@@ -25,7 +25,7 @@ export const FontView = () => {
             return <div id='spinner'></div>
         }
 
-        if (fontData.length === 0) { 
+        if (!fontData) { 
             return <NotFound /> 
         }
 

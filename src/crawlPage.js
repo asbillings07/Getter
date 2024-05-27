@@ -97,6 +97,7 @@ export function crawlPage() {
       };
     }
     const nodes = document.body.getElementsByTagName('*');
+    console.log('NODES', nodes)
 
     Array.from(nodes).forEach((nodeElement, i) => {
       if (nodeElement.style) {
@@ -125,10 +126,9 @@ export function crawlPage() {
     const { nodeElement, allStyles } = elementInfo;
 
     // const backgroundImage = getComputedStyle(nodeElement, '')['background-image'].includes('url') ? getComputedStyle(nodeElement, '')['background-image'] : null
-    // console.log('BG IMAGE', backgroundImage)
-    const elementTags = options?.fonts?.elementTags ?? defaultElementTags;
+    // consle.log('BG IMAGE', backgroundImage)
 
-    if (elementTags.includes(nodeElement.localName)) {
+    if (defaultElementTags.includes(nodeElement.localName)) {
       handleTagStyles(allStyles, 'fonts', nodeElement)
     }
 
@@ -170,9 +170,8 @@ export function crawlPage() {
       id: getId(nodeElement),
     };
     allStyles[key] = allStyles[key] || {}
-    const fontStyles = options.fonts?.fontSTyles ?? defaultFontStyles
 
-    fontStyles.forEach(style => {
+    defaultFontStyles.forEach(style => {
       const styleVal = getComputedStyle(nodeElement, '')[style]
       if (styleVal) {
         if (style === 'fontFamily') {

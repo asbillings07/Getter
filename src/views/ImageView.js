@@ -24,7 +24,7 @@ export const ImageView = () => {
             return <div id='spinner'></div>
         }
 
-        if (imageData.length === 0) { 
+        if (!imageData) { 
             return <NotFound />
         }
         

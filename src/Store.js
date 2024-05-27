@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { crawlPage } from './crawlPage';
 import { deepEqual, sortData, setItem } from './utils';
 
 const GetterContext = createContext()
@@ -36,26 +35,10 @@ export function Provider({ children }) {
     }
 
     const [propName, setPropName] = useState('fonts')
-    const [currentTab, setCurrentTab] = useState(null);
     const [loading, setLoading] = useState(true);
     const [cssData, setCssData] = useState(null);
     const [hasScriptRun, setHasScriptRun] = useState(false);
     const [cssOptions, setCssOptions] = useState(initialOptionState)
-
-    useEffect(() => {
-        const getCurrentTab = async () => {
-            let queryOptions = { active: true, currentWindow: true };
-            let [tab] = await chrome.tabs.query(queryOptions);
-            setCurrentTab(tab)
-        }
-
-        if (currentTab && !hasScriptRun) {
-            onTabQuery(currentTab);
-            setHasScriptRun(true);
-        } else {
-            getCurrentTab();
-        }
-    }, [currentTab])
 
     useEffect(() => {
         if (cssData === null) {
@@ -64,13 +47,6 @@ export function Provider({ children }) {
     }, [cssData])
 
     chrome.runtime.onMessage.addListener(onMessage);
-
-    const onTabQuery = (tab) => {
-        chrome.scripting.executeScript({
-            target: { tabId: tab.id, allFrames: true},
-            func: crawlPage
-        })
-    }
 
     function onMessage(request, sender, sendResponse) {
         switch (request.action) {
@@ -108,7 +84,6 @@ export function Provider({ children }) {
     const value = {
         propName,
         setPropName,
-        currentTab,
         loading, 
         setLoading,
         cssData,

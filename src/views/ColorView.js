@@ -43,7 +43,7 @@ export const ColorView = () => {
             return <div id='spinner'></div>
         }
 
-        if (colorData.length === 0) {
+        if (!colorData) {
             return <NotFound />
         }
 
