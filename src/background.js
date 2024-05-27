@@ -40,21 +40,16 @@ const elementTags = [
     ],
     actions: [new chrome.declarativeContent.ShowPageAction()]
   }
-  let getterOptions
 
-getItem('cssGetterOptions', ({ cssGetterOptions }) => {
 
-    getterOptions = cssGetterOptions
-  })
+  // chrome.storage.onChanged.addListener((changes) => {
 
-  chrome.storage.onChanged.addListener((changes) => {
-
-    if ('cssGetterOptions' in changes && changes.cssGetterOptions.newValue) {
-      getItem('cssGetterOptions', ({ cssGetterOptions }) => {
-        getterOptions = cssGetterOptions
-      })
-    }
-  })
+  //   if ('cssGetterOptions' in changes && changes.cssGetterOptions.newValue) {
+  //     getItem('cssGetterOptions', ({ cssGetterOptions }) => {
+  //       getterOptions = cssGetterOptions
+  //     })
+  //   }
+  // })
 
   chrome.webNavigation.onDOMContentLoaded.addListener((object) => {
     setItem({ hasScriptRunOnPage: false })

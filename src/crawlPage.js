@@ -14,7 +14,9 @@ export function crawlPage() {
   ]);
 
   const isObjEmpty = (obj) => {
-    return obj === null || Object.entries(obj).length === 0;
+    if (obj === null || obj === undefined) return true
+
+    return Object.entries(obj).length === 0;
   }
 
   let options = {}
@@ -85,6 +87,7 @@ export function crawlPage() {
   function getValuesFromPage(getStyleOnPage) {
     const styleObj = getStyleOnPage()
     if (!isObjEmpty(styleObj)) {
+      console.log('STYLE OBJ', styleObj)
       chrome.runtime.sendMessage({ action: 'getState', payload: styleObj })
       setItem({ hasScriptRunOnPage: true })
     }
@@ -96,19 +99,22 @@ export function crawlPage() {
         return elem.currentStyle;
       };
     }
-    const nodes = document.body.getElementsByTagName('*');
-    console.log('NODES', nodes)
+    const nodes = Array.from(document.body.querySelectorAll('*'));
 
-    Array.from(nodes).forEach((nodeElement, i) => {
-      if (nodeElement.style) {
-        captureEls({ nodeElement, allStyles });
-        if (pseudoEl) {
-          capturePseudoEls({ pseudoEl, allStyles, nodeElement });
-        }
-      }
-    });
+    if (nodes.length > 1000) {
+        console.log('NODES', nodes)
 
-    return allStyles;
+        Array.from(nodes).forEach((nodeElement, i) => {
+          if (nodeElement.style) {
+            captureEls({ nodeElement, allStyles });
+            if (pseudoEl) {
+              capturePseudoEls({ pseudoEl, allStyles, nodeElement });
+            }
+          }
+        });
+
+        return allStyles;
+    }
   }
 
   function capturePseudoEls(elementInfo) {
@@ -149,17 +155,15 @@ export function crawlPage() {
     if (allStyles.colors[color]) {
       allStyles.colors[color].count += 1
     } else {
-      allStyles.colors[color] = { id: getId(nodeElement), count: 1, colorOption: convertRgb(options.colors.type, bgColor)}
+      allStyles.colors[color] = { id: getId(nodeElement), count: 1, hex: rgbToHex(color)}
       nodeElement.dataset.styleId = `${allStyles.colors[color].id}`
-      
-      
     }
 
     if (allStyles.colors[color] !== bgColor) { 
       if (allStyles.colors[bgColor]) {
         allStyles.colors[bgColor].count += 1
       } else {
-        allStyles.colors[bgColor] = { id: getId(nodeElement), count: 1, colorOption: convertRgb(options.colors.type, bgColor)}
+        allStyles.colors[bgColor] = { id: getId(nodeElement), count: 1, hex: rgbToHex(bgColor)}
         nodeElement.dataset.styleId = `${allStyles.colors[bgColor].id}`
       }
     }

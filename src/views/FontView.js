@@ -4,18 +4,18 @@ import { hightLightFontOnPage } from '../utils';
 import { ViewHeader, NotFound } from '../components';
 import { Logos } from '../components/Logos';
 
-export const FontView = () => {
+export const FontView = ({ data }) => {
     const FONTS = 'fonts'
-    const { cssData, propName, loading, setLoading } = useGetterContext()
+    const { propName, loading, setLoading } = useGetterContext()
 
     useEffect(() => {
-        console.log('FONT VIEW', { cssData })
-        if (cssData !== null || cssData !== undefined) {
+        console.log('FONT VIEW', { data })
+        if (data !== null || data !== undefined) {
             setLoading(false)
         }
-    }, [cssData])
+    }, [data])
 
-    const fontData = cssData?.fonts && Object.entries(cssData?.fonts)
+    const fontData = data?.fonts && Object.entries(data?.fonts)
 
     const shouldRender = FONTS === propName && fontData ? true : false;
 

@@ -13,7 +13,7 @@ export const Header = () => {
 export const ViewHeader = ({ title, downloadAll = false }) => { 
   return (
     <div className='h1-container'>
-      <div>
+      <div className='title-container'>
         <h1>{title}</h1>
         { downloadAll && <Logos logo='download' onclick={() => downloadAllImages(cssData['images'])} /> }
       </div>

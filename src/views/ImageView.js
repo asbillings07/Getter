@@ -4,11 +4,11 @@ import { Logos } from '../components/Logos';
 import { NotFound, ViewHeader } from '../components';
 import { downloadImage } from '../utils';
 
-export const ImageView = () => {
-    const { cssData, propName, loading } = useGetterContext()
+export const ImageView = ({ data }) => {
+    const { propName, loading } = useGetterContext()
     const IMAGES = 'images'
     
-    const imageData = cssData?.images
+    const imageData = data?.images
 
     const shouldRender = propName === IMAGES && imageData ? true : false;
 

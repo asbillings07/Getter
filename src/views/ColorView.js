@@ -2,10 +2,10 @@ import React, { Children, useState, useEffect } from 'react'
 import { useGetterContext } from '../Store';
 import { ViewHeader, NotFound } from '../components';
 import { Tooltip } from 'react-tooltip';
-import { copyToClipboard, splitRgb } from '../utils';
+import { copyToClipboard, rgbToHex, splitRgb } from '../utils';
 
-export const ColorView = () => {
-    const { cssData, propName, loading } = useGetterContext()
+export const ColorView = ({ data }) => {
+    const { propName, loading } = useGetterContext()
     const [isOpen, setIsOpen ] = useState(false)
     const [color, setColor] = useState('')
 
@@ -19,7 +19,7 @@ export const ColorView = () => {
 
 
     const COLORS = 'colors'
-    const colorData = cssData?.colors && Object.entries(cssData.colors);
+    const colorData = data?.colors && Object.entries(data.colors);
 
     const shouldRender = COLORS === propName && colorData ? true : false;
 
@@ -50,7 +50,7 @@ export const ColorView = () => {
           return Children.toArray(colorData.map(([style, data]) => (
                 <div className={`${COLORS}-container`} style={{ background: `${style}` }}>
                     <div id="liContainer" className='li-color' style={{ color: setTextColor(style) }}>
-                        <div id="hexDiv" data-tooltip-id="color-div-tooltip-click" data-tooltip-variant="success" className="mr pointer" onClick={handleColorClick}>{data.hex}</div>
+                        <div id="hexDiv" data-tooltip-id="color-div-tooltip-click" data-tooltip-variant="success" className="mr pointer" onClick={handleColorClick}>{rgbToHex(style)}</div>
                         <div id="listItem" data-tooltip-id="color-div-tooltip-click" data-tooltip-variant="success" className="mr pointer" onClick={handleColorClick}>{style}</div>
                         <p id="listDesc">used {data.count} time(s)</p>
                     </div>

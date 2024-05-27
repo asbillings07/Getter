@@ -464,8 +464,10 @@ input[type=checkbox]:checked + label:before {
 }
 
 .h1-container:has(button) {
-  display: flex;
-  align-items: center;
+  .title-container {
+    display: flex;
+    align-items: center;
+  }
 }
 
 #bgDiv {

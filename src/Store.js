@@ -1,5 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
-import { deepEqual, sortData, setItem } from './utils';
+import React, { createContext, useContext, useState } from 'react'
 
 const GetterContext = createContext()
 
@@ -36,57 +35,14 @@ export function Provider({ children }) {
 
     const [propName, setPropName] = useState('fonts')
     const [loading, setLoading] = useState(true);
-    const [cssData, setCssData] = useState(null);
-    const [hasScriptRun, setHasScriptRun] = useState(false);
     const [cssOptions, setCssOptions] = useState(initialOptionState)
 
-    useEffect(() => {
-        if (cssData === null) {
-            setLoading(true);
-        }
-    }, [cssData])
-
-    chrome.runtime.onMessage.addListener(onMessage);
-
-    function onMessage(request, sender, sendResponse) {
-        switch (request.action) {
-            case 'getState':
-                console.log('GET STATE', request.payload)
-                if (!deepEqual(sortData(request.payload), cssData)) {
-                    setCssData(sortData(prevState => {
-                        if (prevState !== null) {
-                            setItem({
-                                [sender.tab.url]: request.payload,
-                                currentResults: { ...request.payload, ...prevState }
-                            })
-                            return { ...request.payload, ...prevState }
-                        }
-                    }));
-                }
-                break;
-            case 'getOptions':
-                setCssOptions({ ...initialOptionState, ...request.payload })
-                break
-            case 'getNotif':
-                createNotification(request.payload.title, request.payload.message);
-                break;
-            case 'getCurrentResults':
-                console.log('GET CURRENT RESULTS', request.payload)
-                if (!deepEqual(sortData(request.payload), cssData)) {
-                    setCssData(sortData(prevState => ({ ...prevState, ...request.payload })));
-                }
-                break;
-            default:
-                break;
-        }
-    }
 
     const value = {
         propName,
         setPropName,
         loading, 
         setLoading,
-        cssData,
         cssOptions,
         setCssOptions
     }
