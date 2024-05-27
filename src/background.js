@@ -1,5 +1,5 @@
 /* global chrome  */
-import { getItem, setItem, createNotification } from '../utils/helperFunctions'
+import { getItem, setItem, createNotification } from './utils/helperFunctions'
 
 
 const fontStyles = [
@@ -65,25 +65,25 @@ getItem('cssGetterOptions', ({ cssGetterOptions }) => {
     setItem({ hasScriptRunOnPage: false })
   })
 
-  chrome.runtime.onMessage.addListener(function (
-    request,
-    sender,
-    sendResponse
-  ) {
-    switch (request.action) {
-      case 'getOptions':
-        sendResponse({ cssGetterOptions: getterOptions })
-        break
-      case 'getState':
-        setItem({
-          [sender.tab.url]: request.payload,
-          currentResults: request.payload
-        })
-        break
-      default:
-        break
-    }
-  })
+  // chrome.runtime.onMessage.addListener(function (
+  //   request,
+  //   sender,
+  //   sendResponse
+  // ) {
+  //   switch (request.action) {
+  //     case 'getOptions':
+  //       sendResponse({ cssGetterOptions: getterOptions })
+  //       break
+  //     case 'getState':
+  //       setItem({
+  //         [sender.tab.url]: request.payload,
+  //         currentResults: request.payload
+  //       })
+  //       break
+  //     default:
+  //       break
+  //   }
+  // })
 
   chrome.runtime.onInstalled.addListener(function () {
     chrome.declarativeContent.onPageChanged.removeRules(undefined, async function () {
@@ -96,16 +96,20 @@ getItem('cssGetterOptions', ({ cssGetterOptions }) => {
         pageRefreshed: false,
         cssGetterOptions: {
           fonts: {
-            fontStyles,
-            elementTags
+            fontFamily: true,
+            fontWeight: true,
+            fontSize: true,
+            letterSpacing: true,
+            lineHeight: true,
           },
           colors: {
-            type: 'hex'
+            rgb: true,
+            hex: true,
+            buttonColor: true
           },
           images: {
-            downloadAll: true,
-            ImageSize: true,
-            ImageDimensions: true
+            fileSize: true,
+            imageDimensions: true
           }
         }
       })

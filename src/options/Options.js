@@ -20,7 +20,7 @@ Options:
 
 */
 import React, { useState } from 'react';
-import { setItem, getItem, createNotification } from '../../utils'
+import { setItem, getItem, createNotification } from '../utils'
         export const Options = () => {
             const [settings, setSettings] = useState(null)
             

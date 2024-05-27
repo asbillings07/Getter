@@ -1,16 +1,27 @@
-import React, { Children, useEffect} from 'react'
+import React, { Children, useState, useEffect } from 'react'
 import { useGetterContext } from '../Store';
+import { ViewHeader, NotFound } from '../components';
 import { Tooltip } from 'react-tooltip';
-import { copyToClipboard, splitRgb } from '../../utils';
+import { copyToClipboard, splitRgb } from '../utils';
 
 export const ColorView = () => {
-    const { cssData, propName } = useGetterContext()
+    const { cssData, propName, loading } = useGetterContext()
+    const [isOpen, setIsOpen ] = useState(false)
+    const [color, setColor] = useState('')
+
+    useEffect(() => {
+        if (isOpen) {
+            setTimeout(() => {
+                setIsOpen(false)
+            }, 1000)
+        }
+    }, [color])
+
+
     const COLORS = 'colors'
-    const colorData = cssData?.colors ? Object.entries(cssData.colors) : null;
+    const colorData = cssData?.colors && Object.entries(cssData.colors);
 
     const shouldRender = COLORS === propName && colorData ? true : false;
-
-    console.log('ColorData', shouldRender)
 
     const setTextColor = (style) => {
         const rgbValue = splitRgb(style);
@@ -20,28 +31,44 @@ export const ColorView = () => {
         return (color > 125) ? 'black' : 'white';
     }
 
-    return shouldRender && (
-        <>
-            <div className='h1-container'>
-                <h1>{COLORS.toUpperCase()}</h1>
-            </div>
-            <div className='divider'></div>
-            <div id={`main-${COLORS}-container`}>
-                {Children.toArray(colorData.map(([style, data]) => (
-                    <div className={`${COLORS}-container`} style={{ background: `${style}` }}>
-                        <div id="liContainer" className='li-color' style={{ color: setTextColor(style) }}>
-                            <div id="hexDiv" data-tooltip-id="color-div-tooltip-click" data-tooltip-delay-hide={1000} data-tooltip-variant="success" className="mr pointer" onClick={copyToClipboard}>{data.colorOption}</div>
-                            <div id="listItem" data-tooltip-id="color-div-tooltip-click" data-tooltip-delay-hide={1000} data-tooltip-variant="success" className="mr pointer" onClick={copyToClipboard}>{style}</div>
-                            <p id="listDesc">used {data.count} time(s)</p>
-                        </div>
-                        <Tooltip
-                            id="color-div-tooltip-click"
-                            content="Color copied to clipboard!"
-                            openOnClick={true}
-                        />
+    const handleColorClick = (e) => {
+        setColor(e.target.innerText)
+        setIsOpen(true)
+        copyToClipboard(e)
+    }
+
+    const renderColor = () => {
+
+        if (loading) {
+            return <div id='spinner'></div>
+        }
+
+        if (colorData.length === 0) {
+            return <NotFound />
+        }
+
+          return Children.toArray(colorData.map(([style, data]) => (
+                <div className={`${COLORS}-container`} style={{ background: `${style}` }}>
+                    <div id="liContainer" className='li-color' style={{ color: setTextColor(style) }}>
+                        <div id="hexDiv" data-tooltip-id="color-div-tooltip-click" data-tooltip-variant="success" className="mr pointer" onClick={handleColorClick}>{data.hex}</div>
+                        <div id="listItem" data-tooltip-id="color-div-tooltip-click" data-tooltip-variant="success" className="mr pointer" onClick={handleColorClick}>{style}</div>
+                        <p id="listDesc">used {data.count} time(s)</p>
                     </div>
-                )))}
+                    <Tooltip
+                        id="color-div-tooltip-click"
+                        content={`${color} copied to clipboard!`}
+                        isOpen={isOpen}
+                    />
+                </div>
+            )))
+    }
+
+    return shouldRender && (
+       <>
+            <ViewHeader title={COLORS.toUpperCase()} />
+            <div id={`main-${COLORS}-container`}>
+                {renderColor()}
             </div>
-        </>
+        </> 
     );
 }

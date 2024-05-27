@@ -1,5 +1,5 @@
 import React, { Children } from 'react';
-import { copyToClipboard, rgbToHex, hightLightFontOnPage, downloadImage, splitRgb } from '../../utils/helperFunctions';
+import { copyToClipboard, rgbToHex, hightLightFontOnPage, downloadImage, splitRgb } from '../utils/helperFunctions';
 import { Tooltip } from 'react-tooltip';
 import { Logos } from './Logos';
 

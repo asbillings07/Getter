@@ -1,15 +1,16 @@
 import React, { Children } from 'react'
 import { useGetterContext } from '../Store';
 import { Logos } from '../components/Logos';
-import { downloadAllImages, downloadImage } from '../../utils';
+import { NotFound, ViewHeader } from '../components';
+import { downloadImage } from '../utils';
 
 export const ImageView = () => {
-    const { cssData, propName } = useGetterContext()
+    const { cssData, propName, loading } = useGetterContext()
     const IMAGES = 'images'
-
+    
     const imageData = cssData?.images
 
-    const shouldRender = propName === IMAGES && imageData
+    const shouldRender = propName === IMAGES && imageData ? true : false;
 
     const getImageSize = async (url) => {
         const res = await fetch(url);
@@ -17,40 +18,50 @@ export const ImageView = () => {
         return `${Math.floor(blob.size / 1024)}MB`
     };
 
-    return shouldRender && (
-        <>
-            <div className='h1-container'>
-                <h1>{IMAGES.toUpperCase()}</h1>
-                <Logos logo='download' onclick={() => downloadAllImages(cssData['images'])} />
-            </div>
-            <div className='divider'></div>
-            <div id={`main-${IMAGES}-container`}>
-                {Children.toArray(imageData.map((image) => {
+    const renderImages = () => {
 
-                    getImageSize(image.src).then(size => {
-                        image.size = size;
-                    })
+        if (loading) {
+            return <div id='spinner'></div>
+        }
 
-                    return (
-                        <div className={`${IMAGES}-container`} onClick={() => downloadImage(image.src)} >
-                            <img
-                                loading='lazy'
-                                id="image-div"
-                                src={image.src}
-                                alt={image.name}
-                            />
-                            <div id='image-overlay'>
-                                <Logos logo='download_icon' />
-                                <div id='image-name'>
-                                    {image.name}
-                                </div>
-                                <div id='image-size'>
-                                    {image.size}
-                                </div>
+        if (imageData.length === 0) { 
+            return <NotFound />
+        }
+        
+         return Children.toArray(imageData.map((image) => {
+
+                getImageSize(image.src).then(size => {
+                    image.size = size;
+                })
+
+                return (
+                    <div className={`${IMAGES}-container`} onClick={() => downloadImage(image.src)} >
+                        <img
+                            loading='lazy'
+                            id="image-div"
+                            src={image.src}
+                            alt={image.name}
+                        />
+                        <div id='image-overlay'>
+                            <Logos logo='download_icon' />
+                            <div id='image-name'>
+                                {image.name}
+                            </div>
+                            <div id='image-size'>
+                                {image.size}
                             </div>
                         </div>
-                    )
-                }))}
+                    </div>
+                )
+            }))
+        
+    }
+
+    return shouldRender && (
+        <>
+            <ViewHeader title={IMAGES.toUpperCase()} downloadAll={true} />
+            <div id={`main-${IMAGES}-container`}>
+                {renderImages()}
             </div>
         </>
     );

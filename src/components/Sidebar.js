@@ -6,6 +6,10 @@ export const Sidebar = () => {
       <Logos logo='fonts' />
       <Logos logo='colors' />
       <Logos logo='images' />
+      <div id='settings-info-container'>
+        <Logos logo='info' />
+        <Logos logo='settings' />
+      </div>
     </div>
   )
 }

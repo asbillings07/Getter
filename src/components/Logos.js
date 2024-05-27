@@ -4,48 +4,53 @@ import { useGetterContext } from '../Store'
 
 
 export const Logos = ({ logo, href, onclick }) => {
-    const { setPropName, propName } = useGetterContext()
-    const [className, setClassName] = useState({
+    const initialState = {
         colors: 'logo',
         fonts: 'logo',
         images: 'logo',
-    });
+        info: 'logo',
+        settings: 'logo'
+    }
+    const { setPropName, propName } = useGetterContext()
+    const [className, setClassName] = useState(initialState);
     const toolTipPlace = 'top'
 
     useEffect(() => {
-        if (propName === 'colors') {
-            setClassName({
-                colors: 'logo active',
-                fonts: 'logo',
-                images: 'logo',
-            })
-        } else if (propName === 'fonts') {
-            setClassName({
-                colors: 'logo',
-                fonts: 'logo active',
-                images: 'logo',
-            })
-        } else if (propName === 'images') {
-            setClassName({
-                colors: 'logo',
-                fonts: 'logo',
-                images: 'logo active',
-            })
+        switch (propName) {
+            case 'colors':
+                setClassName(({
+                    ...initialState,
+                    colors: 'logo active',
+                }));
+                break;
+            case 'fonts':
+                setClassName({
+                    ...initialState,
+                    fonts: 'logo active',
+                });
+                break;
+            case 'images':
+                setClassName({
+                    ...initialState,
+                    images: 'logo active',
+                });
+                break;
+            case 'info':
+                setClassName({
+                    ...initialState,
+                    info: 'logo active',
+                });
+                break;
+            case 'settings':
+                setClassName({
+                    ...initialState,
+                    settings: 'logo active',
+                });
+                break;
         }
     }, [propName])
 
-    const handleColorClick = () => {
-        setPropName('colors')
-    }
-
-    const handleFontClick = () => {
-        setPropName('fonts')
-    }
-
-    const handleImageClick = () => {
-        setPropName('images')
-    }
-
+    const handleLogoClick = (e) => setPropName(e.target.id)
 
     const header = (
         <svg width="154" height="50" viewBox="0 0 154 50" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -136,10 +141,10 @@ export const Logos = ({ logo, href, onclick }) => {
     )
 
     const colors = (
-        <button className={className.colors} style={{ border: 'none' }} data-tooltip-content={`${logo}`.toUpperCase()}
-             data-tooltip-id="logo-tooltip" name='backgroundColor' onClick={handleColorClick}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M19.3333 12C18.8029 12 18.2942 11.7893 17.9191 11.4142C17.544 11.0391 17.3333 10.5304 17.3333 10C17.3333 9.46957 17.544 8.96086 17.9191 8.58579C18.2942 8.21071 18.8029 8 19.3333 8C19.8638 8 20.3725 8.21071 20.7475 8.58579C21.1226 8.96086 21.3333 9.46957 21.3333 10C21.3333 10.5304 21.1226 11.0391 20.7475 11.4142C20.3725 11.7893 19.8638 12 19.3333 12ZM15.3333 6.66667C14.8029 6.66667 14.2942 6.45595 13.9191 6.08088C13.544 5.70581 13.3333 5.1971 13.3333 4.66667C13.3333 4.13623 13.544 3.62753 13.9191 3.25245C14.2942 2.87738 14.8029 2.66667 15.3333 2.66667C15.8638 2.66667 16.3725 2.87738 16.7475 3.25245C17.1226 3.62753 17.3333 4.13623 17.3333 4.66667C17.3333 5.1971 17.1226 5.70581 16.7475 6.08088C16.3725 6.45595 15.8638 6.66667 15.3333 6.66667ZM8.66667 6.66667C8.13623 6.66667 7.62753 6.45595 7.25245 6.08088C6.87738 5.70581 6.66667 5.1971 6.66667 4.66667C6.66667 4.13623 6.87738 3.62753 7.25245 3.25245C7.62753 2.87738 8.13623 2.66667 8.66667 2.66667C9.1971 2.66667 9.70581 2.87738 10.0809 3.25245C10.456 3.62753 10.6667 4.13623 10.6667 4.66667C10.6667 5.1971 10.456 5.70581 10.0809 6.08088C9.70581 6.45595 9.1971 6.66667 8.66667 6.66667ZM4.66667 12C4.13623 12 3.62753 11.7893 3.25245 11.4142C2.87738 11.0391 2.66667 10.5304 2.66667 10C2.66667 9.46957 2.87738 8.96086 3.25245 8.58579C3.62753 8.21071 4.13623 8 4.66667 8C5.1971 8 5.70581 8.21071 6.08088 8.58579C6.45595 8.96086 6.66667 9.46957 6.66667 10C6.66667 10.5304 6.45595 11.0391 6.08088 11.4142C5.70581 11.7893 5.1971 12 4.66667 12ZM12 0C8.8174 0 5.76516 1.26428 3.51472 3.51472C1.26428 5.76516 0 8.8174 0 12C0 15.1826 1.26428 18.2348 3.51472 20.4853C5.76516 22.7357 8.8174 24 12 24C12.5304 24 13.0391 23.7893 13.4142 23.4142C13.7893 23.0391 14 22.5304 14 22C14 21.48 13.8 21.0133 13.48 20.6667C13.1733 20.3067 12.9733 19.84 12.9733 19.3333C12.9733 18.8029 13.184 18.2942 13.5591 17.9191C13.9342 17.544 14.4429 17.3333 14.9733 17.3333H17.3333C19.1014 17.3333 20.7971 16.631 22.0474 15.3807C23.2976 14.1305 24 12.4348 24 10.6667C24 4.77333 18.6267 0 12 0Z" />
+        <button className={className.colors} id='colors' style={{ border: 'none' }} data-tooltip-content={`${logo}`.toUpperCase()}
+             data-tooltip-id="logo-tooltip" name='backgroundColor' onClick={handleLogoClick}>
+            <svg id='colors' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path id='colors' d="M19.3333 12C18.8029 12 18.2942 11.7893 17.9191 11.4142C17.544 11.0391 17.3333 10.5304 17.3333 10C17.3333 9.46957 17.544 8.96086 17.9191 8.58579C18.2942 8.21071 18.8029 8 19.3333 8C19.8638 8 20.3725 8.21071 20.7475 8.58579C21.1226 8.96086 21.3333 9.46957 21.3333 10C21.3333 10.5304 21.1226 11.0391 20.7475 11.4142C20.3725 11.7893 19.8638 12 19.3333 12ZM15.3333 6.66667C14.8029 6.66667 14.2942 6.45595 13.9191 6.08088C13.544 5.70581 13.3333 5.1971 13.3333 4.66667C13.3333 4.13623 13.544 3.62753 13.9191 3.25245C14.2942 2.87738 14.8029 2.66667 15.3333 2.66667C15.8638 2.66667 16.3725 2.87738 16.7475 3.25245C17.1226 3.62753 17.3333 4.13623 17.3333 4.66667C17.3333 5.1971 17.1226 5.70581 16.7475 6.08088C16.3725 6.45595 15.8638 6.66667 15.3333 6.66667ZM8.66667 6.66667C8.13623 6.66667 7.62753 6.45595 7.25245 6.08088C6.87738 5.70581 6.66667 5.1971 6.66667 4.66667C6.66667 4.13623 6.87738 3.62753 7.25245 3.25245C7.62753 2.87738 8.13623 2.66667 8.66667 2.66667C9.1971 2.66667 9.70581 2.87738 10.0809 3.25245C10.456 3.62753 10.6667 4.13623 10.6667 4.66667C10.6667 5.1971 10.456 5.70581 10.0809 6.08088C9.70581 6.45595 9.1971 6.66667 8.66667 6.66667ZM4.66667 12C4.13623 12 3.62753 11.7893 3.25245 11.4142C2.87738 11.0391 2.66667 10.5304 2.66667 10C2.66667 9.46957 2.87738 8.96086 3.25245 8.58579C3.62753 8.21071 4.13623 8 4.66667 8C5.1971 8 5.70581 8.21071 6.08088 8.58579C6.45595 8.96086 6.66667 9.46957 6.66667 10C6.66667 10.5304 6.45595 11.0391 6.08088 11.4142C5.70581 11.7893 5.1971 12 4.66667 12ZM12 0C8.8174 0 5.76516 1.26428 3.51472 3.51472C1.26428 5.76516 0 8.8174 0 12C0 15.1826 1.26428 18.2348 3.51472 20.4853C5.76516 22.7357 8.8174 24 12 24C12.5304 24 13.0391 23.7893 13.4142 23.4142C13.7893 23.0391 14 22.5304 14 22C14 21.48 13.8 21.0133 13.48 20.6667C13.1733 20.3067 12.9733 19.84 12.9733 19.3333C12.9733 18.8029 13.184 18.2942 13.5591 17.9191C13.9342 17.544 14.4429 17.3333 14.9733 17.3333H17.3333C19.1014 17.3333 20.7971 16.631 22.0474 15.3807C23.2976 14.1305 24 12.4348 24 10.6667C24 4.77333 18.6267 0 12 0Z" />
                 <defs>
                     <linearGradient id="logo-gradient" x1="0" y1="12" x2="24" y2="12" gradientUnits="userSpaceOnUse">
                         <stop stopColor="#912381" />
@@ -154,10 +159,10 @@ export const Logos = ({ logo, href, onclick }) => {
 
     const fonts = (
         <button className={className.fonts} style={{ border: 'none' }} data-tooltip-content={`${logo}`.toUpperCase()}
-            data-tooltip-id="logo-tooltip" name='fontFamily' onClick={handleFontClick}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+            data-tooltip-id="logo-tooltip" id='fonts' onClick={handleLogoClick}>
+            <svg id='fonts' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <g clipPath="url(#clip0_155_76)">
-                    <path fillRule="evenodd"
+                    <path id='fonts' fillRule="evenodd"
                         clipRule="evenodd"
                         d="M1.6 0C0.717333 0 0 0.717333 0 1.6V22.4C0 23.2827 0.717333 24 1.6 24H22.4C23.2827 24 24 23.2827 
                   24 22.4V1.6C24 0.717333 23.2827 0 22.4 0H1.6ZM5.33333 4C4.59733 4 4 4.59733 4 5.33333V7.46667C4 8.20267 
@@ -189,10 +194,10 @@ export const Logos = ({ logo, href, onclick }) => {
             style={{ border: 'none' }}
             data-tooltip-id="logo-tooltip"
             data-tooltip-content={`${logo}`.toUpperCase()}
-            name='imageSource'
-            onClick={handleImageClick}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="21" viewBox="0 0 24 21" fill="none">
-                <path d="M0.857143 20.5714C0.629814 20.5714 0.411797 20.4811 0.251051 20.3204C0.0903058 20.1596 0 19.9416 0 
+            id='images'
+            onClick={handleLogoClick}>
+            <svg id='images' xmlns="http://www.w3.org/2000/svg" width="24" height="21" viewBox="0 0 24 21" fill="none">
+                <path id='images' d="M0.857143 20.5714C0.629814 20.5714 0.411797 20.4811 0.251051 20.3204C0.0903058 20.1596 0 19.9416 0 
                 19.7143V0.857143C0 0.629814 0.0903058 0.411797 0.251051 0.251051C0.411797 0.090306 0.629814 0 0.857143 0H23.1429C23.3702
                  0 23.5882 0.090306 23.7489 0.251051C23.9097 0.411797 24 0.629814 24 0.857143V19.7143C24 19.9416 23.9097 20.1596 23.7489 
                  20.3204C23.5882 20.4811 23.3702 20.5714 23.1429 20.5714H0.857143ZM9.30857 14.4514L7.46229 12.6051C7.30155 12.4445 7.08357 
@@ -232,6 +237,50 @@ export const Logos = ({ logo, href, onclick }) => {
         </svg>
     )
 
+    const info = (
+        <button 
+        className={className.info} 
+        style={{ border: 'none' }} 
+        data-tooltip-content={`${logo}`.toUpperCase()}
+        data-tooltip-id="logo-tooltip" 
+        id='info'
+        onClick={handleLogoClick}>
+            <svg id='info' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path id='info' d="M12 0C5.37252 0 0 5.37252 0 12C0 18.6275 5.37252 24 12 24C18.6275 24 24 18.6275 24 12C24 5.37252 18.6275 0 12 0ZM11.7504 4.31672C12.592 4.31672 13.3043 5.00718 13.3043 5.87014C13.3043 6.73311 12.5922 7.42356 11.7504 7.42356C10.9086 7.42356 10.1977 6.73311 10.1977 5.87014C10.1977 5.00718 10.9095 4.31672 11.7504 4.31672ZM15.2241 18.8789H8.90311V17.4551H9.89519C10.4995 17.4551 10.7586 17.2178 10.7586 16.5921V11.0693C10.7586 10.4436 10.4995 10.2063 9.89519 10.2063H8.90311V8.78225H13.3043V16.5919C13.3043 17.2176 13.5634 17.4549 14.167 17.4549H15.2241V18.8787V18.8789Z" />
+            <defs>
+                <linearGradient id="logo-gradient" x1="0" y1="12" x2="24" y2="12" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#912381" />
+                    <stop offset="0.33" stopColor="#CD186D" />
+                    <stop offset="0.66" stopColor="#EA2634" />
+                    <stop offset="1" stopColor="#F95535" />
+                </linearGradient>
+            </defs>
+        </svg>
+        </button>
+    )
+
+    const settings = (
+        <button 
+        className={className.settings} 
+        style={{ border: 'none' }} 
+        data-tooltip-content={`${logo}`.toUpperCase()}
+        data-tooltip-id="logo-tooltip" 
+        id='settings' 
+        onClick={handleLogoClick}>
+            <svg id='settings' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path id='settings' d="M23.2934 9.66562L20.6183 9.21136C20.4669 8.73186 20.265 8.2776 20.0379 7.82334L21.6025 5.62776C21.8297 5.29968 21.8044 4.84543 21.5268 4.56782L19.3817 2.42271C19.1041 2.14511 18.6498 2.09464 18.3218 2.347L16.1262 3.91167C15.6972 3.68454 15.2177 3.48265 14.7382 3.33123L14.3091 0.681388C14.2334 0.277603 13.9054 0 13.5016 0H10.4732C10.0694 0 9.74133 0.277603 9.66562 0.681388L9.21136 3.35647C8.73186 3.50789 8.2776 3.70978 7.82334 3.93691L5.62776 2.37224C5.29968 2.14511 4.84543 2.17035 4.56782 2.44795L2.42271 4.59306C2.14511 4.87066 2.09464 5.32492 2.347 5.653L3.91167 7.84858C3.68454 8.2776 3.48265 8.7571 3.33123 9.23659L0.681388 9.66562C0.277603 9.74133 0 10.0694 0 10.4732V13.5016C0 13.9054 0.277603 14.2334 0.681388 14.3091L3.35647 14.7634C3.50789 15.2429 3.70978 15.6972 3.93691 16.1514L2.37224 18.347C2.14511 18.6751 2.17035 19.1293 2.44795 19.4069L4.59306 21.5521C4.87066 21.8297 5.32492 21.8801 5.653 21.6278L7.84858 20.0631C8.2776 20.2902 8.7571 20.4921 9.23659 20.6435L9.69085 23.3186C9.76656 23.7224 10.0946 24 10.4984 24H13.5268C13.9306 24 14.2587 23.7224 14.3344 23.3186L14.7634 20.6183C15.2429 20.4669 15.6972 20.265 16.1514 20.0379L18.347 21.6025C18.6751 21.8297 19.1293 21.8044 19.4069 21.5268L21.5521 19.3817C21.8297 19.1041 21.8801 18.6498 21.6278 18.3218L20.0631 16.1262C20.2902 15.6972 20.4921 15.2177 20.6435 14.7382L23.3186 14.2839C23.7224 14.2082 24 13.8801 24 13.4763V10.4732C23.9748 10.0694 23.6972 9.74133 23.2934 9.66562ZM11.9874 16.3028C9.58991 16.3028 7.67192 14.3596 7.67192 11.9874C7.67192 9.61514 9.61514 7.67192 11.9874 7.67192C14.3596 7.67192 16.3028 9.58991 16.3028 11.9874C16.3028 14.3849 14.3849 16.3028 11.9874 16.3028Z" />
+                <defs>
+                    <linearGradient id="logo-gradient" x1="0" y1="12" x2="24" y2="12" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#912381" />
+                        <stop offset="0.33" stopColor="#CD186D" />
+                        <stop offset="0.66" stopColor="#EA2634" />
+                        <stop offset="1" stopColor="#F95535" />
+                    </linearGradient>
+                </defs>
+            </svg>
+        </button>
+    )
+
     const getLogo = (logo) => {
         return {
             colors,
@@ -241,7 +290,9 @@ export const Logos = ({ logo, href, onclick }) => {
             link,
             download,
             download_icon,
-            no_images
+            no_images,
+            settings,
+            info
         }[logo]
     }
 

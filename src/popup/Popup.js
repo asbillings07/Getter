@@ -1,14 +1,8 @@
 import React, { Suspense } from 'react'
-import { ColorView, FontView, ImageView } from '../views';
-
-const isObjEmpty = (obj) => {
-    return obj === null || Object.entries(obj).length === 0;
-}
+import { ColorView, FontView, ImageView, InfoView, SettingsView } from '../views';
 
 export const Popup = () => {
-    // {
-    //     isObjEmpty(cssData) ? <div id='spinner'></div> : createView(cssData)
-    // }
+
     return (
         <div className='css-content'>
             <Suspense fallback={<div id='spinner'></div>}>
@@ -20,6 +14,8 @@ export const Popup = () => {
             <Suspense fallback={<div id='spinner'></div>}>
                 <ImageView />
             </Suspense>
+            <InfoView />
+            <SettingsView />
         </div>
     )
 }

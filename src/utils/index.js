@@ -9,15 +9,17 @@ import {
     downloadImage,
     splitRgb,
     createNotification,
-    sortData
+    sortData,
+    isObjEmpty
     
 } from './helperFunctions'
 
-import { ColorElement, ImageElement, BgImageElement, FontElement, DefaultElement, NoItemsElement } from '../src/components/builder'
+import { ColorElement, ImageElement, BgImageElement, FontElement, DefaultElement, NoItemsElement } from '../components/builder'
 
 export {
     getItem,
     setItem,
+    isObjEmpty,
     sortData,
     rgbToHex,
     copyToClipboard,

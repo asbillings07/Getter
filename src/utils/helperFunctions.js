@@ -82,7 +82,7 @@ function rgbToHex(rbgStr) {
   return `#${hexConvert}`;
 }
 
-const copyToClipboard = async (e) => {
+const copyToClipboard = async (e, setIsOpen, setColor) => {
   if (!navigator.clipboard) {
     console.error('Clipboard is unavailable');
     return;
@@ -98,9 +98,15 @@ const copyToClipboard = async (e) => {
 
   try {
     await navigator.clipboard.writeText(text);
+    setColor(text)
+    setIsOpen(true)
   } catch (err) {
     console.error('Failed to copy!', err);
   }
+}
+
+const isObjEmpty = (obj) => {
+  return obj === null || Object.entries(obj).length === 0;
 }
 
 function deepEqual(obj1, obj2) {
@@ -136,6 +142,7 @@ const hightLightFontOnPage = (e) => {
     copyToClipboard,
     downloadAllImages,
     hightLightFontOnPage,
+    isObjEmpty,
     downloadImage,
     splitRgb,
     deepEqual,

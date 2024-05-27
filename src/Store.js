@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { crawlPage } from './crawlPage';
-import { deepEqual, sortData } from '../utils';
+import { deepEqual, sortData, setItem } from './utils';
 
 const GetterContext = createContext()
 
@@ -16,11 +16,31 @@ export function useGetterContext() {
 }
 
 export function Provider({ children }) {
+    const initialOptionState = {
+        fonts: {
+            fontFamily: true,
+            fontWeight: true,
+            fontSize: true,
+            letterSpacing: true,
+            lineHeight: true,
+        },
+        colors: {
+            rgb: true,
+            hex: true,
+            buttonColor: true
+          },
+        images: {
+            fileSize: true,
+            imageDimensions: true
+          }
+    }
+
     const [propName, setPropName] = useState('fonts')
     const [currentTab, setCurrentTab] = useState(null);
     const [loading, setLoading] = useState(true);
     const [cssData, setCssData] = useState(null);
-    const [cssOptions, setCssOptions] = useState(null)
+    const [hasScriptRun, setHasScriptRun] = useState(false);
+    const [cssOptions, setCssOptions] = useState(initialOptionState)
 
     useEffect(() => {
         const getCurrentTab = async () => {
@@ -29,12 +49,19 @@ export function Provider({ children }) {
             setCurrentTab(tab)
         }
 
-        if (currentTab) {
+        if (currentTab && !hasScriptRun) {
             onTabQuery(currentTab);
+            setHasScriptRun(true);
         } else {
             getCurrentTab();
         }
     }, [currentTab])
+
+    useEffect(() => {
+        if (cssData === null) {
+            setLoading(true);
+        }
+    }, [cssData])
 
     chrome.runtime.onMessage.addListener(onMessage);
 
@@ -48,19 +75,29 @@ export function Provider({ children }) {
     function onMessage(request, sender, sendResponse) {
         switch (request.action) {
             case 'getState':
+                console.log('GET STATE', request.payload)
                 if (!deepEqual(sortData(request.payload), cssData)) {
-                    setCssData(sortData(request.payload));
+                    setCssData(sortData(prevState => {
+                        if (prevState !== null) {
+                            setItem({
+                                [sender.tab.url]: request.payload,
+                                currentResults: { ...request.payload, ...prevState }
+                            })
+                            return { ...request.payload, ...prevState }
+                        }
+                    }));
                 }
                 break;
             case 'getOptions':
-                setCssOptions(request.payload)
+                setCssOptions({ ...initialOptionState, ...request.payload })
                 break
             case 'getNotif':
                 createNotification(request.payload.title, request.payload.message);
                 break;
             case 'getCurrentResults':
+                console.log('GET CURRENT RESULTS', request.payload)
                 if (!deepEqual(sortData(request.payload), cssData)) {
-                    setCssData(sortData(request.payload));
+                    setCssData(sortData(prevState => ({ ...prevState, ...request.payload })));
                 }
                 break;
             default:
@@ -75,7 +112,8 @@ export function Provider({ children }) {
         loading, 
         setLoading,
         cssData,
-        cssOptions
+        cssOptions,
+        setCssOptions
     }
 
     return <GetterContext.Provider value={value}>{children}</GetterContext.Provider>

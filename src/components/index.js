@@ -1,7 +1,8 @@
-import { Header } from './Header'
+import { Header, ViewHeader } from './Header'
 import { Sidebar} from './Sidebar'
 import { Popup } from '../popup/Popup'
-import { ColorElement, FontElement, ImageElement, NoItemsElement } from './builder'
+import { NotFound } from './NoItems'
+import { ColorElement, FontElement, ImageElement } from './builder'
 
 export {
     Header,
@@ -10,5 +11,7 @@ export {
     ColorElement,
     FontElement,
     ImageElement,
-    NoItemsElement
+    ViewHeader,
+    NotFound
+    
 }
