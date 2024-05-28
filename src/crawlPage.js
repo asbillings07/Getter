@@ -100,8 +100,21 @@ export function crawlPage() {
       };
     }
     const nodes = Array.from(document.body.querySelectorAll('*'));
+    const shouldCapture = () => {
+      if (nodes.length > 1000) {
+        return true
+      }
 
-    if (nodes.length > 1000) {
+      if (nodes.length > 500) {
+        return true
+      }
+
+      if (nodes.length > 100) {
+        return true
+      }
+    }
+
+    if (shouldCapture) {
         console.log('NODES', nodes)
 
         Array.from(nodes).forEach((nodeElement, i) => {

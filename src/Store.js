@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState } from 'react'
+import React, { createContext, useContext, useState, useEffect } from 'react'
+import { getItem } from './utils'
 
 const GetterContext = createContext()
 
@@ -35,7 +36,15 @@ export function Provider({ children }) {
 
     const [propName, setPropName] = useState('fonts')
     const [loading, setLoading] = useState(true);
-    const [cssOptions, setCssOptions] = useState(initialOptionState)
+    const [cssOptions, setCssOptions] = useState(null)
+
+    useEffect(() => {
+        getItem('cssGetterOptions', ({ cssGetterOptions }) => {
+            if (cssGetterOptions) {
+                setCssOptions(cssGetterOptions)
+            }
+        })
+    }, [])
 
 
     const value = {

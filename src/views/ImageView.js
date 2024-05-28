@@ -1,21 +1,67 @@
-import React, { Children } from 'react'
+import React, { Children, useEffect, Suspense, useState } from 'react'
 import { useGetterContext } from '../Store';
-import { Logos } from '../components/Logos';
-import { NotFound, ViewHeader } from '../components';
+import { NotFound, ViewHeader, Logos, SuspenseImg, ImageLoader } from '../components';
 import { downloadImage } from '../utils';
 
 export const ImageView = ({ data }) => {
-    const { propName, loading } = useGetterContext()
+    const { propName, loading, setLoading, cssOptions } = useGetterContext()
+    const [ showButton, setShowButton ] = useState(false);
     const IMAGES = 'images'
     
     const imageData = data?.images
+    const imageOptions = cssOptions?.images
+
+    useEffect(() => {
+        console.log('IMAGE VIEW', { data })
+        if (data !== null || data !== undefined) {
+            setLoading(false)
+        }
+    }, [data])
 
     const shouldRender = propName === IMAGES && imageData ? true : false;
 
-    const getImageSize = async (url) => {
-        const res = await fetch(url);
+    const getImageDimensions = (url) => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = function () {
+                resolve({ width: this.width, height: this.height });
+            };
+            img.onerror = function () {
+                reject(new Error('Failed to load image'));
+            };
+            img.src = url;
+        });
+    }
+
+    const getData = (image) => {
+        if (!image.dimensions || !imageOptions.imageDimensions) {
+            image.dimensions = '';
+        }
+
+        if (!image.size || !imageOptions.fileSize) {
+            image.size = '';
+        }
+
+        return image;
+    }
+
+    const cache = {};
+
+    const getImageData = async (image) => {
+
+        if (cache[image.src]) { 
+            return cache[image.src];
+        }
+
+        const res = await fetch(image.src);
         const blob = await res.blob();
-        return `${Math.floor(blob.size / 1024)}MB`
+        const size = await getImageDimensions(image.src);
+        const imageData = {
+            dimensions: `${size.width}x${size.height}`,
+            size: `${Math.floor(blob.size / 1024)}MB`
+        }
+        cache[image.src] = imageData
+        return imageData;
     };
 
     const renderImages = () => {
@@ -27,42 +73,39 @@ export const ImageView = ({ data }) => {
         if (!imageData) { 
             return <NotFound />
         }
-        
+
          return Children.toArray(imageData.map((image) => {
+             getImageData(image).then((data) => {
+                image = Object.assign(image, data);
+             })
 
-                getImageSize(image.src).then(size => {
-                    image.size = size;
-                })
-
-                return (
+             
+            return (
                     <div className={`${IMAGES}-container`} onClick={() => downloadImage(image.src)} >
-                        <img
-                            loading='lazy'
-                            id="image-div"
-                            src={image.src}
-                            alt={image.name}
-                        />
+                    <SuspenseImg src={image.src} alt={image.name || 'No Name'} />
                         <div id='image-overlay'>
                             <Logos logo='download_icon' />
                             <div id='image-name'>
-                                {image.name}
+                                {image.name || 'No Name'}
                             </div>
                             <div id='image-size'>
-                                {image.size}
+                            {`${getData(image).dimensions} ${getData(image).size}`}
                             </div>
                         </div>
                     </div>
-                )
-            }))
+            )
+        }))
         
     }
 
     return shouldRender && (
         <>
-            <ViewHeader title={IMAGES.toUpperCase()} downloadAll={true} />
-            <div id={`main-${IMAGES}-container`}>
-                {renderImages()}
-            </div>
+            <ViewHeader title={IMAGES.toUpperCase()} downloadAll={showButton} />
+            <Suspense fallback={<ImageLoader setShowButton={setShowButton}/>}>
+                <div id={`main-${IMAGES}-container`}>
+                    {renderImages(setShowButton)}
+                </div>
+            </Suspense>
         </>
     );
 }

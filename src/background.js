@@ -60,25 +60,25 @@ const elementTags = [
     setItem({ hasScriptRunOnPage: false })
   })
 
-  // chrome.runtime.onMessage.addListener(function (
-  //   request,
-  //   sender,
-  //   sendResponse
-  // ) {
-  //   switch (request.action) {
-  //     case 'getOptions':
-  //       sendResponse({ cssGetterOptions: getterOptions })
-  //       break
-  //     case 'getState':
-  //       setItem({
-  //         [sender.tab.url]: request.payload,
-  //         currentResults: request.payload
-  //       })
-  //       break
-  //     default:
-  //       break
-  //   }
-  // })
+  chrome.runtime.onMessage.addListener(function (
+    request,
+    sender,
+    sendResponse
+  ) {
+    switch (request.action) {
+      case 'getOptions':
+        sendResponse({ cssGetterOptions: getterOptions })
+        break
+      case 'getState':
+        setItem({
+          [sender.tab.url]: request.payload,
+          currentResults: request.payload
+        })
+        break
+      default:
+        break
+    }
+  })
 
   chrome.runtime.onInstalled.addListener(function () {
     chrome.declarativeContent.onPageChanged.removeRules(undefined, async function () {
@@ -98,7 +98,6 @@ const elementTags = [
             lineHeight: true,
           },
           colors: {
-            rgb: true,
             hex: true,
             buttonColor: true
           },

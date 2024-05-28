@@ -5,7 +5,7 @@ import { Tooltip } from 'react-tooltip';
 import { copyToClipboard, rgbToHex, splitRgb } from '../utils';
 
 export const ColorView = ({ data }) => {
-    const { propName, loading } = useGetterContext()
+    const { propName, loading, setLoading, cssOptions } = useGetterContext()
     const [isOpen, setIsOpen ] = useState(false)
     const [color, setColor] = useState('')
 
@@ -17,18 +17,39 @@ export const ColorView = ({ data }) => {
         }
     }, [color])
 
+    useEffect(() => {
+        if (data !== null || data !== undefined) {
+            setLoading(false)
+        }
+    }, [data])
+
 
     const COLORS = 'colors'
+    const colorOptions = cssOptions?.colors
     const colorData = data?.colors && Object.entries(data.colors);
 
     const shouldRender = COLORS === propName && colorData ? true : false;
 
     const setTextColor = (style) => {
+        if (!colorOptions.buttonColor) return 'var(--black)';
+
         const rgbValue = splitRgb(style);
-        var color = Math.round(((parseInt(rgbValue[0]) * 299) +
+        const color = Math.round(((parseInt(rgbValue[0]) * 299) +
             (parseInt(rgbValue[1]) * 587) +
             (parseInt(rgbValue[2]) * 114)) / 1000);
-        return (color > 125) ? 'black' : 'white';
+
+        if (rgbValue[3] && parseFloat(rgbValue[3]) < 0.5) {
+            return 'var(--black)';
+        }
+
+        return (color > 125) ? 'var(--black)' : 'var(--white)';
+    }
+
+    const getColors = (style) => {
+        return {
+            'hex': colorOptions.hex && rgbToHex(style),
+            'buttonColor': colorOptions.buttonColor && style
+        }
     }
 
     const handleColorClick = (e) => {
@@ -48,9 +69,9 @@ export const ColorView = ({ data }) => {
         }
 
           return Children.toArray(colorData.map(([style, data]) => (
-                <div className={`${COLORS}-container`} style={{ background: `${style}` }}>
+                <div className={`${COLORS}-container`} style={{ background: `${getColors(style).buttonColor}` }}>
                     <div id="liContainer" className='li-color' style={{ color: setTextColor(style) }}>
-                        <div id="hexDiv" data-tooltip-id="color-div-tooltip-click" data-tooltip-variant="success" className="mr pointer" onClick={handleColorClick}>{rgbToHex(style)}</div>
+                        <div id="hexDiv" data-tooltip-id="color-div-tooltip-click" data-tooltip-variant="success" className="mr pointer" onClick={handleColorClick}>{getColors(style).hex}</div>
                         <div id="listItem" data-tooltip-id="color-div-tooltip-click" data-tooltip-variant="success" className="mr pointer" onClick={handleColorClick}>{style}</div>
                         <p id="listDesc">used {data.count} time(s)</p>
                     </div>

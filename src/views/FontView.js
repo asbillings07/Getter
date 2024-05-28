@@ -1,21 +1,20 @@
 import React, { Children, useEffect } from 'react'
 import { useGetterContext } from '../Store';
 import { hightLightFontOnPage } from '../utils';
-import { ViewHeader, NotFound } from '../components';
-import { Logos } from '../components/Logos';
+import { ViewHeader, NotFound, Logos } from '../components';
 
 export const FontView = ({ data }) => {
     const FONTS = 'fonts'
-    const { propName, loading, setLoading } = useGetterContext()
+    const { propName, loading, setLoading, cssOptions } = useGetterContext()
 
     useEffect(() => {
-        console.log('FONT VIEW', { data })
         if (data !== null || data !== undefined) {
             setLoading(false)
         }
     }, [data])
 
     const fontData = data?.fonts && Object.entries(data?.fonts)
+    const fontOptions = cssOptions?.fonts
 
     const shouldRender = FONTS === propName && fontData ? true : false;
 
@@ -33,7 +32,7 @@ export const FontView = ({ data }) => {
           return Children.toArray(fontData.map(([element, fonts]) => {
                 const fontHref = `https://fonts.google.com/?query=${fonts.fontFamily.split(',')[0]}`;
                 const styles = Children.toArray(Object.entries(fonts).map(([key, value]) => {
-                    if (key === 'id') return;
+                    if (!fontOptions[key] || key === 'id') return;
                     return (
                         <div id="font-element" >
                             {key}:&nbsp;{value}&nbsp;

@@ -11,6 +11,7 @@
     --grey: #444444;
     --light-grey: rgba(0, 0, 0, 0.05);
     --light-grey-2: #C3C4C7;
+    --checkbox-grey: #B5B5B5;
     --background-gradient: linear-gradient(to right, var(--purple), var(--pink),var(--red), var(--orange));
 
     --hue: 220;

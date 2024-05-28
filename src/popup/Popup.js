@@ -1,6 +1,7 @@
 import React, { Suspense, useState, useEffect } from 'react'
 import { crawlPage } from '../crawlPage';
 import { deepEqual, sortData, setItem } from '../utils';
+import { ImageLoader } from '../components';
 import { ColorView, FontView, ImageView, InfoView, SettingsView } from '../views';
 
 export const Popup = () => {
@@ -34,7 +35,6 @@ export const Popup = () => {
     function onMessage(request, sender, sendResponse) {
         switch (request.action) {
             case 'getState':
-                console.log('GET STATE', request.payload)
                 if (!deepEqual(sortData(request.payload), cssData)) {
                     setCssData(sortData(prevState => {
                         if (prevState !== null) {
@@ -48,7 +48,6 @@ export const Popup = () => {
                 }
                 break;
             case 'getCurrentResults':
-                console.log('GET CURRENT RESULTS', request.payload)
                 if (!deepEqual(sortData(request.payload), cssData)) {
                     setCssData(sortData(prevState => ({ ...prevState, ...request.payload })));
                 }
@@ -67,9 +66,7 @@ export const Popup = () => {
             <Suspense fallback={<div id='spinner'></div>}>
                 <ColorView data={cssData} />
             </Suspense>
-            <Suspense fallback={<div id='spinner'></div>}>
-                <ImageView data={cssData} />
-            </Suspense>
+            <ImageView data={cssData} />
             <InfoView />
             <SettingsView />
         </div>

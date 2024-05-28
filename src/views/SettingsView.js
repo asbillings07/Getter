@@ -1,5 +1,6 @@
-import React, { Children, useEffect } from 'react'
+import React, { Children } from 'react'
 import { useGetterContext } from '../Store'
+import { setItem } from '../utils'
 import { ViewHeader } from '../components/Header'
 
 export const SettingsView = () => {
@@ -7,10 +8,6 @@ export const SettingsView = () => {
     const { propName, cssOptions, setCssOptions } = useGetterContext()
 
     const shouldRender = SETTINGS === propName
-
-    useEffect(() => {
-        console.log('SETTINGS VIEW', { cssOptions })
-    }, [cssOptions])
 
     const getReadableName = (option) => {
         console.log('OPTION', option)
@@ -20,36 +17,52 @@ export const SettingsView = () => {
             'fontSize': 'font size',
             'letterSpacing': 'letter spacing',
             'lineHeight': 'line height',
-            'rgb': 'rgb(a) values',
             'hex': 'hex values',
             'fileSize': 'file size',
-            'buttonColor:': 'button color',
-            'ImageDimensions': 'image dimensions',
+            'buttonColor': 'button background color',
+            'imageDimensions': 'image dimensions',
         }[option]
     }
 
-    function regClick(e) {
+    const getOptionName = (option) => {
+        return {
+            'fontFamily': 'fonts',
+            'fontWeight': 'fonts',
+            'fontSize': 'fonts',
+            'letterSpacing': 'fonts',
+            'lineHeight': 'fonts',
+            'hex': 'colors',
+            'buttonColor': 'colors',
+            'fileSize': 'images',
+            'imageDimensions': 'images',
+        }[option]
+    }
+
+    function handleClick(e) {
         const checked = e.target.checked
         const settingId = e.target.id
-        const optionName = e.target.dataset.name
 
-        console.log('SETTINGS VIEW', { target: e.target, settingId, optionName, checked })
-        setCssOptions((prevState) => ({
-            ...prevState,
-            [optionName]: {
-                [settingId]: checked
+        setCssOptions((prevState) => {
+            const newOptions = {
+                ...prevState,
+                [getOptionName(settingId)]: {
+                    ...prevState[getOptionName(settingId)],
+                    [settingId]: checked
+                }
             }
-        }))
+            setItem({'cssGetterOptions': newOptions})
+            return newOptions
+        })
     }
 
     const showOptions = (options) => {
         return Children.toArray(Object.entries(options).map(([option, optionData]) => {
             return (
                 <div className='option-container'>
-                    <label>{option.toUpperCase()}</label>
-                    {Children.toArray(Object.entries(optionData).map(([key, value]) => (
+                    <legend>{option.toUpperCase()}</legend>
+                    {Children.toArray(Object.entries(optionData).map(([key, value], i) => (
                         <div className='option'>
-                            <input onChange={regClick} data-name='fonts' value={value} type="checkbox" id={key} />
+                            <input onChange={handleClick} data-name={key} name={`${key}-${i}`} checked={value} type="checkbox" id={key} />
                             <label className="label" htmlFor={key}>{`Show ${getReadableName(key)}`}</label>
                         </div>
                     )))}
@@ -62,9 +75,9 @@ export const SettingsView = () => {
   return shouldRender && (
       <>
           <ViewHeader title={SETTINGS.toUpperCase()} />
-          <div>
+          <fieldset>
                 {showOptions(cssOptions)}
-          </div>
+          </fieldset>
       </>
   )
 }
