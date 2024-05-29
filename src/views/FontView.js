@@ -16,16 +16,18 @@ export const FontView = ({ data }) => {
     const fontData = data?.fonts && Object.entries(data?.fonts)
     const fontOptions = cssOptions?.fonts
 
-    const shouldRender = FONTS === propName && fontData ? true : false;
+    const shouldRender = FONTS === propName;
 
     const renderFonts = () => {
-
+        console.log('fontData', fontData)
+        console.log('loading', loading)
+        
         if (loading) {
             return <div id='spinner'></div>
         }
 
         if (!fontData) { 
-            return <NotFound /> 
+            return <NotFound name='fonts' /> 
         }
 
 

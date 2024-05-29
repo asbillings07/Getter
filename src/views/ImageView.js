@@ -23,6 +23,7 @@ export const ImageView = ({ data }) => {
     const getImageDimensions = (url) => {
         return new Promise((resolve, reject) => {
             const img = new Image();
+            img.crossOrigin = "Anonymous";
             img.onload = function () {
                 resolve({ width: this.width, height: this.height });
             };
@@ -71,13 +72,15 @@ export const ImageView = ({ data }) => {
         }
 
         if (!imageData) { 
-            return <NotFound />
+            return <NotFound name='images' />
         }
 
          return Children.toArray(imageData.map((image) => {
              getImageData(image).then((data) => {
                 image = Object.assign(image, data);
-             })
+             }).catch((error) => {
+                 console.error('Failed to load image', error);
+             });
 
              
             return (

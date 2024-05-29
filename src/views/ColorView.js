@@ -65,7 +65,7 @@ export const ColorView = ({ data }) => {
         }
 
         if (!colorData) {
-            return <NotFound />
+            return <NotFound name='colors' />
         }
 
           return Children.toArray(colorData.map(([style, data]) => (

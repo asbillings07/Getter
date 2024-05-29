@@ -405,7 +405,7 @@ ul {
   line-height: 150%;
 }
 
-#settings-info-container {
+#settings-support-container {
   margin-top: 10em;
   display: inline-flex;
   flex-direction: column;
@@ -486,12 +486,22 @@ input[type=checkbox]:checked + label:before {
   }
 }
 
+button[disabled] {
+  cursor: not-allowed;
+}
+
 #bgDiv {
   width: 16%;
   height: 80px;
   background-size: cover;
   background-repeat: no-repeat;
   margin: 5px 5px;
+}
+
+.error-container {
+  padding-top: 10em;
+  font-size: 17.6px;
+  color: var(--red);
 }
 
 .download-button {
@@ -507,4 +517,47 @@ input[type=checkbox]:checked + label:before {
   font-style: normal;
   font-weight: 400;
   line-height: normal;
+}
+
+.support-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.support-content-container {
+  padding: 10px 0;
+
+  h2 {
+    text-transform: uppercase;
+  };
+
+  p {
+    font-size: var(--small-medium);
+    font-weight: 400;
+    line-height: 130%;
+  }
+
+button {
+  color: var(--white);
+  background-color: var(--purple);
+  padding: 9px;
+  border-radius: 8px;
+  font-size: var(--small);
+  text-transform: uppercase;
+};
+}
+
+.support-content-bottom {
+  display: flex;
+  font-size: var(--smaller);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding-top: 7em;
+
+  a {
+    color: var(--purple);
+    text-decoration: underline;
+  }
 }

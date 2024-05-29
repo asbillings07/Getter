@@ -3,15 +3,15 @@ import { Tooltip } from 'react-tooltip'
 import { useGetterContext } from '../Store'
 
 
-export const Logos = ({ logo, href, onclick }) => {
+export const Logos = ({ logo, href, onclick, disabled = false }) => {
     const initialState = {
         colors: 'logo',
         fonts: 'logo',
         images: 'logo',
-        info: 'logo',
+        support: 'logo',
         settings: 'logo'
     }
-    const { setPropName, propName } = useGetterContext()
+    const { setPropName, propName, error } = useGetterContext()
     const [className, setClassName] = useState(initialState);
     const toolTipPlace = 'top'
 
@@ -35,10 +35,10 @@ export const Logos = ({ logo, href, onclick }) => {
                     images: 'logo active',
                 });
                 break;
-            case 'info':
+            case 'support':
                 setClassName({
                     ...initialState,
-                    info: 'logo active',
+                    support: 'logo active',
                 });
                 break;
             case 'settings':
@@ -49,6 +49,12 @@ export const Logos = ({ logo, href, onclick }) => {
                 break;
         }
     }, [propName])
+
+    useEffect(() => {
+        if (error.state) {
+            setClassName(initialState)
+        }
+    }, [error])
 
     const handleLogoClick = (e) => setPropName(e.target.id)
 
@@ -120,7 +126,7 @@ export const Logos = ({ logo, href, onclick }) => {
     )
 
     const download = (
-        <button className='download-button' onClick={onclick}>
+        <button className='download-button' onClick={onclick} disabled={disabled}>
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
                 <path d="M10 13.3333L5.83337 9.16668L7.00004 7.95834L9.16671 10.125V3.33334H10.8334V10.125L13 
                 7.95834L14.1667 9.16668L10 13.3333ZM5.00004 16.6667C4.54171 16.6667 4.14948 16.5036 3.82337 16.1775C3.49726 
@@ -141,7 +147,7 @@ export const Logos = ({ logo, href, onclick }) => {
     )
 
     const colors = (
-        <button className={className.colors} id='colors' style={{ border: 'none' }} data-tooltip-content={`${logo}`.toUpperCase()}
+        <button className={className.colors} id='colors' style={{ border: 'none' }} disabled={disabled} data-tooltip-content={`${logo}`.toUpperCase()}
              data-tooltip-id="logo-tooltip" name='backgroundColor' onClick={handleLogoClick}>
             <svg id='colors' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <path id='colors' d="M19.3333 12C18.8029 12 18.2942 11.7893 17.9191 11.4142C17.544 11.0391 17.3333 10.5304 17.3333 10C17.3333 9.46957 17.544 8.96086 17.9191 8.58579C18.2942 8.21071 18.8029 8 19.3333 8C19.8638 8 20.3725 8.21071 20.7475 8.58579C21.1226 8.96086 21.3333 9.46957 21.3333 10C21.3333 10.5304 21.1226 11.0391 20.7475 11.4142C20.3725 11.7893 19.8638 12 19.3333 12ZM15.3333 6.66667C14.8029 6.66667 14.2942 6.45595 13.9191 6.08088C13.544 5.70581 13.3333 5.1971 13.3333 4.66667C13.3333 4.13623 13.544 3.62753 13.9191 3.25245C14.2942 2.87738 14.8029 2.66667 15.3333 2.66667C15.8638 2.66667 16.3725 2.87738 16.7475 3.25245C17.1226 3.62753 17.3333 4.13623 17.3333 4.66667C17.3333 5.1971 17.1226 5.70581 16.7475 6.08088C16.3725 6.45595 15.8638 6.66667 15.3333 6.66667ZM8.66667 6.66667C8.13623 6.66667 7.62753 6.45595 7.25245 6.08088C6.87738 5.70581 6.66667 5.1971 6.66667 4.66667C6.66667 4.13623 6.87738 3.62753 7.25245 3.25245C7.62753 2.87738 8.13623 2.66667 8.66667 2.66667C9.1971 2.66667 9.70581 2.87738 10.0809 3.25245C10.456 3.62753 10.6667 4.13623 10.6667 4.66667C10.6667 5.1971 10.456 5.70581 10.0809 6.08088C9.70581 6.45595 9.1971 6.66667 8.66667 6.66667ZM4.66667 12C4.13623 12 3.62753 11.7893 3.25245 11.4142C2.87738 11.0391 2.66667 10.5304 2.66667 10C2.66667 9.46957 2.87738 8.96086 3.25245 8.58579C3.62753 8.21071 4.13623 8 4.66667 8C5.1971 8 5.70581 8.21071 6.08088 8.58579C6.45595 8.96086 6.66667 9.46957 6.66667 10C6.66667 10.5304 6.45595 11.0391 6.08088 11.4142C5.70581 11.7893 5.1971 12 4.66667 12ZM12 0C8.8174 0 5.76516 1.26428 3.51472 3.51472C1.26428 5.76516 0 8.8174 0 12C0 15.1826 1.26428 18.2348 3.51472 20.4853C5.76516 22.7357 8.8174 24 12 24C12.5304 24 13.0391 23.7893 13.4142 23.4142C13.7893 23.0391 14 22.5304 14 22C14 21.48 13.8 21.0133 13.48 20.6667C13.1733 20.3067 12.9733 19.84 12.9733 19.3333C12.9733 18.8029 13.184 18.2942 13.5591 17.9191C13.9342 17.544 14.4429 17.3333 14.9733 17.3333H17.3333C19.1014 17.3333 20.7971 16.631 22.0474 15.3807C23.2976 14.1305 24 12.4348 24 10.6667C24 4.77333 18.6267 0 12 0Z" />
@@ -158,7 +164,7 @@ export const Logos = ({ logo, href, onclick }) => {
     )
 
     const fonts = (
-        <button className={className.fonts} style={{ border: 'none' }} data-tooltip-content={`${logo}`.toUpperCase()}
+        <button className={className.fonts} style={{ border: 'none' }} disabled={disabled} data-tooltip-content={`${logo}`.toUpperCase()}
             data-tooltip-id="logo-tooltip" id='fonts' onClick={handleLogoClick}>
             <svg id='fonts' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <g clipPath="url(#clip0_155_76)">
@@ -194,6 +200,7 @@ export const Logos = ({ logo, href, onclick }) => {
             style={{ border: 'none' }}
             data-tooltip-id="logo-tooltip"
             data-tooltip-content={`${logo}`.toUpperCase()}
+            disabled={disabled}
             id='images'
             onClick={handleLogoClick}>
             <svg id='images' xmlns="http://www.w3.org/2000/svg" width="24" height="21" viewBox="0 0 24 21" fill="none">
@@ -237,16 +244,17 @@ export const Logos = ({ logo, href, onclick }) => {
         </svg>
     )
 
-    const info = (
+    const support = (
         <button 
-        className={className.info} 
-        style={{ border: 'none' }} 
+        className={className.support} 
+        style={{ border: 'none' }}
         data-tooltip-content={`${logo}`.toUpperCase()}
         data-tooltip-id="logo-tooltip" 
-        id='info'
+        disabled={disabled}
+        id='support'
         onClick={handleLogoClick}>
-            <svg id='info' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path id='info' d="M12 0C5.37252 0 0 5.37252 0 12C0 18.6275 5.37252 24 12 24C18.6275 24 24 18.6275 24 12C24 5.37252 18.6275 0 12 0ZM11.7504 4.31672C12.592 4.31672 13.3043 5.00718 13.3043 5.87014C13.3043 6.73311 12.5922 7.42356 11.7504 7.42356C10.9086 7.42356 10.1977 6.73311 10.1977 5.87014C10.1977 5.00718 10.9095 4.31672 11.7504 4.31672ZM15.2241 18.8789H8.90311V17.4551H9.89519C10.4995 17.4551 10.7586 17.2178 10.7586 16.5921V11.0693C10.7586 10.4436 10.4995 10.2063 9.89519 10.2063H8.90311V8.78225H13.3043V16.5919C13.3043 17.2176 13.5634 17.4549 14.167 17.4549H15.2241V18.8787V18.8789Z" />
+            <svg id='support' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path id='support' d="M12 0C5.37252 0 0 5.37252 0 12C0 18.6275 5.37252 24 12 24C18.6275 24 24 18.6275 24 12C24 5.37252 18.6275 0 12 0ZM11.7504 4.31672C12.592 4.31672 13.3043 5.00718 13.3043 5.87014C13.3043 6.73311 12.5922 7.42356 11.7504 7.42356C10.9086 7.42356 10.1977 6.73311 10.1977 5.87014C10.1977 5.00718 10.9095 4.31672 11.7504 4.31672ZM15.2241 18.8789H8.90311V17.4551H9.89519C10.4995 17.4551 10.7586 17.2178 10.7586 16.5921V11.0693C10.7586 10.4436 10.4995 10.2063 9.89519 10.2063H8.90311V8.78225H13.3043V16.5919C13.3043 17.2176 13.5634 17.4549 14.167 17.4549H15.2241V18.8787V18.8789Z" />
             <defs>
                 <linearGradient id="logo-gradient" x1="0" y1="12" x2="24" y2="12" gradientUnits="userSpaceOnUse">
                     <stop stopColor="#912381" />
@@ -262,7 +270,8 @@ export const Logos = ({ logo, href, onclick }) => {
     const settings = (
         <button 
         className={className.settings} 
-        style={{ border: 'none' }} 
+        style={{ border: 'none' }}
+        disabled={disabled}
         data-tooltip-content={`${logo}`.toUpperCase()}
         data-tooltip-id="logo-tooltip" 
         id='settings' 
@@ -292,7 +301,7 @@ export const Logos = ({ logo, href, onclick }) => {
             download_icon,
             no_images,
             settings,
-            info
+            support
         }[logo]
     }
 

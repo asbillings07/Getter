@@ -15,27 +15,12 @@ export function useGetterContext() {
 }
 
 export function Provider({ children }) {
-    const initialOptionState = {
-        fonts: {
-            fontFamily: true,
-            fontWeight: true,
-            fontSize: true,
-            letterSpacing: true,
-            lineHeight: true,
-        },
-        colors: {
-            rgb: true,
-            hex: true,
-            buttonColor: true
-          },
-        images: {
-            fileSize: true,
-            imageDimensions: true
-          }
-    }
-
     const [propName, setPropName] = useState('fonts')
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState({
+        state: false,
+        message: ''
+    });
     const [cssOptions, setCssOptions] = useState(null)
 
     useEffect(() => {
@@ -50,6 +35,8 @@ export function Provider({ children }) {
     const value = {
         propName,
         setPropName,
+        error,
+        setError,
         loading, 
         setLoading,
         cssOptions,

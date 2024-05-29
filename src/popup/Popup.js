@@ -1,19 +1,33 @@
 import React, { Suspense, useState, useEffect } from 'react'
 import { crawlPage } from '../crawlPage';
 import { deepEqual, sortData, setItem } from '../utils';
-import { ImageLoader } from '../components';
-import { ColorView, FontView, ImageView, InfoView, SettingsView } from '../views';
+import { useGetterContext } from '../Store';
+import { ColorView, FontView, ImageView, SupportView, SettingsView } from '../views';
 
 export const Popup = () => {
+    const { error, setError } = useGetterContext();
     const [currentTab, setCurrentTab] = useState(null);
     const [cssData, setCssData] = useState(null);
+
+    const restrictedUrls = new Set([
+        'chrome:',
+        'chromewebstore'
+    ])
 
 
     useEffect(() => {
         const getCurrentTab = async () => {
             let queryOptions = { active: true, currentWindow: true };
             let [tab] = await chrome.tabs.query(queryOptions);
-            setCurrentTab(tab)
+            console.log('Protocol', new URL(tab.url))
+            if (restrictedUrls.has(new URL(tab.url).protocol) || tab.url.includes('chromewebstore')) { 
+                setError({
+                    state: true,
+                    message: 'This extension does not work on Chrome pages.'
+                });
+            } else {
+                setCurrentTab(tab)
+            }
         }
 
         if (currentTab) {
@@ -60,6 +74,7 @@ export const Popup = () => {
 
     return (
         <div className='css-content'>
+            {error.state && <div className='error-container'>{error.message}</div>}
             <Suspense fallback={<div id='spinner'></div>}>
                 <FontView data={cssData} />
             </Suspense>
@@ -67,7 +82,7 @@ export const Popup = () => {
                 <ColorView data={cssData} />
             </Suspense>
             <ImageView data={cssData} />
-            <InfoView />
+            <SupportView />
             <SettingsView />
         </div>
     )
