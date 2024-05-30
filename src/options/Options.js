@@ -51,7 +51,7 @@ import { setItem, getItem, createNotification } from '../utils'
 
                 getItem('cssGetterOptions', ({ cssGetterOptions }) => {
                     if (!settings) {
-                        console.log(cssGetterOptions)
+                        console.log({cssGetterOptions})
                         setSettings(cssGetterOptions)
                     }
                 })

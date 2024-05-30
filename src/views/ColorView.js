@@ -17,18 +17,13 @@ export const ColorView = ({ data }) => {
         }
     }, [color])
 
-    useEffect(() => {
-        if (data !== null || data !== undefined) {
-            setLoading(false)
-        }
-    }, [data])
 
 
     const COLORS = 'colors'
     const colorOptions = cssOptions?.colors
     const colorData = data?.colors && Object.entries(data.colors);
 
-    const shouldRender = COLORS === propName && colorData ? true : false;
+    const shouldRender = COLORS === propName
 
     const setTextColor = (style) => {
         if (!colorOptions.buttonColor) return 'var(--black)';

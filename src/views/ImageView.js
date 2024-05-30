@@ -8,15 +8,8 @@ export const ImageView = ({ data }) => {
     const [ showButton, setShowButton ] = useState(false);
     const IMAGES = 'images'
     
-    const imageData = data?.images
     const imageOptions = cssOptions?.images
-
-    useEffect(() => {
-        console.log('IMAGE VIEW', { data })
-        if (data !== null || data !== undefined) {
-            setLoading(false)
-        }
-    }, [data])
+    const imageData = data?.images;
 
     const shouldRender = propName === IMAGES && imageData ? true : false;
 

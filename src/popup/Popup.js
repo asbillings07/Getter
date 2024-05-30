@@ -1,5 +1,5 @@
 import React, { Suspense, useState, useEffect } from 'react'
-import { crawlPage } from '../crawlPage';
+import { crawlPage } from '../scripts/crawlPage';
 import { deepEqual, sortData, setItem } from '../utils';
 import { useGetterContext } from '../Store';
 import { ColorView, FontView, ImageView, SupportView, SettingsView } from '../views';
@@ -9,21 +9,17 @@ export const Popup = () => {
     const [currentTab, setCurrentTab] = useState(null);
     const [cssData, setCssData] = useState(null);
 
-    const restrictedUrls = new Set([
-        'chrome:',
-        'chromewebstore'
-    ])
-
 
     useEffect(() => {
         const getCurrentTab = async () => {
             let queryOptions = { active: true, currentWindow: true };
             let [tab] = await chrome.tabs.query(queryOptions);
-            console.log('Protocol', new URL(tab.url))
-            if (restrictedUrls.has(new URL(tab.url).protocol) || tab.url.includes('chromewebstore')) { 
+
+            const isRestricted = tab.url.includes('chromewebstore');
+            if (isRestricted) { 
                 setError({
                     state: true,
-                    message: 'This extension does not work on Chrome pages.'
+                    message: 'This extension does not work on Chrome Webstore pages.'
                 });
             } else {
                 setCurrentTab(tab)
@@ -74,16 +70,19 @@ export const Popup = () => {
 
     return (
         <div className='css-content'>
-            {error.state && <div className='error-container'>{error.message}</div>}
-            <Suspense fallback={<div id='spinner'></div>}>
-                <FontView data={cssData} />
-            </Suspense>
-            <Suspense fallback={<div id='spinner'></div>}>
-                <ColorView data={cssData} />
-            </Suspense>
-            <ImageView data={cssData} />
-            <SupportView />
-            <SettingsView />
+            {error.state ? <div className='error-container'>{error.message}</div> : 
+            (<>
+                    <Suspense fallback={<div id='spinner'></div>}>
+                        <FontView data={cssData} />
+                    </Suspense>
+                    <Suspense fallback={<div id='spinner'></div>}>
+                        <ColorView data={cssData} />
+                    </Suspense>
+                    <ImageView data={cssData} />
+                    <SupportView />
+                    <SettingsView />
+            </>)}
+            
         </div>
     )
 }

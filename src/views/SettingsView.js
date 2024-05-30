@@ -1,6 +1,6 @@
 import React, { Children } from 'react'
 import { useGetterContext } from '../Store'
-import { setItem } from '../utils'
+import { setItem, movePropertyToTop } from '../utils'
 import { ViewHeader } from '../components/Header'
 
 export const SettingsView = () => {
@@ -10,7 +10,6 @@ export const SettingsView = () => {
     const shouldRender = SETTINGS === propName
 
     const getReadableName = (option) => {
-        console.log('OPTION', option)
         return {
             'fontFamily': 'font families',
             'fontWeight': 'font weight',
@@ -21,12 +20,14 @@ export const SettingsView = () => {
             'fileSize': 'file size',
             'buttonColor': 'button background color',
             'imageDimensions': 'image dimensions',
+            'detailed': 'detailed font view'
         }[option]
     }
 
     const getOptionName = (option) => {
         return {
             'fontFamily': 'fonts',
+            'detailed': 'fonts',
             'fontWeight': 'fonts',
             'fontSize': 'fonts',
             'letterSpacing': 'fonts',
@@ -34,7 +35,7 @@ export const SettingsView = () => {
             'hex': 'colors',
             'buttonColor': 'colors',
             'fileSize': 'images',
-            'imageDimensions': 'images',
+            'imageDimensions': 'images'
         }[option]
     }
 
@@ -76,7 +77,7 @@ export const SettingsView = () => {
       <>
           <ViewHeader title={SETTINGS.toUpperCase()} />
           <fieldset>
-                {showOptions(cssOptions)}
+                {showOptions(movePropertyToTop(cssOptions, 'fonts'))}
           </fieldset>
       </>
   )

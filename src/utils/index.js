@@ -3,18 +3,17 @@ import {
     setItem,
     rgbToHex,
     copyToClipboard,
-    hightLightFontOnPage,
+    highLightFontOnPage,
     deepEqual,
     downloadAllImages,
     downloadImage,
     splitRgb,
+    movePropertyToTop,
     createNotification,
     sortData,
     isObjEmpty
     
 } from './helperFunctions'
-
-import { ColorElement, ImageElement, BgImageElement, FontElement, DefaultElement, NoItemsElement } from '../components/builder'
 
 export {
     getItem,
@@ -22,17 +21,12 @@ export {
     isObjEmpty,
     sortData,
     rgbToHex,
+    movePropertyToTop,
     copyToClipboard,
     splitRgb,
-    hightLightFontOnPage,
+    highLightFontOnPage,
     downloadImage,
     downloadAllImages,
     deepEqual,
-    createNotification,
-    ColorElement,
-    ImageElement,
-    BgImageElement,
-    FontElement,
-    DefaultElement,
-    NoItemsElement
+    createNotification
 }

@@ -29,6 +29,7 @@ export function Provider({ children }) {
                 setCssOptions(cssGetterOptions)
             }
         })
+        setLoading(true)
     }, [])
 
 

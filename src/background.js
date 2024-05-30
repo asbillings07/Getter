@@ -32,33 +32,50 @@ const elementTags = [
   'button'
 ]
 
+const restrictedUrls = [
+  'chrome://',
+  'chrome-extension://',
+  'https://chrome.google.com/webstore'
+];
+
+// disable extension starting out
+
+
+
   const rule1 = {
     conditions: [
       new chrome.declarativeContent.PageStateMatcher({
-        pageUrl: { schemes: ['https', 'http'] }
+        pageUrl: { 
+          schemes: ['https', 'http']
+        }
       })
     ],
     actions: [new chrome.declarativeContent.ShowPageAction()]
   }
 
-
-  // chrome.storage.onChanged.addListener((changes) => {
-
-  //   if ('cssGetterOptions' in changes && changes.cssGetterOptions.newValue) {
-  //     getItem('cssGetterOptions', ({ cssGetterOptions }) => {
-  //       getterOptions = cssGetterOptions
-  //     })
-  //   }
-  // })
-
   chrome.webNavigation.onDOMContentLoaded.addListener((object) => {
     setItem({ hasScriptRunOnPage: false })
   })
 
-  chrome.tabs.onActivated.addListener(function () {
+  const checkTab = async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const isRestricted = (tab?.url.includes('chrome:') || tab?.url.includes('chromewebstore'));
+
+    if (isRestricted) {
+      chrome.action.disable(tab.id)
+    }
+  }
+
+  chrome.tabs.onActivated.addListener(() => {
+    checkTab()
     // todo need to check if tab or url in current tab changes
     setItem({ hasScriptRunOnPage: false })
   })
+
+
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    checkTab()
+})
 
   chrome.runtime.onMessage.addListener(function (
     request,
@@ -81,9 +98,11 @@ const elementTags = [
   })
 
   chrome.runtime.onInstalled.addListener(function () {
+    chrome.action.disable()
     chrome.declarativeContent.onPageChanged.removeRules(undefined, async function () {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       chrome.declarativeContent.onPageChanged.addRules([rule1])
+      checkTab()
       setItem({
         hasScriptRunOnPage: false,
         currentImage: null,
@@ -96,6 +115,7 @@ const elementTags = [
             fontSize: true,
             letterSpacing: true,
             lineHeight: true,
+            detailed: false
           },
           colors: {
             hex: true,

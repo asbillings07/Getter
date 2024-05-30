@@ -157,7 +157,8 @@ h1 {
   }
 }
 
-.font-content {
+.font-element-container {
+  padding: 10px 0;
 }
 
 .image-content {

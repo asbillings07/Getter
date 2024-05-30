@@ -1,11 +1,11 @@
 /* global chrome */
 
-  const getItem = (item, func = (data) => false) => {
-    chrome.storage.local.get(item, func)
-  }
-  const setItem = (item, func = () => false) => {
-    chrome.storage.local.set(item, func)
-  }
+const getItem = (item, func = (data) => false) => {
+  chrome.storage.local.get(item, func)
+}
+const setItem = (item, func = () => false) => {
+  chrome.storage.local.set(item, func)
+}
 
 const createNotification = (title, message, buttons = false, interaction = false) => {
   const options = {
@@ -55,7 +55,7 @@ export const sortData = (cssObj) => {
   return cssObj
 }
 
-const splitRgb = (rgbStr) => { 
+const splitRgb = (rgbStr) => {
   return rgbStr.split('(')[1].split(')').join('').split(',') ?? [];
 }
 
@@ -82,6 +82,31 @@ function rgbToHex(rbgStr) {
   return `#${hexConvert}`;
 }
 
+function movePropertyToTop(obj, key) {
+  // Check if the specified key exists in the object
+  if (!obj.hasOwnProperty(key)) {
+    console.error(`Key "${key}" does not exist in the object.`);
+    return obj;
+  }
+
+  if (Object.keys(obj)[0] === key) return obj;
+
+  // Create a new object
+  const newObj = {};
+
+  // Add the specified key to the new object first
+  newObj[key] = obj[key];
+
+  // Add the rest of the keys
+  for (let prop in obj) {
+    if (prop !== key) {
+      newObj[prop] = obj[prop];
+    }
+  }
+
+  return newObj;
+}
+
 const copyToClipboard = async (e, setIsOpen, setColor) => {
   if (!navigator.clipboard) {
     console.error('Clipboard is unavailable');
@@ -106,7 +131,7 @@ const copyToClipboard = async (e, setIsOpen, setColor) => {
 }
 
 const isObjEmpty = (obj) => {
-  return obj === null || Object.entries(obj).length === 0;
+  return obj === null || obj === undefined || Object.keys(obj).length === 0;
 }
 
 function deepEqual(obj1, obj2) {
@@ -124,27 +149,31 @@ const downloadAllImages = (images) => {
   });
 }
 
-const hightLightFontOnPage = (e) => {
-  chrome.tabs.sendMessage(
-    currentTab.id,
-    { styleId: `${e.target.value}` },
-    (response) => {
-      console.log('****Message Response****', response);
-    }
-  );
-
+const highLightFontOnPage = async (e) => {
+  console.log('****Highlight Font****', e.target.value);
+  if (e.target.value) {
+    const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    chrome.tabs.sendMessage(
+      currentTab.id,
+      { action: "styleHighlight", payload: { styleId: e.target.value } },
+      (response) => {
+        console.log('****Message Response****', response);
+      }
+    );
+  }
 }
 
-  export {
-    getItem,
-    setItem,
-    rgbToHex,
-    copyToClipboard,
-    downloadAllImages,
-    hightLightFontOnPage,
-    isObjEmpty,
-    downloadImage,
-    splitRgb,
-    deepEqual,
-    createNotification
-  }
+export {
+  getItem,
+  setItem,
+  rgbToHex,
+  copyToClipboard,
+  downloadAllImages,
+  highLightFontOnPage,
+  movePropertyToTop,
+  isObjEmpty,
+  downloadImage,
+  splitRgb,
+  deepEqual,
+  createNotification
+}

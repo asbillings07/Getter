@@ -53,8 +53,6 @@ export function crawlPage() {
     'button'
   ]
 
-  let tab;
-
   function getItem(item, func = (data) => false) {
     chrome.storage.local.get(item, func)
   }
@@ -73,16 +71,45 @@ export function crawlPage() {
     }
   })
 
+
   chrome.runtime.onMessage.addListener(function (
     request,
     sender,
     sendResponse
   ) {
-    if (request.styleId) {
-      highlightInPage(request.styleId)
-      sendResponse({ action: 'notif', payload: { title: 'Font Highlighted', message: 'The selected Font has been highlighted in the page' } })
+    if (request.action === 'styleHighlight') {
+      highLightFontOnPage(request.payload.styleId)
+      sendResponse({ action: 'highLightNotif', payload: { title: 'Font Highlighted', message: 'The selected Font has been highlighted in the page' } })
     }
   })
+
+  function highLightFontOnPage (styleId) {
+
+    // .getter-highlight {
+    //   border: 16px solid #ea2634;
+    //   border - radius: 10px;
+    // }
+    const allStyleNodes = document.body.querySelectorAll(`[data-style-id`)
+
+    const styleNodes = document.body.querySelectorAll(`[data-style-id="${styleId}"]`)
+
+    console.log('styleId', styleId)
+    console.log('styleNodes', styleNodes)
+    console.log('AllStyleNodes', allStyleNodes)
+
+    // remove previous highlights
+    Array.from(allStyleNodes).forEach(node => {
+      node.style.border = 'none';
+    })
+
+    // add highlight to specified nodes
+    Array.from(styleNodes).forEach(node => {
+      // node.classList.add('getter-highlight')
+      node.style.border = '16px solid #ea2634';
+    
+    })
+  }
+
 
   function getValuesFromPage(getStyleOnPage) {
     const styleObj = getStyleOnPage()
@@ -115,8 +142,6 @@ export function crawlPage() {
     }
 
     if (shouldCapture) {
-        console.log('NODES', nodes)
-
         Array.from(nodes).forEach((nodeElement, i) => {
           if (nodeElement.style) {
             captureEls({ nodeElement, allStyles });
@@ -199,9 +224,37 @@ export function crawlPage() {
       }
     })
 
+    if (allStyles[key][nodeElement.localName]) {
+      allStyles[key][nodeElement.localName].push(movePropertyToTop(tagStyles, 'id'))
+    } else {
+      allStyles[key][nodeElement.localName] = [movePropertyToTop(tagStyles, 'id')]
+    }
 
-    allStyles[key][nodeElement.localName] = tagStyles
+  }
 
+  function movePropertyToTop(obj, key) {
+    // Check if the specified key exists in the object
+    if (!obj.hasOwnProperty(key)) {
+      console.error(`Key "${key}" does not exist in the object.`);
+      return obj;
+    }
+
+    if (Object.keys(obj)[0] === key) return obj;
+
+    // Create a new object
+    const newObj = {};
+
+    // Add the specified key to the new object first
+    newObj[key] = obj[key];
+
+    // Add the rest of the keys
+    for (let prop in obj) {
+      if (prop !== key) {
+        newObj[prop] = obj[prop];
+      }
+    }
+
+    return newObj;
   }
 
   function toCapitalize(string) {
@@ -264,25 +317,31 @@ export function crawlPage() {
 
   function getId(el) {
     if (el.id) {
-      return el.id
-    } else {
-      el.id = createNodeId(5)
+      el.setAttribute('data-getter-id', el.id)
       return el.id
     }
+
+    el.id = createNodeId(5)
+    el.setAttribute('data-getter-id', el.id)
+    return el.id
   }
 
-  function convertRgb(option, rgb) {
-    return {
-      'hex' : rgbToHex(rgb),
-      'hsl': rgbToHsl(rgb)
-    }[option]
+  function createNodeId(length) {
+    let result = ''
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+    const charactersLength = characters.length
+    for (let i = 0; i < length; i++) {
+      result += characters.charAt(Math.floor(Math.random() * charactersLength))
+    }
+    return result
   }
+
 
   function rgbToHex(rgbStr) {
     const rgbArr = rgbStr.split('(')[1].split(')').join('').split(',') ?? [];
     if (rgbArr.length === 4) rgbArr.pop();
 
-    const hexConvert = rgbArr
+    const hexValue = rgbArr
       .map((value) => {
         switch (true) {
           case +value < 0:
@@ -298,96 +357,6 @@ export function crawlPage() {
         return hexVal.length === 1 ? '0' + hexVal : hexVal;
       })
       .join('');
-    return `#${hexConvert}`;
+    return `#${hexValue}`;
   }
-
-  /**
- * Converts an RGB color value to HSL. Conversion formula
- * adapted from http://en.wikipedia.org/wiki/HSL_color_space.
- * Assumes r, g, and b are contained in the set [0, 255] and
- * returns h, s, and l in the set [0, 1].
- *
- * @param   Number  r       The red color value
- * @param   Number  g       The green color value
- * @param   Number  b       The blue color value
- * @return  Array           The HSL representation
- */
-  function rgbToHsl(rgbStr) {
-    const rgbArr = rgbStr.split('(')[1].split(')').join('').split(',') ?? [];
-    let r = rgbArr[0], g = rgbArr[1], b = rgbArr[2];
-
-    r /= 255, g /= 255, b /= 255;
-
-    var max = Math.max(r, g, b), min = Math.min(r, g, b);
-    var h, s, l = (max + min) / 2;
-
-    if (max == min) {
-      h = s = 0; // achromatic
-    } else {
-      var d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-
-      switch (max) {
-        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-        case g: h = (b - r) / d + 2; break;
-        case b: h = (r - g) / d + 4; break;
-      }
-
-      h /= 6;
-    }
-
-    return `hsl(${h} ${s} ${l})`
-  }
-
-
-  function highlightInPage(styleId) {
-    const allNodes = document.body.getElementsByTagName('*')
-
-    const nodes = document.body.querySelectorAll(`[data-style-id="${styleId}"]`)
-
-    // remove previous highlights
-    Array.from(allNodes).forEach(node => {
-      // node.classList.remove('style-highlight')
-      node.style.backgroundColor = ''
-    })
-
-    // add highlight to specified nodes
-    Array.from(nodes).forEach(node => {
-      // node.classList.add('style-highlight')
-      node.style.backgroundColor = '#FFAE42'
-    })
-  }
-
-  const sheet = (function () {
-    // Create the <style> tag
-    const style = document.createElement('style')
-
-    // WebKit hack :(
-    style.appendChild(document.createTextNode(''))
-
-    // Add the <style> element to the page
-    document.head.appendChild(style)
-
-    return style.sheet
-  })()
-
-  function addCSSRule(sheet, selector, rules, index = 0) {
-    if ('insertRule' in sheet) {
-      sheet.insertRule(selector + '{' + rules + '}', index)
-    } else if ('addRule' in sheet) {
-      sheet.addRule(selector, rules, index)
-    }
-  }
-
-  function createNodeId(length) {
-    let result = ''
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-    const charactersLength = characters.length
-    for (let i = 0; i < length; i++) {
-      result += characters.charAt(Math.floor(Math.random() * charactersLength))
-    }
-    return result
-  }
-
-  addCSSRule(sheet, '.style-highlight', 'background-color: yellow')
 }
