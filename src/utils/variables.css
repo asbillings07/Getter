@@ -46,4 +46,14 @@ button {
   cursor: pointer;
   border: none;
   background-color: transparent;
+  &:focus {
+    outline: none;
+    border: none;
+  }
+
+  &:focus-visible {
+    outline: none;
+    border: none;
+  }
+
 }

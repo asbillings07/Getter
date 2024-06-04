@@ -4,8 +4,8 @@ import { ViewHeader, NotFound } from '../components';
 import { Tooltip } from 'react-tooltip';
 import { copyToClipboard, rgbToHex, splitRgb } from '../utils';
 
-export const ColorView = ({ data }) => {
-    const { propName, loading, setLoading, cssOptions } = useGetterContext()
+export const ColorView = () => {
+    const { propName, loading, cssData, cssOptions } = useGetterContext()
     const [isOpen, setIsOpen ] = useState(false)
     const [color, setColor] = useState('')
 
@@ -21,7 +21,7 @@ export const ColorView = ({ data }) => {
 
     const COLORS = 'colors'
     const colorOptions = cssOptions?.colors
-    const colorData = data?.colors && Object.entries(data.colors);
+    const colorData = cssData?.colors && Object.entries(cssData.colors);
 
     const shouldRender = COLORS === propName
 

@@ -115,8 +115,9 @@ export function crawlPage() {
     const styleObj = getStyleOnPage()
     if (!isObjEmpty(styleObj)) {
       console.log('STYLE OBJ', styleObj)
-      chrome.runtime.sendMessage({ action: 'getState', payload: styleObj })
+      chrome.runtime.sendMessage({ action: 'getCurrentResults', payload: styleObj })
       setItem({ hasScriptRunOnPage: true })
+      setItem({ currentResults: styleObj })
     }
   }
 

@@ -4,8 +4,8 @@ const { resolve } = require('path')
 
 module.exports = ({ mode } = { mode: 'developement' }) => ({
     mode,
+    devtool: 'source-map',
     entry: {
-        options: resolve(__dirname, 'src', 'options', 'index.js'),
         popup: resolve(__dirname, 'src', 'popup', 'index.js'),
         background: resolve(__dirname, 'src', 'background.js'),
     },
@@ -42,7 +42,7 @@ module.exports = ({ mode } = { mode: 'developement' }) => ({
         ]
     },
     plugins: [
-        ...getHtmlPlugins(['options', 'popup']),
+        ...getHtmlPlugins(['popup']),
         new CopyPlugin({
             patterns: [
                 {
@@ -52,11 +52,6 @@ module.exports = ({ mode } = { mode: 'developement' }) => ({
             ],
         }),
     ],
-    devtool: 'source-map',
-    devServer: {
-        host: '0.0.0.0',
-        port: 3000
-    }
 })
 
 function getHtmlPlugins(chunks) {

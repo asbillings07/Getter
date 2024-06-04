@@ -1,46 +1,5 @@
 /* global chrome  */
-import { getItem, setItem, createNotification } from './utils/helperFunctions'
-
-
-const fontStyles = [
-  'fontFamily',
-  'fontWeight',
-  'fontSize',
-  'textSize',
-  'lineHeight',
-  'letterSpacing',
-  'color',
-  'backgroundColor',
-]
-
-const elementTags = [
-  'h1',
-  'h2',
-  'h3',
-  'h4',
-  'h5',
-  'h6',
-  'header',
-  'nav',
-  'body',
-  'section',
-  'article',
-  'nav',
-  'aside',
-  'main',
-  'p',
-  'button'
-]
-
-const restrictedUrls = [
-  'chrome://',
-  'chrome-extension://',
-  'https://chrome.google.com/webstore'
-];
-
-// disable extension starting out
-
-
+import { setItem } from './utils/helperFunctions'
 
   const rule1 = {
     conditions: [
@@ -68,13 +27,13 @@ const restrictedUrls = [
 
   chrome.tabs.onActivated.addListener(() => {
     checkTab()
-    // todo need to check if tab or url in current tab changes
     setItem({ hasScriptRunOnPage: false })
   })
 
 
   chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     checkTab()
+    setItem({ hasScriptRunOnPage: false })
 })
 
   chrome.runtime.onMessage.addListener(function (
@@ -129,43 +88,3 @@ const restrictedUrls = [
       })
     })
   })
-
-
-
-
-  function onNotifButtonPress (id, buttonIdx) {
-    getItem('currentImage', ({ currentImage }) => {
-      if (buttonIdx === 0) { // view image
-        createLink(currentImage, false, true)
-      }
-
-      if (buttonIdx === 1) { // download image
-        createLink(currentImage, true, false)
-      }
-    })
-  }
-
-  function createLink (image, download, view) {
-    const a = document.createElement('a')
-    if (image.includes('url')) {
-      image = image.split('"')[1]
-    }
-
-    if (download) {
-      chrome.downloads.download({ url: image })
-    }
-
-    if (view) {
-      a.href = image
-      a.target = '_blank'
-    }
-
-    const clickHandler = () => null
-
-    a.addEventListener('click', clickHandler, false)
-    a.click()
-    a.removeEventListener('click', clickHandler)
-  }
-
-  chrome.notifications.onButtonClicked.addListener(onNotifButtonPress)
-

@@ -1,6 +1,7 @@
 import React from 'react'
 import { Logos } from './Logos'
 import { downloadAllImages } from '../utils'
+import { useGetterContext } from '../Store'
 
 export const Header = () => {
   return (
@@ -11,6 +12,7 @@ export const Header = () => {
 }
 
 export const ViewHeader = ({ title, downloadAll = false }) => { 
+  const { cssData } = useGetterContext();
   return (
     <div className='h1-container'>
       <div className='title-container'>

@@ -1,5 +1,4 @@
 /* global chrome */
-
 const getItem = (item, func = (data) => false) => {
   chrome.storage.local.get(item, func)
 }
@@ -139,14 +138,37 @@ function deepEqual(obj1, obj2) {
   return Object.is(obj1, obj2) && JSON.stringify(obj1) === JSON.stringify(obj2)
 }
 
+const downloadImageAsBlob = async (url) => {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return blob;
+};
+
+const createZipFromImages = async (images) => {
+  const JSZip = require('jszip');
+  const zip = new JSZip();
+
+  for (const [index, imageUrl] of images.entries()) {
+    const blob = await downloadImageAsBlob(imageUrl);
+    zip.file(`image${index + 1}.jpg`, blob);
+  }
+
+  const zipBlob = await zip.generateAsync({ type: 'blob' });
+  const zipUrl = URL.createObjectURL(zipBlob);
+
+  chrome.downloads.download({
+    url: zipUrl,
+    filename: 'images.zip',
+    saveAs: true
+  });
+};
+
 const downloadImage = async (image, callback) => {
   return chrome.downloads.download({ url: image, saveAs: false, conflictAction: 'uniquify' }, callback);
 }
 
 const downloadAllImages = (images) => {
-  images.forEach((image) => {
-    downloadImage(image.src);
-  });
+  createZipFromImages(images.map(img => img.src));
 }
 
 const highLightFontOnPage = async (e) => {

@@ -1,22 +1,24 @@
-import React, { Children, useEffect } from 'react'
+import React, { Children, useEffect, useState } from 'react'
 import { useGetterContext } from '../Store';
 import { isObjEmpty } from '../utils';
 import { ViewHeader, NotFound, Logos } from '../components';
 
-export const FontView = ({ data }) => {
+export const FontView = () => {
     const FONTS = 'fonts'
-    const { propName, loading, setLoading, cssOptions } = useGetterContext()
+    const { propName, loading, cssOptions, cssData } = useGetterContext()
+    const [showAttributes, setShowAttributes] = useState({});
 
-    const fontData = data?.fonts && Object.entries(data?.fonts)
+    const fontData = cssData?.fonts && Object.entries(cssData?.fonts)
     const fontOptions = cssOptions?.fonts
 
     const shouldRender = FONTS === propName;
 
-    useEffect(() => {
-        if (!isObjEmpty(data)) {
-            setLoading(false)
-        }
-    }, [data])
+    const toggleFontVisibility = (element) => {
+        setShowAttributes((prevVisibleFonts) => ({
+            ...prevVisibleFonts,
+            [element]: !prevVisibleFonts[element]
+        }));
+    };
 
     const fontMap = (font) => {
         return {
@@ -31,18 +33,18 @@ export const FontView = ({ data }) => {
     }
 
     const renderFonts = () => {
-        
+
         if (loading) {
             return <div id='spinner'></div>
         }
 
-        if (!fontData) { 
-            return <NotFound name='fonts' /> 
+        if (!fontData) {
+            return <NotFound name='fonts' />
         }
 
-            const FontAttributes = ({ font }) => {
+        const FontAttributes = ({ font }) => {
             const fontHref = `https://fonts.google.com/?query=${font.fontFamily.split(',')[0]}`;
-               return Children.toArray(Object.entries(font).map(([key, value]) => {
+            return Children.toArray(Object.entries(font).map(([key, value]) => {
                 if (key === 'id') return;
 
                 if (fontOptions[key]) {
@@ -56,37 +58,40 @@ export const FontView = ({ data }) => {
 
                 return null
             }))
-            }
+        }
 
+        return Children.toArray(fontData.map(([element, fonts]) => {
+            const fontElements = Children.toArray(fonts.map((font, i) => {
 
-          return Children.toArray(fontData.map(([element, fonts]) => {
-                const fontElements = Children.toArray(fonts.map((font, i) => {
-                    
-                    if (fontOptions.detailed) {
-                        return (
-                            <div className='font-element-container'>
-                                <FontAttributes font={font} />
-                            </div>
-                        )
-                    }
-
-                    return i == 0 ? (
+                if (fontOptions.detailed) {
+                    return (
                         <div className='font-element-container'>
                             <FontAttributes font={font} />
                         </div>
-                    ) : null
-            
+                    )
+                }
+
+                return i == 0 ? (
+                    <div className='font-element-container'>
+                        <FontAttributes font={font} />
+                    </div>
+                ) : null
+
             }))
 
-                return (
-                    <div className={`${FONTS}-container`} id='font-card'>
-                        <div id="liContainer" className='li-font'>
-                            <div id="font-heading" value={fonts.id} >{element}</div>
-                            {fontElements}
+            return (
+                <div className={`${FONTS}-container`} id='font-card'>
+                    <div id="liContainer" className='li-font'>
+                        
+                        <div id="font-heading" value={fonts.id}>
+                            <Logos logo='downArrow' onclick={() => toggleFontVisibility(element)} />
+                            <div>{element}</div>
                         </div>
+                        {!showAttributes[element] && fontElements}
                     </div>
-                )
-            }))
+                </div>
+            )
+        }))
     }
 
     return shouldRender && (
