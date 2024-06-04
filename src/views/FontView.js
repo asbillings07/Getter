@@ -1,6 +1,5 @@
-import React, { Children, useEffect, useState } from 'react'
+import React, { Children, useState } from 'react'
 import { useGetterContext } from '../Store';
-import { isObjEmpty } from '../utils';
 import { ViewHeader, NotFound, Logos } from '../components';
 
 export const FontView = () => {

@@ -17,8 +17,6 @@ export const ColorView = () => {
         }
     }, [color])
 
-
-
     const COLORS = 'colors'
     const colorOptions = cssOptions?.colors
     const colorData = cssData?.colors && Object.entries(cssData.colors);

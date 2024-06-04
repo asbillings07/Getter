@@ -1,4 +1,4 @@
-import React, { Children, useEffect, Suspense, useState } from 'react'
+import React, { Children, Suspense, useState } from 'react'
 import { useGetterContext } from '../Store';
 import { NotFound, ViewHeader, Logos, SuspenseImg, ImageLoader } from '../components';
 import { downloadImage } from '../utils';
