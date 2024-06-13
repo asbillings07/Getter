@@ -12,7 +12,15 @@ export const SupportView = () => {
     return <a href={href} target='_blank'>{text}{children}</a>
   }
 
-  const CreateSupportContent = ({ heading, content, buttonText, link }) => {
+  const TextContent = () => {
+    return (
+      <>
+        Contact us by email at <Link href='cssgetter@gmail.com' text='cssgetter@gmail.com' /> for further support, feedback, or suggestions.
+      </>
+    )
+  }
+
+  const CreateSupportContent = ({ heading, content, buttonText, link, child }) => {
     return (
       <div className='support-content-container'>
         <h2>
@@ -31,13 +39,13 @@ export const SupportView = () => {
       <ViewHeader title={SUPPORT.toUpperCase()} />
       <CreateSupportContent
         heading='Documentation'
-        content='For more information on how to use CSS Getter, visitour website and read the extension documentation.'
+        content='For more information on how to use CSS Getter, visit our website and read the extension documentation.'
         buttonText='read documentation'
         link='https://cssgetter.com'
       />
       <CreateSupportContent
         heading='Support'
-        content='Contact us by email at cssgetter@gmail.com for further support, feedback, or suggestions.'
+        content={<TextContent />}
         buttonText='send us an email'
         link='mailto:cssgetter@gmail.com'
       />

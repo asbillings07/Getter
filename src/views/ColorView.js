@@ -64,14 +64,15 @@ export const ColorView = () => {
           return Children.toArray(colorData.map(([style, data]) => (
                 <div className={`${COLORS}-container`} style={{ background: `${getColors(style).buttonColor}` }}>
                     <div id="liContainer" className='li-color' style={{ color: setTextColor(style) }}>
-                        <div id="hexDiv" data-tooltip-id="color-div-tooltip-click" data-tooltip-variant="success" className="mr pointer" onClick={handleColorClick}>{getColors(style).hex}</div>
-                        <div id="listItem" data-tooltip-id="color-div-tooltip-click" data-tooltip-variant="success" className="mr pointer" onClick={handleColorClick}>{style}</div>
+                        <div id="hexDiv" data-tooltip-id="color-div-tooltip-click" className="mr pointer" onClick={handleColorClick}>{getColors(style).hex}</div>
+                        <div id="listItem" data-tooltip-id="color-div-tooltip-click" className="mr pointer" onClick={handleColorClick}>{style}</div>
                         <p id="listDesc">used {data.count} time(s)</p>
                     </div>
                     <Tooltip
                         id="color-div-tooltip-click"
                         content={`${color} copied to clipboard!`}
                         isOpen={isOpen}
+                        style={{ backgroundColor: 'var(--light-grey-2)'}}
                     />
                 </div>
             )))

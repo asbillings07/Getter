@@ -110,9 +110,17 @@ export const Logos = ({ logo, href, onclick, disabled = false }) => {
     )
 
     const downArrow = (
-        <button className='down-arrow' onClick={onclick}>
+        <button className='arrow' onClick={onclick}>
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <path d="M13.5 6.75L9 11.25L4.5 6.75" stroke="#1E1E1E" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" fill='none' />
+            </svg>
+        </button>
+    )
+
+    const sideArrow = (
+        <button className='arrow' onClick={onclick}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M6.75 4.5L11.25 9L6.75 13.5" stroke="#1E1E1E" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round" fill='none' />
             </svg>
         </button>
     )
@@ -314,6 +322,7 @@ export const Logos = ({ logo, href, onclick, disabled = false }) => {
             no_images,
             settings,
             downArrow,
+            sideArrow,
             support
         }[logo]
     }

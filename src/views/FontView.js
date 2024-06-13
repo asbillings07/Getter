@@ -83,7 +83,7 @@ export const FontView = () => {
                     <div id="liContainer" className='li-font'>
                         
                         <div id="font-heading" value={fonts.id}>
-                            <Logos logo='downArrow' onclick={() => toggleFontVisibility(element)} />
+                            <Logos logo={showAttributes[element] ? 'sideArrow': 'downArrow'} onclick={() => toggleFontVisibility(element)} />
                             <div>{element}</div>
                         </div>
                         {!showAttributes[element] && fontElements}

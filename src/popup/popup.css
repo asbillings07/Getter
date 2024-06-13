@@ -157,6 +157,7 @@ h1 {
   &:hover {
     cursor: pointer;
     box-shadow: 0px 0px 1px 1px var(--very-light-orange), 0px 0px 10px 0px var(--light-orange);
+    transition: fill 0.3s;
   }
 }
 
@@ -187,6 +188,7 @@ svg {
 .active {
   svg {
     fill: url(#logo-gradient);
+    transition: fill 0.3s;
   }
 }
 
@@ -345,6 +347,8 @@ ul {
 }
 
 .link-logo {
+  margin-left: 3px;
+
   svg {
     fill: none;
   }
@@ -372,7 +376,7 @@ ul {
 .li-font {
   flex-direction: column;
   align-items: flex-start;
-  margin: 10px 0;
+  margin: 5px 5px;
 }
 
 #font-heading {
@@ -386,7 +390,7 @@ ul {
   margin-left: -12px;
 }
 
-.down-arrow {
+.arrow {
   width: 25px;
 }
 
@@ -499,11 +503,11 @@ fieldset {
 }
 
 input[type=checkbox]:checked + label:before {
-  content: "\2714";
+  content: '';
+  background-image: url('data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2216%22%20height=%2216%22%20viewBox=%220%200%2016%2016%22%20fill=%22none%22%3E%3Cpath%20d=%22M14.2221%200H1.77792C0.8%200%200%200.8%200%201.77792V14.2225C0%2015.2004%200.8%2016.0004%201.77792%2016.0004H14.2225C15.2004%2016.0004%2016.0004%2015.2004%2016.0004%2014.2225V1.77792C16.0004%200.8%2015.2004%200%2014.2225%200H14.2221ZM6.22208%2012.4446L1.7775%208L3.02167%206.75583L6.22167%209.95583L12.9775%203.2L14.2217%204.44458L6.22167%2012.4446H6.22208Z%22%20fill=%22%23912381%22/%3E%3C/svg%3E');
   text-shadow: 1px 1px 1px rgba(0, 0, 0, .2);
   font-size: 12px;
-  color: var(--white);
-  background-color: var(--purple);
+  background-color: var(--white);
   text-align: center;
   line-height: 12px;
 }
@@ -512,6 +516,7 @@ input[type=checkbox]:checked + label:before {
   .title-container {
     display: flex;
     align-items: center;
+    justify-content: space-between;
   }
 }
 
@@ -535,11 +540,9 @@ button[disabled] {
 
 .download-button {
   display: flex;
-  width: 120px;
-  height: 30px;
   align-items: center;
-  margin-left: 19.6em;
   border-radius: 8px;
+  padding: 6px 12px;
   background: var(--purple);
   color: #fff;
   font-size: var(--smaller);
@@ -549,6 +552,7 @@ button[disabled] {
 
   &:hover {
     background: var(--background-gradient);
+    transition: fill 0.3s;
   }
 }
 
@@ -571,6 +575,11 @@ button[disabled] {
     line-height: 130%;
   }
 
+  a {
+    color: var(--purple);
+    text-decoration: underline;
+  }
+
   button {
     color: var(--white);
     background-color: var(--purple);
@@ -581,6 +590,7 @@ button[disabled] {
 
     &:hover {
       background: var(--background-gradient);
+      transition: fill 0.3s;
     }
   }
 }
