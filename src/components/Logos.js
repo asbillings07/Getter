@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react'
-import { Tooltip } from 'react-tooltip'
 import { useGetterContext } from '../Store'
 
 
@@ -13,7 +12,6 @@ export const Logos = ({ logo, href, onclick, disabled = false }) => {
     }
     const { setPropName, propName, error } = useGetterContext()
     const [className, setClassName] = useState(initialState);
-    const toolTipPlace = 'top'
 
     useEffect(() => {
         switch (propName) {
@@ -330,7 +328,6 @@ export const Logos = ({ logo, href, onclick, disabled = false }) => {
     return (
         <>
             {getLogo(logo)}
-            <Tooltip id="logo-tooltip" positionStrategy="fixed" style={{ zIndex: 1000 }} place={toolTipPlace} />
         </>
     )
 }

@@ -2,3 +2,5 @@ node_modules
 package-lock.json
 dist
 getter_dist.zip
+getter_zip-new.zip
+.zip
