@@ -172,7 +172,6 @@ const downloadAllImages = (images) => {
 }
 
 const highLightFontOnPage = async (e) => {
-  console.log('****Highlight Font****', e.target.value);
   if (e.target.value) {
     const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
     chrome.tabs.sendMessage(

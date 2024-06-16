@@ -93,10 +93,6 @@ export function crawlPage() {
 
     const styleNodes = document.body.querySelectorAll(`[data-style-id="${styleId}"]`)
 
-    console.log('styleId', styleId)
-    console.log('styleNodes', styleNodes)
-    console.log('AllStyleNodes', allStyleNodes)
-
     // remove previous highlights
     Array.from(allStyleNodes).forEach(node => {
       node.style.border = 'none';
@@ -114,7 +110,6 @@ export function crawlPage() {
   function getValuesFromPage(getStyleOnPage) {
     const styleObj = getStyleOnPage()
     if (!isObjEmpty(styleObj)) {
-      console.log('STYLE OBJ', styleObj)
       chrome.runtime.sendMessage({ action: 'getCurrentResults', payload: styleObj })
       setItem({ hasScriptRunOnPage: true })
       setItem({ currentResults: styleObj })
