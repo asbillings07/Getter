@@ -1,38 +1,40 @@
 /* global chrome  */
-import { getItem, setItem, createNotification } from '../utils/helperFunctions'
+import { setItem } from './utils/helperFunctions'
 
   const rule1 = {
     conditions: [
       new chrome.declarativeContent.PageStateMatcher({
-        pageUrl: { schemes: ['https', 'http'] }
+        pageUrl: { 
+          schemes: ['https', 'http']
+        }
       })
     ],
     actions: [new chrome.declarativeContent.ShowPageAction()]
   }
-  let cssValues
-
-  getItem('cssGetters', ({ cssGetters }) => {
-
-    cssValues = cssGetters
-  })
-
-  chrome.storage.onChanged.addListener((changes) => {
-
-    if ('cssGetters' in changes && changes.cssGetters.newValue) {
-      getItem('cssGetters', ({ cssGetters }) => {
-        cssValues = cssGetters
-      })
-    }
-  })
 
   chrome.webNavigation.onDOMContentLoaded.addListener((object) => {
     setItem({ hasScriptRunOnPage: false })
   })
 
-  chrome.tabs.onActivated.addListener(function () {
-    // todo need to check if tab or url in current tab changes
+  const checkTab = async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const isRestricted = (tab?.url.includes('chrome:') || tab?.url.includes('chromewebstore'));
+
+    if (isRestricted) {
+      chrome.action.disable(tab.id)
+    }
+  }
+
+  chrome.tabs.onActivated.addListener(() => {
+    checkTab()
     setItem({ hasScriptRunOnPage: false })
   })
+
+
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    checkTab()
+    setItem({ hasScriptRunOnPage: false })
+})
 
   chrome.runtime.onMessage.addListener(function (
     request,
@@ -40,8 +42,8 @@ import { getItem, setItem, createNotification } from '../utils/helperFunctions'
     sendResponse
   ) {
     switch (request.action) {
-      case 'getValues':
-        sendResponse({ getters: cssValues })
+      case 'getOptions':
+        sendResponse({ cssGetterOptions: getterOptions })
         break
       case 'getState':
         setItem({
@@ -55,55 +57,34 @@ import { getItem, setItem, createNotification } from '../utils/helperFunctions'
   })
 
   chrome.runtime.onInstalled.addListener(function () {
-    chrome.declarativeContent.onPageChanged.removeRules(undefined, function () {
+    chrome.action.disable()
+    chrome.declarativeContent.onPageChanged.removeRules(undefined, async function () {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       chrome.declarativeContent.onPageChanged.addRules([rule1])
+      checkTab()
       setItem({
         hasScriptRunOnPage: false,
         currentImage: null,
+        currentTab: tab,
         pageRefreshed: false,
-        cssGetters: [
-          'fontFamily',
-          'backgroundColor',
-          'color'
-        ]
+        cssGetterOptions: {
+          fonts: {
+            fontFamily: true,
+            fontWeight: true,
+            fontSize: true,
+            letterSpacing: true,
+            lineHeight: true,
+            detailed: false
+          },
+          colors: {
+            hex: true,
+            buttonColor: true
+          },
+          images: {
+            fileSize: true,
+            imageDimensions: true
+          }
+        }
       })
     })
   })
-
-
-  function onNotifButtonPress (id, buttonIdx) {
-    getItem('currentImage', ({ currentImage }) => {
-      if (buttonIdx === 0) { // view image
-        createLink(currentImage, false, true)
-      }
-
-      if (buttonIdx === 1) { // download image
-        createLink(currentImage, true, false)
-      }
-    })
-  }
-
-  function createLink (image, download, view) {
-    const a = document.createElement('a')
-    if (image.includes('url')) {
-      image = image.split('"')[1]
-    }
-
-    if (download) {
-      chrome.downloads.download({ url: image })
-    }
-
-    if (view) {
-      a.href = image
-      a.target = '_blank'
-    }
-
-    const clickHandler = () => null
-
-    a.addEventListener('click', clickHandler, false)
-    a.click()
-    a.removeEventListener('click', clickHandler)
-  }
-
-  chrome.notifications.onButtonClicked.addListener(onNotifButtonPress)
-

@@ -1,6 +1,6 @@
 {
     "name": "Getter",
-    "version": "1.3.0",
+    "version": "2.0.0",
     "description": "Automatically find fonts, colors and more on any page!",
     "permissions": [
       "tabs",
@@ -18,13 +18,22 @@
     "background": {
       "service_worker": "background.js"
     },
+    "web_accessible_resources": [
+      {
+        "resources": [
+          "jszip.min.js"
+        ],
+        "matches": [
+          "<all_urls>"
+        ]
+      }
+    ],
     "content_security_policy": {
         "extension_pages": "script-src 'self' 'wasm-unsafe-eval' http://localhost:* http://127.0.0.1:*",
         "sandbox": "sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline' 'unsafe-eval'; child-src 'self';"
     },
-    "options_page": "options.html",
     "action": {
-      "default_title": "Getter",
+      "default_title": "Getter is ready to get you some styles!",
       "default_popup": "popup.html",
       "default_icon": {
         "16": "images/CSS-Getter-Icon-16px.png",

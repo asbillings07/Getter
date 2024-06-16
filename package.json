@@ -1,7 +1,7 @@
 {
   "name": "getter",
-  "version": "1.2.0",
-  "description": "chrome extension that gets css info",
+  "version": "2.0.0",
+  "description": "chrome extension that gets css info on any page your on",
   "main": "background.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -25,15 +25,12 @@
   },
   "homepage": "https://github.com/asbillings07/Getter#readme",
   "dependencies": {
-    "@fortawesome/fontawesome-svg-core": "^6.5.1",
-    "@fortawesome/free-brands-svg-icons": "^6.5.1",
-    "@fortawesome/free-regular-svg-icons": "^6.5.1",
-    "@fortawesome/free-solid-svg-icons": "^6.5.1",
-    "@fortawesome/react-fontawesome": "^0.2.0",
-    "font-awesome": "^4.7.0",
+    "classnames": "^2.5.1",
+    "jszip": "^3.10.1",
     "path": "^0.12.7",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-tooltip": "^5.26.4",
     "webpack": "^5.6.0",
     "webpack-cli": "^4.2.0"
   },
@@ -46,7 +43,7 @@
     "babel-loader": "^8.2.2",
     "copy-webpack-plugin": "^12.0.2",
     "css-loader": "^5.0.1",
-    "html-webpack-plugin": "^4.5.0",
+    "html-webpack-plugin": "^5.6.0",
     "rimraf": "^5.0.5",
     "style-loader": "^2.0.0",
     "terser": "^5.5.1",
