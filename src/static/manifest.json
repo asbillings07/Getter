@@ -9,8 +9,7 @@
       "scripting",
       "webNavigation",
       "storage",
-      "downloads",
-      "notifications"
+      "downloads"
     ],
     "host_permissions": [
       "*://*/*"

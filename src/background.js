@@ -25,14 +25,27 @@ import { setItem } from './utils/helperFunctions'
     }
   }
 
+  const checkDebugState = async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const { search } = new URL(tab.url)
+
+    if (search === '?debug=getter') {
+      setItem({ debug: true })
+    } else {
+      setItem({ debug: false })
+    }
+  }
+
   chrome.tabs.onActivated.addListener(() => {
     checkTab()
+    checkDebugState()
     setItem({ hasScriptRunOnPage: false })
   })
 
 
   chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     checkTab()
+    checkDebugState()
     setItem({ hasScriptRunOnPage: false })
 })
 

@@ -9,7 +9,6 @@ import {
     downloadImage,
     splitRgb,
     movePropertyToTop,
-    createNotification,
     sortData,
     isObjEmpty
     
@@ -27,6 +26,5 @@ export {
     highLightFontOnPage,
     downloadImage,
     downloadAllImages,
-    deepEqual,
-    createNotification
+    deepEqual
 }

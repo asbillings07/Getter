@@ -64,10 +64,7 @@ export function crawlPage() {
     if (hasScriptRunOnPage) {
       getItem('currentResults', ({ currentResults }) => chrome.runtime.sendMessage({ action: 'getCurrentResults', payload: currentResults }))
     } else {
-      getItem('cssGetterOptions', ({ cssGetterOptions }) => {
-        options = cssGetterOptions
-        getValuesFromPage(getStylesOnPage)
-      })
+      getValuesFromPage(getStylesOnPage)
     }
   })
 
@@ -164,9 +161,6 @@ export function crawlPage() {
 
   function captureEls(elementInfo) {
     const { nodeElement, allStyles } = elementInfo;
-
-    // const backgroundImage = getComputedStyle(nodeElement, '')['background-image'].includes('url') ? getComputedStyle(nodeElement, '')['background-image'] : null
-    // consle.log('BG IMAGE', backgroundImage)
 
     if (defaultElementTags.includes(nodeElement.localName)) {
       handleTagStyles(allStyles, 'fonts', nodeElement)
@@ -284,15 +278,9 @@ export function crawlPage() {
   }
 
   function getImageData (imageEl) {
-    const shouldAddDimension = options.images.ImageDimensions;
     let image = {
       src: '', 
       name: imageEl.alt
-    }
-
-    if (shouldAddDimension) {
-      image.height = imageEl.height || imageEl.naturalHeight
-      image.width = imageEl.width || imageEl.naturalWidth
     }
     
     if (imageEl.src) {
