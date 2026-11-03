@@ -1,6 +1,6 @@
 {
   "name": "Getter",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Explore colors, fonts and images on the page you choose. Created by Aptelum Labs.",
   "permissions": [
     "activeTab",
@@ -13,7 +13,7 @@
     "service_worker": "background.js"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'"
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'; connect-src https:; img-src 'self' https:"
   },
   "action": {
     "default_title": "Getter \u2014 Created by Aptelum Labs",

@@ -6,6 +6,14 @@ export const EXPORT_LIMITS = Object.freeze({
   fileMs: 8000,
   totalMs: 60000,
 });
+export function isSecureImageUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
 export function imageFilename(url, type, index) {
   const ext = {
     "image/jpeg": "jpg",
@@ -58,8 +66,8 @@ export async function collectImages(
     );
     let reader, response;
     try {
-      if (!/^https?:\/\//i.test(img.src))
-        throw new Error("Unsupported image address");
+      if (!isSecureImageUrl(img.src))
+        throw new Error("Images require HTTPS without embedded credentials");
       response = await fetcher(img.src, {
         signal: combined,
         credentials: "omit",
@@ -94,7 +102,7 @@ export async function collectImages(
         data.set(chunk, offset);
         offset += chunk.length;
       }
-      entries.push({ filename, data });
+      entries.push({ filename, data, type });
       bytes += length;
     } catch {
       signal?.throwIfAborted();
@@ -124,7 +132,7 @@ export async function makeZip(images, options = {}) {
   options.signal?.throwIfAborted();
   if (!result.entries.length)
     throw new Error(
-      "No images could be included. Try individual downloads; some hosts block ZIP fetching.",
+      "No images could be included. Images require HTTPS and host permission to fetch; redirects and oversized files are skipped.",
     );
   const zip = new JSZip();
   for (const entry of result.entries) zip.file(entry.filename, entry.data);
@@ -170,9 +178,15 @@ export class DownloadTracker {
       );
   }
   async start(url, { blob = false, filename } = {}) {
-    if (this.disposed) throw new Error("Getter is closed");
-    if (!blob && !/^https?:\/\//i.test(url))
-      throw new Error("This image address cannot be downloaded.");
+    const localBlob =
+      blob && typeof url === "string" && url.startsWith("blob:");
+    if (this.disposed) {
+      if (localBlob) this.urls.revokeObjectURL(url);
+      throw new Error("Getter is closed");
+    }
+    // Network requests must use the bounded HTTPS fetch path above. The browser
+    // downloader would otherwise follow redirects and may send site cookies.
+    if (!localBlob) throw new Error("Only prepared local files can be saved.");
     this.pending++;
     try {
       const id = await this.api.download({

@@ -4,6 +4,8 @@ import { cp, readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import JSZip from "jszip";
 let server, origin;
+let insecureHits = 0;
+const imageOrigin = "https://images.fixture.test";
 const png = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl1sAAAAASUVORK5CYII=",
   "base64",
@@ -11,6 +13,12 @@ const png = Buffer.from(
 test.beforeAll(async () => {
   server = createServer((req, res) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
+    if (req.url === "/insecure-leak.png") {
+      insecureHits++;
+      res.setHeader("Content-Type", "image/png");
+      res.end(png);
+      return;
+    }
     if (req.url === "/denied.png") {
       res.writeHead(403);
       res.end("Unavailable fixture");
@@ -28,7 +36,7 @@ test.beforeAll(async () => {
     }
     res.setHeader("Content-Type", "text/html");
     res.end(
-      `<!doctype html><html><head><title>Synthetic Getter fixture</title></head><body style="color:rgb(18,52,86);background:white;font-family:Arial"><h1 id="unchanged" style="font-family:Georgia;font-size:32px">A test page</h1><p>Visible text</p><img alt="Sample image" src="/image.png" width="80" height="80"><iframe src="/frame"></iframe><iframe src="${origin.replace("127.0.0.1", "localhost")}/frame"></iframe><iframe sandbox src="/frame"></iframe></body></html>`,
+      `<!doctype html><html><head><title>Synthetic Getter fixture</title></head><body style="color:rgb(18,52,86);background:white;font-family:Arial"><h1 id="unchanged" style="font-family:Georgia;font-size:32px">A test page</h1><p>Visible text</p><img alt="Sample image" src="${imageOrigin}/image.png" width="80" height="80"><iframe src="/frame"></iframe><iframe src="${origin.replace("127.0.0.1", "localhost")}/frame"></iframe><iframe sandbox src="/frame"></iframe></body></html>`,
     );
   });
   await new Promise((resolve) => server.listen(0, "0.0.0.0", resolve));
@@ -38,7 +46,14 @@ test.afterAll(async () => {
   server?.closeAllConnections();
   await new Promise((resolve) => server.close(resolve));
 });
-async function launch(testInfo) {
+async function launch(
+  testInfo,
+  {
+    staleImageRace = false,
+    nativePopup = false,
+    popupScreen = "1600x1200",
+  } = {},
+) {
   const extension = testInfo.outputPath("extension");
   await mkdir(extension, { recursive: true });
   await cp("dist", extension, { recursive: true });
@@ -57,14 +72,73 @@ async function launch(testInfo) {
     {
       channel: "chromium",
       headless: true,
+      // Native popup sizing must not inherit Playwright's device-metrics viewport.
+      ...(nativePopup ? { viewport: null } : {}),
       acceptDownloads: true,
       downloadsPath: testInfo.outputPath("downloads"),
       args: [
+        ...(nativePopup
+          ? ["--window-size=1280,900", `--screen-info={${popupScreen}}`]
+          : []),
         `--disable-extensions-except=${extension}`,
         `--load-extension=${extension}`,
       ],
     },
   );
+  // HTTPS fixture routes exercise browser URL/CSP/redirect behavior without
+  // depending on a public host. Fulfilment is synthetic, not a TLS-server test.
+  await context.route(`${imageOrigin}/**`, async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    const headers = {
+      "access-control-allow-origin": "*",
+      "content-type": "image/png",
+    };
+    if (pathname === "/redirect.png") {
+      await route.fulfill({
+        status: 302,
+        headers: { ...headers, location: `${origin}/insecure-leak.png` },
+        body: "",
+      });
+    } else if (pathname === "/denied.png") {
+      await route.fulfill({ status: 403, headers, body: "Unavailable" });
+    } else {
+      await route.fulfill({ status: 200, headers, body: png });
+    }
+  });
+  if (staleImageRace) {
+    await context.addInitScript(() => {
+      if (!globalThis.chrome?.tabs) return;
+      const add = chrome.tabs.onUpdated.addListener.bind(chrome.tabs.onUpdated);
+      chrome.tabs.onUpdated.addListener = (listener) => {
+        window.invalidateScanForTest = (id) =>
+          listener(id, { status: "loading" });
+        add(listener);
+      };
+      const fetchImage = window.fetch.bind(window);
+      window.fetch = (url, options) =>
+        String(url).startsWith("https://images.fixture.test/")
+          ? new Promise((resolve) => {
+              window.releaseImageForTest = () =>
+                resolve(
+                  new Response(new Uint8Array([1, 2, 3]), {
+                    headers: { "content-type": "image/png" },
+                  }),
+                );
+            })
+          : fetchImage(url, options);
+      window.imageSaveAttempts = { objectUrls: 0, downloads: 0 };
+      const create = URL.createObjectURL.bind(URL);
+      URL.createObjectURL = (blob) => {
+        window.imageSaveAttempts.objectUrls++;
+        return create(blob);
+      };
+      const download = chrome.downloads.download.bind(chrome.downloads);
+      chrome.downloads.download = (options) => {
+        window.imageSaveAttempts.downloads++;
+        return download(options);
+      };
+    });
+  }
   let worker = context.serviceWorkers()[0];
   if (!worker) worker = await context.waitForEvent("serviceworker");
   const id = new URL(worker.url()).host;
@@ -85,6 +159,138 @@ async function launch(testInfo) {
   };
   return { context, worker, page, before, openPopup };
 }
+test("toolbar popup sizes itself without a test-supplied viewport", async ({}, info) => {
+  const app = await launch(info, { nativePopup: true });
+  try {
+    // This inactive tab only observes the separate toolbar view. It does not size it.
+    // Playwright does not expose Chrome's action popup as a normal Page target.
+    const control = await app.openPopup();
+    await app.worker.evaluate(() => chrome.action.openPopup());
+    await expect
+      .poll(() =>
+        control.evaluate(() => {
+          const views = chrome.extension.getViews({ type: "popup" });
+          const [popup] = views;
+          return (
+            popup && {
+              count: views.length,
+              width: popup.innerWidth,
+              height: popup.innerHeight,
+            }
+          );
+        }),
+      )
+      .toEqual({ count: 1, width: 720, height: 600 });
+    const palette = await control.evaluate(() => {
+      const popup = chrome.extension.getViews({ type: "popup" })[0];
+      const doc = popup.document;
+      const main = doc.querySelector("main").getBoundingClientRect();
+      return {
+        width: popup.innerWidth,
+        height: popup.innerHeight,
+        resultsHeight: main.height,
+        horizontalOverflow: doc.documentElement.scrollWidth > popup.innerWidth,
+        footerVisible:
+          doc.querySelector("footer").getBoundingClientRect().bottom <=
+          popup.innerHeight,
+      };
+    });
+    expect(palette.resultsHeight).toBeGreaterThan(350);
+    expect(palette.horizontalOverflow).toBe(false);
+    expect(palette.footerVisible).toBe(true);
+    await control.evaluate(() =>
+      chrome.extension
+        .getViews({ type: "popup" })[0]
+        .document.querySelector(".settings-button")
+        .click(),
+    );
+    await expect
+      .poll(() =>
+        control.evaluate(() => {
+          const doc = chrome.extension.getViews({ type: "popup" })[0].document;
+          const main = doc.querySelector("main").getBoundingClientRect();
+          return [...doc.querySelectorAll(".setting")].filter((el) => {
+            const rect = el.getBoundingClientRect();
+            return rect.top >= main.top && rect.bottom <= main.bottom;
+          }).length;
+        }),
+      )
+      .toBe(10);
+    await writeFile(
+      info.outputPath("toolbar-sizing.json"),
+      JSON.stringify({ palette, visiblePreferences: 10 }, null, 2),
+    );
+  } finally {
+    await app.context.close();
+  }
+});
+test("screen-limited toolbar popup keeps preferences and image actions reachable", async ({}, info) => {
+  const app = await launch(info, { nativePopup: true, popupScreen: "800x600" });
+  try {
+    const control = await app.openPopup();
+    await app.worker.evaluate(() => chrome.action.openPopup());
+    await expect
+      .poll(() =>
+        control.evaluate(() => {
+          const popup = chrome.extension.getViews({ type: "popup" })[0];
+          return popup?.document.querySelector(".swatch") !== null && !!popup;
+        }),
+      )
+      .toBe(true);
+    const height = await control.evaluate(
+      () => chrome.extension.getViews({ type: "popup" })[0].innerHeight,
+    );
+    expect(height).toBeLessThan(600);
+    expect(height).toBeGreaterThan(300);
+    const reach = async (selector) => {
+      await expect
+        .poll(() =>
+          control.evaluate((selector) => {
+            const popup = chrome.extension.getViews({ type: "popup" })[0];
+            const el = popup.document.querySelector(selector);
+            if (!el)
+              return {
+                visible: false,
+                missing: selector,
+                text: popup.document.querySelector("main").textContent,
+              };
+            el.scrollIntoView({ block: "center", inline: "nearest" });
+            // Native scroll offsets round fractional layout pixels.
+            const rect = el.getBoundingClientRect();
+            return {
+              top: rect.top,
+              bottom: rect.bottom,
+              viewport: popup.innerHeight,
+              visible:
+                rect.top >= -1 &&
+                rect.bottom <= popup.innerHeight + 1 &&
+                rect.left >= -1 &&
+                rect.right <= popup.innerWidth + 1,
+            };
+          }, selector),
+        )
+        .toMatchObject({ visible: true });
+    };
+    await control.evaluate(() =>
+      chrome.extension
+        .getViews({ type: "popup" })[0]
+        .document.querySelector(".settings-button")
+        .click(),
+    );
+    await reach(".setting:last-child");
+    await control.evaluate(() => {
+      const doc = chrome.extension.getViews({ type: "popup" })[0].document;
+      [...doc.querySelectorAll(".tabs button")]
+        .find((el) => el.textContent.includes("Images"))
+        .click();
+    });
+    await reach(".image-card > button.secondary");
+    await reach(".image-actions button");
+    await reach("footer button");
+  } finally {
+    await app.context.close();
+  }
+});
 test("production UI scans fixtures without altering the page and retains approved branding", async ({}, info) => {
   const app = await launch(info);
   try {
@@ -127,6 +333,15 @@ test("production UI scans fixtures without altering the page and retains approve
     await expect(
       reopened.getByText("Created by Aptelum Labs.", { exact: true }),
     ).toBeVisible();
+    await expect(
+      reopened.getByRole("link", { name: "Contact support", exact: true }),
+    ).toHaveAttribute("href", "mailto:support@aptelum.com");
+    await expect(
+      reopened.getByRole("link", { name: "Privacy notice", exact: true }),
+    ).toHaveAttribute(
+      "href",
+      "https://github.com/asbillings07/Getter/blob/main/PRIVACY.md",
+    );
     const stored = await app.worker.evaluate(() =>
       chrome.storage.local.get(null),
     );
@@ -163,6 +378,22 @@ test("images load only on request; ZIP has a real download outcome", async ({}, 
         return original(options);
       };
     });
+    const imageDownloadEvent = popup.waitForEvent("download");
+    await popup.getByRole("button", { name: "Download", exact: true }).click();
+    const imageDownload = await imageDownloadEvent;
+    expect(await imageDownload.failure()).toBeNull();
+    expect(await readFile(await imageDownload.path())).toEqual(png);
+    const requests = await popup.evaluate(() => window.downloadRequests);
+    expect(requests).toEqual([
+      expect.objectContaining({
+        url: expect.stringMatching(/^blob:/),
+        filename: "01-image.png",
+        saveAs: true,
+      }),
+    ]);
+    await popup.evaluate(() => {
+      window.downloadRequests = [];
+    });
     await popup
       .getByRole("button", { name: "Download ZIP", exact: true })
       .click();
@@ -193,12 +424,69 @@ test("images load only on request; ZIP has a real download outcome", async ({}, 
     await app.context.close();
   }
 });
+test("roomier popup keeps labeled Settings and preferences visible in both appearances", async ({}, info) => {
+  const app = await launch(info);
+  try {
+    const popup = await app.openPopup();
+    await popup.setViewportSize({ width: 720, height: 600 });
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    for (const colorScheme of ["light", "dark"]) {
+      await popup.emulateMedia({ colorScheme });
+      const settings = popup.getByRole("button", {
+        name: "Settings",
+        exact: true,
+      });
+      // A label in the accessibility tree alone would not fix the owner's concern.
+      await expect(settings).toContainText("Settings");
+      await expect(popup.locator(".product-mark")).toHaveJSProperty(
+        "naturalWidth",
+        48,
+      );
+      await settings.click();
+      await expect(settings).toHaveAttribute("aria-pressed", "true");
+      const bounds = await popup.evaluate(() => {
+        const main = document.querySelector("main").getBoundingClientRect();
+        const preferences = [...document.querySelectorAll(".setting")].map(
+          (el) => el.getBoundingClientRect(),
+        );
+        return {
+          width: document.body.getBoundingClientRect().width,
+          height: document.querySelector(".window").getBoundingClientRect()
+            .height,
+          horizontalOverflow: document.documentElement.scrollWidth > innerWidth,
+          visiblePreferences: preferences.filter(
+            (rect) => rect.top >= main.top && rect.bottom <= main.bottom,
+          ).length,
+          preferenceCount: preferences.length,
+        };
+      });
+      expect(bounds).toEqual({
+        width: 720,
+        height: 600,
+        horizontalOverflow: false,
+        visiblePreferences: 10,
+        preferenceCount: 10,
+      });
+      await popup.screenshot({
+        path: info.outputPath(`settings-${colorScheme}.png`),
+      });
+      await settings.click();
+      await expect(
+        popup.getByRole("heading", { name: "Page palette", exact: true }),
+      ).toBeVisible();
+    }
+  } finally {
+    await app.context.close();
+  }
+});
 test("partial ZIP counts precede saving; discard and navigation cannot save stale preparation", async ({}, info) => {
   const app = await launch(info);
   try {
     await app.page.evaluate(() => {
       const img = document.createElement("img");
-      img.src = "/denied.png";
+      img.src = "https://images.fixture.test/denied.png";
       img.alt = "Unavailable image";
       img.width = img.height = 80;
       document.body.append(img);
@@ -283,6 +571,121 @@ test("same-URL navigation clears data; a fresh scan does not reuse the old docum
     await expect(
       popup.getByRole("heading", { name: "Page palette", exact: true }),
     ).toBeVisible();
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("insecure images, redirect downgrades and denied hosts cannot become downloads", async ({}, info) => {
+  const app = await launch(info);
+  try {
+    const beforeFixture = insecureHits;
+    await app.page.evaluate(
+      async ({ imageOrigin, origin }) => {
+        document.querySelectorAll("img").forEach((img) => img.remove());
+        const loaded = [];
+        for (const [name, src] of [
+          ["Insecure", `${origin}/insecure-leak.png`],
+          ["Redirect", `${imageOrigin}/redirect.png`],
+          ["Denied", `${imageOrigin}/denied.png`],
+        ]) {
+          const img = document.createElement("img");
+          loaded.push(
+            new Promise((resolve) => {
+              img.onload = img.onerror = resolve;
+            }),
+          );
+          img.alt = name;
+          img.src = src;
+          img.width = img.height = 80;
+          document.body.append(img);
+        }
+        await Promise.all(loaded);
+      },
+      { imageOrigin, origin },
+    );
+    // The page itself loads these HTTP examples. Finish those requests before
+    // measuring whether the extension makes any additional insecure requests.
+    expect(insecureHits).toBe(beforeFixture + 2);
+    const baseline = insecureHits;
+    const popup = await app.openPopup();
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await popup.evaluate(() => {
+      const original = chrome.downloads.download.bind(chrome.downloads);
+      window.downloadRequests = [];
+      chrome.downloads.download = (options) => {
+        window.downloadRequests.push(options);
+        return original(options);
+      };
+    });
+    await popup.getByRole("button", { name: "Images", exact: true }).click();
+    await popup.getByLabel("Load previews", { exact: true }).check();
+    const insecure = popup.getByRole("article").filter({
+      has: popup.getByRole("heading", { name: "Insecure", exact: true }),
+    });
+    await expect(
+      insecure.getByText("HTTPS image required", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      insecure.getByRole("button", { name: "Download", exact: true }),
+    ).toBeDisabled();
+    for (const name of ["Redirect", "Denied"]) {
+      const card = popup
+        .getByRole("article")
+        .filter({ has: popup.getByRole("heading", { name, exact: true }) });
+      await expect(
+        card.getByText("Preview unavailable", { exact: true }),
+      ).toBeVisible();
+      await card.getByRole("button", { name: "Download", exact: true }).click();
+      await expect(card.getByText(/Image unavailable/)).toBeVisible();
+    }
+    await popup
+      .getByRole("button", { name: "Download ZIP", exact: true })
+      .click();
+    await popup
+      .getByRole("button", { name: "Prepare ZIP", exact: true })
+      .click();
+    await expect(popup.getByText(/No images could be included/)).toBeVisible();
+    expect(await popup.evaluate(() => window.downloadRequests)).toEqual([]);
+    expect(insecureHits).toBe(baseline);
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("navigation invalidation rejects an image completing before React cleanup", async ({}, info) => {
+  const app = await launch(info, { staleImageRace: true });
+  try {
+    const popup = await app.openPopup();
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await popup.getByRole("button", { name: "Images", exact: true }).click();
+    await popup.getByRole("button", { name: "Download", exact: true }).click();
+    await expect(
+      popup.getByRole("button", { name: "Preparing image…", exact: true }),
+    ).toBeVisible();
+    await popup.evaluate(async () => {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      // Invalidate and resolve in the SAME task: React has not committed cleanup.
+      window.invalidateScanForTest(tab.id);
+      window.releaseImageForTest();
+    });
+    await expect(
+      popup.getByRole("heading", {
+        name: "Scan again when ready",
+        exact: true,
+      }),
+    ).toBeVisible();
+    expect(await popup.evaluate(() => window.imageSaveAttempts)).toEqual({
+      objectUrls: 0,
+      downloads: 0,
+    });
   } finally {
     await app.context.close();
   }
