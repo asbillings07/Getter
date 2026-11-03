@@ -1,28 +1,32 @@
-# Getter Chrome Extension
+# Getter
 
-## About This Project
+**Created by Aptelum Labs.** Discover a webpage's colors, fonts and images.
 
-Welcome to the Getter chrome extension
+Getter is a Chrome Manifest V3 extension. The Palette refresh is being reviewed in [issue 6](https://github.com/asbillings07/Getter/issues/6); it has not been published to the Chrome Web Store. Text extraction and element-level CSS inspection are outside this refresh's scope.
 
-This project was created to help developers and designers to grab styles, images, etc off any page for quick development.
+## Build and verify
 
-With this extension a user can see the following css on any webpage:
+Use Node 24.18.1 (`.nvmrc`):
 
-- Colors
-- fonts
-- font sizes
-- images
-- more coming soon!
+```sh
+npm ci --ignore-scripts
+npm run check
+npx playwright install chromium
+npm run test:browser
+```
 
+The unpacked extension is in `dist/`. `npm run build:dev` produces an unminified bundle with the same permissions and script policy. No API keys, provider accounts or network services are needed to build. Browser tests use a fresh profile and synthetic localhost fixtures; they never use your existing Chrome profile.
 
-A special thanks goes to Amanda Billings, an awesome designer. She helped create the images for the extension and was crucial in testing the extension.
+## Use
 
+Open Getter from the toolbar on a regular webpage. Colors can be copied; typography shows captured font styles; images can be previewed or downloaded on request. Display preferences are saved locally. Page results are kept only in the open popup. Navigation invalidates old results; “Scan again” explicitly scans the new document.
 
+Scans are bounded and report omitted frames or truncated results. Previews, file-size reads and ZIP export contact the image hosts only when requested. Some hosts block ZIP fetching; partial export counts are shown, and individual downloads remain available. Keep Getter open until a ZIP download completes. See [architecture, limits and owner QA](docs/refresh.md).
 
-## You can view this extension here: [Getter](https://chrome.google.com/webstore/detail/getter/nkgabfmcijbajgobbeloaobhbhpacnim)
+## Credits and support
 
-## Languages Used
+Created by Aptelum Labs. Original design by Amanda Billings. Getter retains its own identity alongside the approved Aptelum product mark.
 
-- JavaScript
-- CSS
-- HTML
+[Report a problem or suggest an improvement](https://github.com/asbillings07/Getter/issues). Do not include private page contents, signed URLs, cookies or credentials in reports. Include a synthetic reproduction where possible.
+
+The Aptelum attribution mark is included with the owner's approval for Getter. No private company policy or design document is redistributed or adopted here. Store publication and future policy adoption remain separate decisions.
