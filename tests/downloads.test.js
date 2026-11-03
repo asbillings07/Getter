@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import JSZip from "jszip";
 import {
   collectImages,
+  isSecureImageUrl,
   imageFilename,
   makeZip,
   DownloadTracker,
@@ -33,6 +34,32 @@ test("ZIP export preserves formats, deduplicates URLs and omits credentials", as
   );
   const zip = await JSZip.loadAsync(await result.blob.arrayBuffer());
   assert.deepEqual(Object.keys(zip.files), ["01-a.png", "02-b.webp"]);
+});
+test("insecure, credential-bearing and non-network image URLs never reach fetch", async () => {
+  const rejected = [
+    "http://a.test/a.png",
+    "https://user:pass@a.test/a.png",
+    "data:image/png;base64,AA==",
+    "blob:local",
+    "javascript:alert(1)",
+    "/relative.png",
+    "not a url",
+  ];
+  assert.equal(isSecureImageUrl("https://a.test/a.png"), true);
+  assert.ok(rejected.every((url) => !isSecureImageUrl(url)));
+  let calls = 0;
+  const result = await collectImages(
+    rejected.map((src) => ({ src })),
+    {
+      fetcher: async () => {
+        calls++;
+        throw Error("Must not request");
+      },
+    },
+  );
+  assert.equal(calls, 0);
+  assert.equal(result.entries.length, 0);
+  assert.equal(result.failed.length, rejected.length);
 });
 test("streams enforce byte/count bounds; failures and omitted files remain explicit", async () => {
   const limits = { files: 2, fileBytes: 3, totalBytes: 4, fileMs: 100 };
@@ -153,7 +180,7 @@ test("download start is separate from completion; owned object URLs are released
 });
 test("interrupted/denied download is not reported as completed", async () => {
   const f = fixture();
-  await f.t.start(images[0].src);
+  await f.t.start("blob:owned", { blob: true });
   f.fire({ id: 7, state: { current: "interrupted" } });
   assert.match(f.messages.at(-1), /interrupted/);
   f.t.dispose();
@@ -191,4 +218,24 @@ test("closing while start is pending cleans the late result without publishing s
   assert.deepEqual(f.revoked, ["blob:owned"]);
   assert.equal(f.t.owned.size, 0);
   assert.deepEqual(f.messages, []);
+});
+
+test("browser downloader accepts only prepared local blobs, including after disposal", async () => {
+  let calls = 0;
+  const f = fixture(async () => {
+    calls++;
+    return 7;
+  });
+  for (const url of [
+    "http://a.test/a.png",
+    "https://a.test/a.png",
+    "data:image/png;base64,AA==",
+  ]) {
+    await assert.rejects(f.t.start(url));
+    await assert.rejects(f.t.start(url, { blob: true }));
+  }
+  assert.equal(calls, 0);
+  f.t.dispose();
+  await assert.rejects(f.t.start("blob:late", { blob: true }));
+  assert.deepEqual(f.revoked, ["blob:late"]);
 });

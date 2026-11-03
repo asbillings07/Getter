@@ -5,6 +5,7 @@ import { migrateStorage } from "./core/preferences.js";
 import { colorLabel } from "./core/extract.js";
 import {
   collectImages,
+  isSecureImageUrl,
   DownloadTracker,
   EXPORT_LIMITS,
   makeZip,
@@ -39,9 +40,18 @@ function ImageCard({ image, options, previews, onDownload }) {
   const [broken, setBroken] = useState(false),
     [size, setSize] = useState(null),
     [reading, setReading] = useState(false),
+    [downloading, setDownloading] = useState(false),
     [error, setError] = useState("");
-  const controller = useRef();
-  useEffect(() => () => controller.current?.abort(), []);
+  const controller = useRef(),
+    downloadController = useRef();
+  const secure = isSecureImageUrl(image.src);
+  useEffect(
+    () => () => {
+      controller.current?.abort();
+      downloadController.current?.abort();
+    },
+    [],
+  );
   const filename = (() => {
     try {
       return (
@@ -64,15 +74,37 @@ function ImageCard({ image, options, previews, onDownload }) {
       setSize(result.bytes);
     } catch {
       if (!controller.current.signal.aborted)
-        setError("Size unavailable. The image host may block access.");
+        setError(
+          "Size unavailable. HTTPS and host access are required; redirects and oversized files are blocked.",
+        );
     } finally {
       if (!controller.current.signal.aborted) setReading(false);
+    }
+  }
+  async function downloadImage() {
+    const pending = new AbortController();
+    downloadController.current = pending;
+    setDownloading(true);
+    setError("");
+    try {
+      const result = await collectImages([image], { signal: pending.signal });
+      pending.signal.throwIfAborted();
+      if (!result.entries.length) throw new Error();
+      const { data, type, filename } = result.entries[0];
+      await onDownload(new Blob([data], { type }), filename);
+    } catch {
+      if (!pending.signal.aborted)
+        setError(
+          "Image unavailable. HTTPS and host access are required; redirects and oversized files are blocked.",
+        );
+    } finally {
+      if (!pending.signal.aborted) setDownloading(false);
     }
   }
   return (
     <article className="image-card">
       <div className="image-preview">
-        {previews && !broken ? (
+        {previews && secure && !broken ? (
           <img
             src={image.src}
             alt={image.name || filename}
@@ -82,7 +114,13 @@ function ImageCard({ image, options, previews, onDownload }) {
             onError={() => setBroken(true)}
           />
         ) : (
-          <span>{broken ? "Preview unavailable" : "Preview off"}</span>
+          <span>
+            {!secure
+              ? "HTTPS image required"
+              : broken
+                ? "Preview unavailable"
+                : "Preview off"}
+          </span>
         )}
       </div>
       <h3>{image.name || filename}</h3>
@@ -99,7 +137,7 @@ function ImageCard({ image, options, previews, onDownload }) {
           {size === null ? (
             <button
               className="text-button"
-              disabled={reading}
+              disabled={reading || !secure}
               onClick={getSize}
             >
               {reading ? "Reading size…" : "Read file size"}
@@ -114,8 +152,12 @@ function ImageCard({ image, options, previews, onDownload }) {
           {error}
         </p>
       )}
-      <button className="secondary" onClick={() => onDownload(image.src)}>
-        Download
+      <button
+        className="secondary"
+        disabled={downloading || !secure}
+        onClick={downloadImage}
+      >
+        {downloading ? "Preparing image…" : "Download"}
       </button>
     </article>
   );
@@ -134,12 +176,14 @@ function App() {
     [exportResult, setExportResult] = useState("");
   const scanner = useRef(),
     tracker = useRef(),
-    exportController = useRef();
+    exportController = useRef(),
+    currentScan = useRef(empty);
   useEffect(() => {
     let live = true,
       expired = false;
     const session = new ScanSession(api, (value) => {
       if (live) {
+        currentScan.current = value;
         exportController.current?.abort();
         exportController.current = null;
         setPreparedZip(null);
@@ -189,6 +233,7 @@ function App() {
       });
     return () => {
       live = false;
+      currentScan.current = null;
       clearTimeout(timer);
       session.dispose();
       exportController.current?.abort();
@@ -219,9 +264,15 @@ function App() {
       setNotice("Copy failed. Select and copy the displayed value manually.");
     }
   }
-  async function download(url) {
+  async function download(blob, filename, sourceScan) {
+    // Invalidation happens before React commits ImageCard's abort cleanup.
+    if (currentScan.current !== sourceScan || sourceScan.status !== "ready")
+      return;
     try {
-      await tracker.current.start(url);
+      await tracker.current.start(URL.createObjectURL(blob), {
+        blob: true,
+        filename,
+      });
     } catch {
       setNotice(
         "Download could not be confirmed. Check browser downloads before retrying.",
@@ -255,7 +306,7 @@ function App() {
           controller.signal.aborted
             ? "ZIP preparation cancelled."
             : error.message ||
-                "ZIP preparation failed. Try individual downloads.",
+                "ZIP preparation failed. Check image access and try again.",
         );
     } finally {
       clearTimeout(timeout);
@@ -349,12 +400,13 @@ function App() {
               <strong>Created by Aptelum Labs.</strong>
             </p>
             <p>
+              <a href="mailto:support@aptelum.com">Contact support</a> ·{" "}
               <a
                 href="https://github.com/asbillings07/Getter/issues"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Support and feedback
+                Report a problem
               </a>{" "}
               ·{" "}
               <a
@@ -363,6 +415,15 @@ function App() {
                 rel="noopener noreferrer"
               >
                 Source and documentation
+              </a>
+            </p>
+            <p>
+              <a
+                href="https://github.com/asbillings07/Getter/blob/main/PRIVACY.md"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Privacy notice
               </a>
             </p>
             <p className="muted">
@@ -544,8 +605,9 @@ function App() {
                   </button>
                 </div>
                 <p className="muted small">
-                  Previews and file-size requests contact image hosts.
-                  Individual downloads may use your browser’s site cookies.
+                  Image requests contact HTTPS hosts without cookies or a
+                  referrer. Downloads are limited to 8 MiB per image; hosts that
+                  block access and redirects are unavailable.
                 </p>
                 {zipConfirm && (
                   <section
@@ -616,7 +678,9 @@ function App() {
                       image={image}
                       options={options.images}
                       previews={previews}
-                      onDownload={download}
+                      onDownload={(blob, filename) =>
+                        download(blob, filename, scan)
+                      }
                     />
                   ))}
                 </div>

@@ -4,6 +4,8 @@ import { cp, readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import JSZip from "jszip";
 let server, origin;
+let insecureHits = 0;
+const imageOrigin = "https://images.fixture.test";
 const png = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl1sAAAAASUVORK5CYII=",
   "base64",
@@ -11,6 +13,12 @@ const png = Buffer.from(
 test.beforeAll(async () => {
   server = createServer((req, res) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
+    if (req.url === "/insecure-leak.png") {
+      insecureHits++;
+      res.setHeader("Content-Type", "image/png");
+      res.end(png);
+      return;
+    }
     if (req.url === "/denied.png") {
       res.writeHead(403);
       res.end("Unavailable fixture");
@@ -28,7 +36,7 @@ test.beforeAll(async () => {
     }
     res.setHeader("Content-Type", "text/html");
     res.end(
-      `<!doctype html><html><head><title>Synthetic Getter fixture</title></head><body style="color:rgb(18,52,86);background:white;font-family:Arial"><h1 id="unchanged" style="font-family:Georgia;font-size:32px">A test page</h1><p>Visible text</p><img alt="Sample image" src="/image.png" width="80" height="80"><iframe src="/frame"></iframe><iframe src="${origin.replace("127.0.0.1", "localhost")}/frame"></iframe><iframe sandbox src="/frame"></iframe></body></html>`,
+      `<!doctype html><html><head><title>Synthetic Getter fixture</title></head><body style="color:rgb(18,52,86);background:white;font-family:Arial"><h1 id="unchanged" style="font-family:Georgia;font-size:32px">A test page</h1><p>Visible text</p><img alt="Sample image" src="${imageOrigin}/image.png" width="80" height="80"><iframe src="/frame"></iframe><iframe src="${origin.replace("127.0.0.1", "localhost")}/frame"></iframe><iframe sandbox src="/frame"></iframe></body></html>`,
     );
   });
   await new Promise((resolve) => server.listen(0, "0.0.0.0", resolve));
@@ -38,7 +46,7 @@ test.afterAll(async () => {
   server?.closeAllConnections();
   await new Promise((resolve) => server.close(resolve));
 });
-async function launch(testInfo) {
+async function launch(testInfo, { staleImageRace = false } = {}) {
   const extension = testInfo.outputPath("extension");
   await mkdir(extension, { recursive: true });
   await cp("dist", extension, { recursive: true });
@@ -65,6 +73,60 @@ async function launch(testInfo) {
       ],
     },
   );
+  // HTTPS fixture routes exercise browser URL/CSP/redirect behavior without
+  // depending on a public host. Fulfilment is synthetic, not a TLS-server test.
+  await context.route(`${imageOrigin}/**`, async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    const headers = {
+      "access-control-allow-origin": "*",
+      "content-type": "image/png",
+    };
+    if (pathname === "/redirect.png") {
+      await route.fulfill({
+        status: 302,
+        headers: { ...headers, location: `${origin}/insecure-leak.png` },
+        body: "",
+      });
+    } else if (pathname === "/denied.png") {
+      await route.fulfill({ status: 403, headers, body: "Unavailable" });
+    } else {
+      await route.fulfill({ status: 200, headers, body: png });
+    }
+  });
+  if (staleImageRace) {
+    await context.addInitScript(() => {
+      if (!globalThis.chrome?.tabs) return;
+      const add = chrome.tabs.onUpdated.addListener.bind(chrome.tabs.onUpdated);
+      chrome.tabs.onUpdated.addListener = (listener) => {
+        window.invalidateScanForTest = (id) =>
+          listener(id, { status: "loading" });
+        add(listener);
+      };
+      const fetchImage = window.fetch.bind(window);
+      window.fetch = (url, options) =>
+        String(url).startsWith("https://images.fixture.test/")
+          ? new Promise((resolve) => {
+              window.releaseImageForTest = () =>
+                resolve(
+                  new Response(new Uint8Array([1, 2, 3]), {
+                    headers: { "content-type": "image/png" },
+                  }),
+                );
+            })
+          : fetchImage(url, options);
+      window.imageSaveAttempts = { objectUrls: 0, downloads: 0 };
+      const create = URL.createObjectURL.bind(URL);
+      URL.createObjectURL = (blob) => {
+        window.imageSaveAttempts.objectUrls++;
+        return create(blob);
+      };
+      const download = chrome.downloads.download.bind(chrome.downloads);
+      chrome.downloads.download = (options) => {
+        window.imageSaveAttempts.downloads++;
+        return download(options);
+      };
+    });
+  }
   let worker = context.serviceWorkers()[0];
   if (!worker) worker = await context.waitForEvent("serviceworker");
   const id = new URL(worker.url()).host;
@@ -127,6 +189,15 @@ test("production UI scans fixtures without altering the page and retains approve
     await expect(
       reopened.getByText("Created by Aptelum Labs.", { exact: true }),
     ).toBeVisible();
+    await expect(
+      reopened.getByRole("link", { name: "Contact support", exact: true }),
+    ).toHaveAttribute("href", "mailto:support@aptelum.com");
+    await expect(
+      reopened.getByRole("link", { name: "Privacy notice", exact: true }),
+    ).toHaveAttribute(
+      "href",
+      "https://github.com/asbillings07/Getter/blob/main/PRIVACY.md",
+    );
     const stored = await app.worker.evaluate(() =>
       chrome.storage.local.get(null),
     );
@@ -163,6 +234,22 @@ test("images load only on request; ZIP has a real download outcome", async ({}, 
         return original(options);
       };
     });
+    const imageDownloadEvent = popup.waitForEvent("download");
+    await popup.getByRole("button", { name: "Download", exact: true }).click();
+    const imageDownload = await imageDownloadEvent;
+    expect(await imageDownload.failure()).toBeNull();
+    expect(await readFile(await imageDownload.path())).toEqual(png);
+    const requests = await popup.evaluate(() => window.downloadRequests);
+    expect(requests).toEqual([
+      expect.objectContaining({
+        url: expect.stringMatching(/^blob:/),
+        filename: "01-image.png",
+        saveAs: true,
+      }),
+    ]);
+    await popup.evaluate(() => {
+      window.downloadRequests = [];
+    });
     await popup
       .getByRole("button", { name: "Download ZIP", exact: true })
       .click();
@@ -198,7 +285,7 @@ test("partial ZIP counts precede saving; discard and navigation cannot save stal
   try {
     await app.page.evaluate(() => {
       const img = document.createElement("img");
-      img.src = "/denied.png";
+      img.src = "https://images.fixture.test/denied.png";
       img.alt = "Unavailable image";
       img.width = img.height = 80;
       document.body.append(img);
@@ -283,6 +370,111 @@ test("same-URL navigation clears data; a fresh scan does not reuse the old docum
     await expect(
       popup.getByRole("heading", { name: "Page palette", exact: true }),
     ).toBeVisible();
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("insecure images, redirect downgrades and denied hosts cannot become downloads", async ({}, info) => {
+  const app = await launch(info);
+  try {
+    await app.page.evaluate(
+      ({ imageOrigin, origin }) => {
+        document.querySelectorAll("img").forEach((img) => img.remove());
+        for (const [name, src] of [
+          ["Insecure", `${origin}/insecure-leak.png`],
+          ["Redirect", `${imageOrigin}/redirect.png`],
+          ["Denied", `${imageOrigin}/denied.png`],
+        ]) {
+          const img = document.createElement("img");
+          img.alt = name;
+          img.src = src;
+          img.width = img.height = 80;
+          document.body.append(img);
+        }
+      },
+      { imageOrigin, origin },
+    );
+    await app.page.waitForLoadState("networkidle");
+    const baseline = insecureHits;
+    const popup = await app.openPopup();
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await popup.evaluate(() => {
+      const original = chrome.downloads.download.bind(chrome.downloads);
+      window.downloadRequests = [];
+      chrome.downloads.download = (options) => {
+        window.downloadRequests.push(options);
+        return original(options);
+      };
+    });
+    await popup.getByRole("button", { name: "Images", exact: true }).click();
+    await popup.getByLabel("Load previews", { exact: true }).check();
+    const insecure = popup.getByRole("article").filter({
+      has: popup.getByRole("heading", { name: "Insecure", exact: true }),
+    });
+    await expect(
+      insecure.getByText("HTTPS image required", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      insecure.getByRole("button", { name: "Download", exact: true }),
+    ).toBeDisabled();
+    for (const name of ["Redirect", "Denied"]) {
+      const card = popup
+        .getByRole("article")
+        .filter({ has: popup.getByRole("heading", { name, exact: true }) });
+      await expect(
+        card.getByText("Preview unavailable", { exact: true }),
+      ).toBeVisible();
+      await card.getByRole("button", { name: "Download", exact: true }).click();
+      await expect(card.getByText(/Image unavailable/)).toBeVisible();
+    }
+    await popup
+      .getByRole("button", { name: "Download ZIP", exact: true })
+      .click();
+    await popup
+      .getByRole("button", { name: "Prepare ZIP", exact: true })
+      .click();
+    await expect(popup.getByText(/No images could be included/)).toBeVisible();
+    expect(await popup.evaluate(() => window.downloadRequests)).toEqual([]);
+    expect(insecureHits).toBe(baseline);
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("navigation invalidation rejects an image completing before React cleanup", async ({}, info) => {
+  const app = await launch(info, { staleImageRace: true });
+  try {
+    const popup = await app.openPopup();
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await popup.getByRole("button", { name: "Images", exact: true }).click();
+    await popup.getByRole("button", { name: "Download", exact: true }).click();
+    await expect(
+      popup.getByRole("button", { name: "Preparing image…", exact: true }),
+    ).toBeVisible();
+    await popup.evaluate(async () => {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      // Invalidate and resolve in the SAME task: React has not committed cleanup.
+      window.invalidateScanForTest(tab.id);
+      window.releaseImageForTest();
+    });
+    await expect(
+      popup.getByRole("heading", {
+        name: "Scan again when ready",
+        exact: true,
+      }),
+    ).toBeVisible();
+    expect(await popup.evaluate(() => window.imageSaveAttempts)).toEqual({
+      objectUrls: 0,
+      downloads: 0,
+    });
   } finally {
     await app.context.close();
   }
