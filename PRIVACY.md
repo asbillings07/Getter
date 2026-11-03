@@ -1,6 +1,6 @@
 # Getter privacy notice
 
-Applies to the proposed Getter 2.1.0 Palette release. This notice is part of the release candidate and awaits owner acceptance; the currently published 2.0.0 extension has not been replaced.
+Applies to Getter 2.1.0. Version 2.0.0 remains the published version until the 2.1.0 update is released.
 
 Getter is created by Aptelum Labs. Contact [support@aptelum.com](mailto:support@aptelum.com) for support or privacy questions.
 
@@ -16,7 +16,7 @@ Page-inspection results stay in the open popup's memory. Getter does not send th
 - Enabling image previews contacts the image hosts. Only HTTPS previews are allowed, including after redirects. Preview requests use anonymous cross-origin loading and omit the page referrer.
 - Reading an image's file size, downloading an individual image or preparing a ZIP fetches image bytes from HTTPS hosts. These requests omit credentials and the referrer, reject redirects and have size/time limits. Some hosts block them; Getter reports unavailable or skipped images. Resource hosts can receive normal connection information, including your IP address and requested image URL.
 - Individual images and ZIPs are prepared locally before being passed as blob URLs to Chrome's download facility; the downloader does not contact the original image host. Chrome presents the save choice and manages the downloaded file and its download history. A completed download remains on your device until you remove it through your normal file-management tools.
-- Choosing Search font family opens Google Fonts with the selected family name. Choosing source, privacy or issue links opens GitHub. Those services handle the resulting visit under their own policies. Getter does not append inspected-page contents or page addresses to these links.
+- Choosing Search font family opens Google Fonts with the selected family name. Choosing source, privacy or issue links opens GitHub. Those services handle the resulting visit under their own policies. The GitHub links do not include inspected-page contents or page addresses.
 
 Getter has no account, advertising system, analytics or telemetry service, and no Aptelum backend receiving page-inspection data. It does not sell that data, use it for advertising, or transfer it for purposes unrelated to the inspection and download features you choose. It executes packaged extension code rather than remotely hosted executable code.
 
