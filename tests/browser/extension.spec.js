@@ -11,6 +11,11 @@ const png = Buffer.from(
 test.beforeAll(async () => {
   server = createServer((req, res) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
+    if (req.url === "/denied.png") {
+      res.writeHead(403);
+      res.end("Unavailable fixture");
+      return;
+    }
     if (req.url === "/image.png") {
       res.setHeader("Content-Type", "image/png");
       res.end(png);
@@ -161,10 +166,18 @@ test("images load only on request; ZIP has a real download outcome", async ({}, 
     await popup
       .getByRole("button", { name: "Download ZIP", exact: true })
       .click();
-    const downloadEvent = popup.waitForEvent("download");
     await popup
       .getByRole("button", { name: "Prepare ZIP", exact: true })
       .click();
+    await expect(
+      popup.getByText(
+        "1 image(s) included; 0 unavailable; 0 beyond the export limit.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    expect(await popup.evaluate(() => window.downloadRequests)).toEqual([]);
+    const downloadEvent = popup.waitForEvent("download");
+    await popup.getByRole("button", { name: "Save ZIP", exact: true }).click();
     const download = await downloadEvent;
     expect(await download.failure()).toBeNull();
     expect(await popup.evaluate(() => window.downloadRequests)).toEqual([
@@ -176,6 +189,75 @@ test("images load only on request; ZIP has a real download outcome", async ({}, 
     await expect(
       popup.getByText("Download completed.", { exact: true }),
     ).toBeVisible();
+  } finally {
+    await app.context.close();
+  }
+});
+test("partial ZIP counts precede saving; discard and navigation cannot save stale preparation", async ({}, info) => {
+  const app = await launch(info);
+  try {
+    await app.page.evaluate(() => {
+      const img = document.createElement("img");
+      img.src = "/denied.png";
+      img.alt = "Unavailable image";
+      img.width = img.height = 80;
+      document.body.append(img);
+    });
+    const popup = await app.openPopup();
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await popup.evaluate(() => {
+      const original = chrome.downloads.download.bind(chrome.downloads);
+      window.downloadRequests = [];
+      chrome.downloads.download = (options) => {
+        window.downloadRequests.push(options);
+        return original(options);
+      };
+    });
+    await popup.getByRole("button", { name: "Images", exact: true }).click();
+    const prepare = async () => {
+      await popup
+        .getByRole("button", { name: "Download ZIP", exact: true })
+        .click();
+      await popup
+        .getByRole("button", { name: "Prepare ZIP", exact: true })
+        .click();
+      await expect(
+        popup.getByText(
+          "1 image(s) included; 1 unavailable; 0 beyond the export limit.",
+          { exact: true },
+        ),
+      ).toBeVisible();
+      await expect(
+        popup.getByRole("button", { name: "Save ZIP", exact: true }),
+      ).toBeVisible();
+    };
+    await prepare();
+    expect(await popup.evaluate(() => window.downloadRequests)).toEqual([]);
+    await popup.getByRole("button", { name: "Discard", exact: true }).click();
+    await expect(
+      popup.getByText("Prepared ZIP discarded.", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      popup.getByRole("button", { name: "Save ZIP", exact: true }),
+    ).toHaveCount(0);
+    await prepare();
+    await app.page.reload();
+    await expect(
+      popup.getByRole("heading", {
+        name: "Scan again when ready",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await popup.getByRole("button", { name: /Scan again/ }).click();
+    await expect(
+      popup.getByRole("heading", { name: "Images", exact: true }),
+    ).toBeVisible();
+    await expect(
+      popup.getByRole("button", { name: "Save ZIP", exact: true }),
+    ).toHaveCount(0);
+    expect(await popup.evaluate(() => window.downloadRequests)).toEqual([]);
   } finally {
     await app.context.close();
   }
