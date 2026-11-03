@@ -25,7 +25,7 @@ Scans are bounded and report omitted frames or truncated results. Previews, file
 
 ## Credits and support
 
-Created by Aptelum Labs. Original design by Amanda Billings. Getter retains its own identity alongside the approved Aptelum product mark.
+Created by Aptelum Labs. Getter retains its own identity alongside the approved Aptelum product mark.
 
 [Report a problem or suggest an improvement](https://github.com/asbillings07/Getter/issues). Do not include private page contents, signed URLs, cookies or credentials in reports. Include a synthetic reproduction where possible.
 

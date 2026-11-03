@@ -323,7 +323,6 @@ function App() {
             <p>
               <strong>Created by Aptelum Labs.</strong>
             </p>
-            <p>Original design by Amanda Billings.</p>
             <p>
               <a
                 href="https://github.com/asbillings07/Getter/issues"

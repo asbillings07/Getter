@@ -1,6 +1,6 @@
 # Palette refresh — issue 6
 
-Owner selected Palette, colors/fonts/images only, and the exact attribution **Created by Aptelum Labs** on November 2, 2026. The displayed blended Aptelum mark was explicitly approved for Getter's public repository. Original master SHA-256: `e055a95caa78654fafd4aab080c91e216c262cada22d92173a5de0542ec60d80`. Its bytes and geometry are unchanged. This is an attribution asset authorization, not a general license to publish company materials. Original design credit to Amanda Billings is retained. No company policy adoption is part of this change.
+Owner selected Palette, colors/fonts/images only, and the exact attribution **Created by Aptelum Labs** on November 2, 2026. The displayed blended Aptelum mark was explicitly approved for Getter's public repository. Original master SHA-256: `e055a95caa78654fafd4aab080c91e216c262cada22d92173a5de0542ec60d80`. Its bytes and geometry are unchanged. This is an attribution asset authorization, not a general license to publish company materials. The new Palette design uses the owner-approved company attribution. No company policy adoption is part of this change.
 
 ## Implementation choices
 
@@ -28,6 +28,6 @@ Before merge, independently review the immutable candidate and complete CI. Befo
 - Palette layout, keyboard focus/tab sequence, system light/dark appearance, colors and alpha copy, detailed/summary fonts and settings.
 - Blocked pages, empty pages, slow/large pages, denied/opaque/cross-origin frames, worker suspension and recovery, cancellation and actionable errors.
 - Images, unavailable previews, file-size failures, direct downloads and bounded/partial ZIP exports; close during preparation and during an in-progress ZIP. Browser download completion must match the UI. Current popup-lifetime limitations are explicit above and must be assessed in QA.
-- “Created by Aptelum Labs,” exact blended mark, original designer credit and real GitHub support destinations.
+- “Created by Aptelum Labs,” exact blended mark and real GitHub support destinations.
 
 No store upload, extension-version release, merge, domain change or company-standard adoption is authorized by a build or passing test.

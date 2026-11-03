@@ -122,11 +122,6 @@ test("production UI scans fixtures without altering the page and retains approve
     await expect(
       reopened.getByText("Created by Aptelum Labs.", { exact: true }),
     ).toBeVisible();
-    await expect(
-      reopened.getByText("Original design by Amanda Billings.", {
-        exact: true,
-      }),
-    ).toBeVisible();
     const stored = await app.worker.evaluate(() =>
       chrome.storage.local.get(null),
     );
