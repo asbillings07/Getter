@@ -46,7 +46,14 @@ test.afterAll(async () => {
   server?.closeAllConnections();
   await new Promise((resolve) => server.close(resolve));
 });
-async function launch(testInfo, { staleImageRace = false } = {}) {
+async function launch(
+  testInfo,
+  {
+    staleImageRace = false,
+    nativePopup = false,
+    popupScreen = "1600x1200",
+  } = {},
+) {
   const extension = testInfo.outputPath("extension");
   await mkdir(extension, { recursive: true });
   await cp("dist", extension, { recursive: true });
@@ -65,9 +72,14 @@ async function launch(testInfo, { staleImageRace = false } = {}) {
     {
       channel: "chromium",
       headless: true,
+      // Native popup sizing must not inherit Playwright's device-metrics viewport.
+      ...(nativePopup ? { viewport: null } : {}),
       acceptDownloads: true,
       downloadsPath: testInfo.outputPath("downloads"),
       args: [
+        ...(nativePopup
+          ? ["--window-size=1280,900", `--screen-info={${popupScreen}}`]
+          : []),
         `--disable-extensions-except=${extension}`,
         `--load-extension=${extension}`,
       ],
@@ -147,6 +159,138 @@ async function launch(testInfo, { staleImageRace = false } = {}) {
   };
   return { context, worker, page, before, openPopup };
 }
+test("toolbar popup sizes itself without a test-supplied viewport", async ({}, info) => {
+  const app = await launch(info, { nativePopup: true });
+  try {
+    // This inactive tab only observes the separate toolbar view. It does not size it.
+    // Playwright does not expose Chrome's action popup as a normal Page target.
+    const control = await app.openPopup();
+    await app.worker.evaluate(() => chrome.action.openPopup());
+    await expect
+      .poll(() =>
+        control.evaluate(() => {
+          const views = chrome.extension.getViews({ type: "popup" });
+          const [popup] = views;
+          return (
+            popup && {
+              count: views.length,
+              width: popup.innerWidth,
+              height: popup.innerHeight,
+            }
+          );
+        }),
+      )
+      .toEqual({ count: 1, width: 720, height: 600 });
+    const palette = await control.evaluate(() => {
+      const popup = chrome.extension.getViews({ type: "popup" })[0];
+      const doc = popup.document;
+      const main = doc.querySelector("main").getBoundingClientRect();
+      return {
+        width: popup.innerWidth,
+        height: popup.innerHeight,
+        resultsHeight: main.height,
+        horizontalOverflow: doc.documentElement.scrollWidth > popup.innerWidth,
+        footerVisible:
+          doc.querySelector("footer").getBoundingClientRect().bottom <=
+          popup.innerHeight,
+      };
+    });
+    expect(palette.resultsHeight).toBeGreaterThan(350);
+    expect(palette.horizontalOverflow).toBe(false);
+    expect(palette.footerVisible).toBe(true);
+    await control.evaluate(() =>
+      chrome.extension
+        .getViews({ type: "popup" })[0]
+        .document.querySelector(".settings-button")
+        .click(),
+    );
+    await expect
+      .poll(() =>
+        control.evaluate(() => {
+          const doc = chrome.extension.getViews({ type: "popup" })[0].document;
+          const main = doc.querySelector("main").getBoundingClientRect();
+          return [...doc.querySelectorAll(".setting")].filter((el) => {
+            const rect = el.getBoundingClientRect();
+            return rect.top >= main.top && rect.bottom <= main.bottom;
+          }).length;
+        }),
+      )
+      .toBe(10);
+    await writeFile(
+      info.outputPath("toolbar-sizing.json"),
+      JSON.stringify({ palette, visiblePreferences: 10 }, null, 2),
+    );
+  } finally {
+    await app.context.close();
+  }
+});
+test("screen-limited toolbar popup keeps preferences and image actions reachable", async ({}, info) => {
+  const app = await launch(info, { nativePopup: true, popupScreen: "800x600" });
+  try {
+    const control = await app.openPopup();
+    await app.worker.evaluate(() => chrome.action.openPopup());
+    await expect
+      .poll(() =>
+        control.evaluate(() => {
+          const popup = chrome.extension.getViews({ type: "popup" })[0];
+          return popup?.document.querySelector(".swatch") !== null && !!popup;
+        }),
+      )
+      .toBe(true);
+    const height = await control.evaluate(
+      () => chrome.extension.getViews({ type: "popup" })[0].innerHeight,
+    );
+    expect(height).toBeLessThan(600);
+    expect(height).toBeGreaterThan(300);
+    const reach = async (selector) => {
+      await expect
+        .poll(() =>
+          control.evaluate((selector) => {
+            const popup = chrome.extension.getViews({ type: "popup" })[0];
+            const el = popup.document.querySelector(selector);
+            if (!el)
+              return {
+                visible: false,
+                missing: selector,
+                text: popup.document.querySelector("main").textContent,
+              };
+            el.scrollIntoView({ block: "center", inline: "nearest" });
+            // Native scroll offsets round fractional layout pixels.
+            const rect = el.getBoundingClientRect();
+            return {
+              top: rect.top,
+              bottom: rect.bottom,
+              viewport: popup.innerHeight,
+              visible:
+                rect.top >= -1 &&
+                rect.bottom <= popup.innerHeight + 1 &&
+                rect.left >= -1 &&
+                rect.right <= popup.innerWidth + 1,
+            };
+          }, selector),
+        )
+        .toMatchObject({ visible: true });
+    };
+    await control.evaluate(() =>
+      chrome.extension
+        .getViews({ type: "popup" })[0]
+        .document.querySelector(".settings-button")
+        .click(),
+    );
+    await reach(".setting:last-child");
+    await control.evaluate(() => {
+      const doc = chrome.extension.getViews({ type: "popup" })[0].document;
+      [...doc.querySelectorAll(".tabs button")]
+        .find((el) => el.textContent.includes("Images"))
+        .click();
+    });
+    await reach(".image-card > button.secondary");
+    await reach(".image-actions button");
+    await reach("footer button");
+  } finally {
+    await app.context.close();
+  }
+});
 test("production UI scans fixtures without altering the page and retains approved branding", async ({}, info) => {
   const app = await launch(info);
   try {
@@ -333,19 +477,6 @@ test("roomier popup keeps labeled Settings and preferences visible in both appea
         popup.getByRole("heading", { name: "Page palette", exact: true }),
       ).toBeVisible();
     }
-    await popup.setViewportSize({ width: 360, height: 600 });
-    await popup.getByRole("button", { name: "Settings", exact: true }).click();
-    await popup
-      .getByLabel("Image dimensions", { exact: true })
-      .scrollIntoViewIfNeeded();
-    await expect(
-      popup.getByLabel("Image dimensions", { exact: true }),
-    ).toBeInViewport();
-    expect(
-      await popup.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
   } finally {
     await app.context.close();
   }

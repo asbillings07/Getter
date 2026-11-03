@@ -30,8 +30,9 @@
 html,
 body {
   margin: 0;
+  /* Chrome sizes toolbar popups from their contents. A viewport-relative cap
+     here locks the popup to its initial tiny viewport instead of growing it. */
   width: 720px;
-  max-width: 100vw;
 }
 button,
 input,
@@ -62,7 +63,6 @@ input {
 }
 .window {
   height: 600px;
-  max-height: 100vh;
   display: flex;
   flex-direction: column;
   background: var(--bg);
