@@ -1,5 +1,7 @@
 node_modules
-package-lock.json
+test-results/
+playwright-report/
+.cache/
 dist
 getter_dist.zip
 getter_zip-new.zip

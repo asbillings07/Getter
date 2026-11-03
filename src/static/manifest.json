@@ -1,52 +1,36 @@
 {
-    "name": "Getter",
-    "version": "2.0.0",
-    "description": "Automatically find fonts, colors and more on any page!",
-    "permissions": [
-      "tabs",
-      "activeTab",
-      "declarativeContent",
-      "scripting",
-      "webNavigation",
-      "storage",
-      "downloads"
-    ],
-    "host_permissions": [
-      "*://*/*"
-    ],
-    "background": {
-      "service_worker": "background.js"
-    },
-    "web_accessible_resources": [
-      {
-        "resources": [
-          "jszip.min.js"
-        ],
-        "matches": [
-          "<all_urls>"
-        ]
-      }
-    ],
-    "content_security_policy": {
-        "extension_pages": "script-src 'self' 'wasm-unsafe-eval' http://localhost:* http://127.0.0.1:*",
-        "sandbox": "sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline' 'unsafe-eval'; child-src 'self';"
-    },
-    "action": {
-      "default_title": "Getter is ready to get you some styles!",
-      "default_popup": "popup.html",
-      "default_icon": {
-        "16": "images/CSS-Getter-Icon-16px.png",
-        "32": "images/CSS-Getter-Icon-32px.png",
-        "48": "images/CSS-Getter-Icon-48px.png",
-        "128": "images/CSS-Getter-Icon-128px.png"
-      }
-    },
-    "icons": {
+  "name": "Getter",
+  "version": "2.0.0",
+  "description": "Explore colors, fonts and images on the page you choose. Created by Aptelum Labs.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "downloads",
+    "webNavigation"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'"
+  },
+  "action": {
+    "default_title": "Getter \u2014 Created by Aptelum Labs",
+    "default_popup": "popup.html",
+    "default_icon": {
       "16": "images/CSS-Getter-Icon-16px.png",
       "32": "images/CSS-Getter-Icon-32px.png",
       "48": "images/CSS-Getter-Icon-48px.png",
       "128": "images/CSS-Getter-Icon-128px.png"
-    },
-    "manifest_version": 3
-  }
-  
+    }
+  },
+  "icons": {
+    "16": "images/CSS-Getter-Icon-16px.png",
+    "32": "images/CSS-Getter-Icon-32px.png",
+    "48": "images/CSS-Getter-Icon-48px.png",
+    "128": "images/CSS-Getter-Icon-128px.png"
+  },
+  "manifest_version": 3,
+  "minimum_chrome_version": "120"
+}

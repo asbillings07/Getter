@@ -1,53 +1,37 @@
 {
   "name": "getter",
   "version": "2.0.0",
-  "description": "chrome extension that gets css info on any page your on",
-  "main": "background.js",
+  "private": true,
+  "description": "Discover a page's colors, fonts and images. Created by Aptelum Labs.",
+  "type": "module",
+  "engines": {
+    "node": ">=24.15 <25"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "prod": "webpack --mode production",
-    "dev": "webpack --mode development",
-    "clean": "rimraf ./dist/",
-    "build:prod": "npm run clean && npm run prod",
-    "build:dev": "npm run clean && npm run dev"
+    "build": "node scripts/build.mjs",
+    "build:prod": "npm run build",
+    "build:dev": "node scripts/build.mjs --development",
+    "test": "node --test tests/*.test.js",
+    "test:browser": "playwright test",
+    "check": "npm run format:check && npm test && npm run build && node scripts/check-package.mjs",
+    "format": "prettier --write src scripts tests playwright.config.js package.json .github docs Readme.md",
+    "format:check": "prettier --check src scripts tests playwright.config.js package.json .github docs Readme.md"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/asbillings07/Getter.git"
   },
-  "keywords": [
-    "extension"
-  ],
-  "author": "Aaron Billings",
+  "author": "Aptelum Labs",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/asbillings07/Getter/issues"
-  },
-  "homepage": "https://github.com/asbillings07/Getter#readme",
   "dependencies": {
-    "classnames": "^2.5.1",
-    "jszip": "^3.10.1",
-    "path": "^0.12.7",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-tooltip": "^5.26.4",
-    "webpack": "^5.6.0",
-    "webpack-cli": "^4.2.0"
+    "jszip": "3.10.1",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.12.9",
-    "@babel/plugin-transform-runtime": "^7.12.1",
-    "@babel/preset-env": "^7.12.7",
-    "@babel/preset-react": "^7.12.7",
-    "@babel/runtime": "^7.12.5",
-    "babel-loader": "^8.2.2",
-    "copy-webpack-plugin": "^12.0.2",
-    "css-loader": "^5.0.1",
-    "html-webpack-plugin": "^5.6.0",
-    "rimraf": "^5.0.5",
-    "style-loader": "^2.0.0",
-    "terser": "^5.5.1",
-    "terser-webpack-plugin": "^5.0.3",
-    "webpack-dev-server": "^5.0.2"
+    "@playwright/test": "1.64.1",
+    "esbuild": "0.28.2",
+    "jsdom": "30.1.3",
+    "prettier": "3.9.10"
   }
 }

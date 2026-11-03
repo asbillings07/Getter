@@ -1,0 +1,252 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { JSDOM } from "jsdom";
+import {
+  preferences,
+  legacyKeys,
+  migrateStorage,
+} from "../src/core/preferences.js";
+import { extractPage, colorLabel, aggregate } from "../src/core/extract.js";
+import { ScanSession, supportedPage } from "../src/core/scan.js";
+
+test("update preserves false preferences and unknown keys; cleanup is narrowly identified", async () => {
+  const values = {
+    cssGetterOptions: {
+      fonts: { detailed: true, fontSize: false, future: "keep" },
+      colors: { hex: false },
+      custom: { a: 1 },
+    },
+    currentResults: {},
+    currentTab: { url: "sensitive" },
+    "https://example.test/": { colors: { a: { count: 1 } } },
+    "https://unknown.test/": { unrelated: true },
+    privateNotes: "keep",
+  };
+  const storage = {
+    get: async () => structuredClone(values),
+    set: async (next) => Object.assign(values, next),
+    remove: async (keys) => keys.forEach((key) => delete values[key]),
+  };
+  const p = await migrateStorage(storage);
+  assert.equal(p.fonts.fontSize, false);
+  assert.equal(p.colors.hex, false);
+  assert.equal(p.fonts.future, "keep");
+  assert.deepEqual(p.custom, { a: 1 });
+  assert.equal(values.privateNotes, "keep");
+  assert.equal(values["https://unknown.test/"].unrelated, true);
+  assert.ok(!("currentResults" in values));
+  assert.ok(!("https://example.test/" in values));
+  assert.deepEqual(await migrateStorage(storage), p);
+  assert.deepEqual(legacyKeys({ unrelated: "value" }), []);
+});
+test("malformed/missing preferences get defaults without enabling invented options", () => {
+  assert.equal(preferences(null).fonts.fontSize, true);
+  assert.equal(preferences({ colors: { hex: "false" } }).colors.hex, true);
+});
+function domFixture() {
+  const dom = new JSDOM(
+    '<!doctype html><body style="color:rgb(1,2,3);background-color:rgb(240,240,240)"><h1 id="keep" style="font-family:Georgia;font-size:32px">Heading</h1><p>One</p><p>Two</p><img src="/one.png" alt="One"><img src="/one.png"><iframe src="/child"></iframe></body>',
+    {
+      url: "https://example.test/",
+      runScripts: "outside-only",
+      pretendToBeVisual: true,
+    },
+  );
+  dom.window.HTMLElement.prototype.getClientRects = function () {
+    return [{ width: 10, height: 10 }];
+  };
+  return dom;
+}
+test("extraction leaves host DOM byte-for-byte unchanged and returns deduplicated bounded data", () => {
+  const dom = domFixture();
+  try {
+    const before = dom.window.document.documentElement.outerHTML;
+    const result = dom.window.eval(`(${extractPage.toString()})({maxMs:2000})`);
+    assert.equal(dom.window.document.documentElement.outerHTML, before);
+    assert.equal(result.images.length, 1);
+    assert.equal(result.images[0].src, "https://example.test/one.png");
+    assert.ok(result.colors.find((c) => c.value === "rgb(1, 2, 3)"));
+    assert.equal(result.fonts.find((f) => f.tag === "p").count, 2);
+    assert.equal(result.frames, 1);
+    assert.ok(result.fonts.some((f) => f.fontFamily === "Georgia"));
+  } finally {
+    dom.window.close();
+  }
+});
+test("node/time/item limits produce explicit partial results", () => {
+  const dom = domFixture();
+  try {
+    for (const opts of [
+      { maxNodes: 1, maxMs: 2000 },
+      { maxMs: 0 },
+      { maxItems: 1, maxMs: 2000 },
+    ]) {
+      const result = dom.window.eval(
+        `(${extractPage.toString()})(${JSON.stringify(opts)})`,
+      );
+      assert.equal(result.limited, true);
+    }
+  } finally {
+    dom.window.close();
+  }
+});
+test("color conversion preserves alpha and unfamiliar CSS notation", () => {
+  assert.equal(colorLabel("rgba(255, 0, 16, 0.5)"), "#FF001080");
+  assert.equal(colorLabel("rgb(1, 2, 3)"), "#010203");
+  assert.equal(
+    colorLabel("color(display-p3 1 0 0)"),
+    "color(display-p3 1 0 0)",
+  );
+});
+const payload = () => ({
+  colors: [{ value: "rgb(1, 2, 3)", count: 1, kinds: ["Text"] }],
+  fonts: [],
+  images: [],
+  visited: 1,
+  frames: 0,
+  limited: false,
+});
+test("aggregation uses stable browser frame order and a global item cap", () => {
+  const p = payload();
+  const a = aggregate([
+    { frameId: 2, result: p },
+    { frameId: 0, result: p },
+  ]);
+  assert.equal(a.colors[0].count, 2);
+  assert.deepEqual(a.colors[0].kinds, ["Text"]);
+  assert.throws(() => aggregate([{ frameId: 0, result: {} }]));
+  const huge = {
+    ...p,
+    images: Array.from({ length: 501 }, (_, i) => ({ src: `https://a/${i}` })),
+  };
+  assert.equal(aggregate([{ frameId: 0, result: huge }]).images.length, 500);
+  assert.equal(aggregate([{ frameId: 0, result: huge }]).limited, true);
+});
+function event() {
+  const listeners = new Set();
+  return {
+    listeners,
+    addListener: (fn) => listeners.add(fn),
+    removeListener: (fn) => listeners.delete(fn),
+    fire: (...args) => [...listeners].forEach((fn) => fn(...args)),
+  };
+}
+function fakeBrowser() {
+  const api = {
+    tabs: {
+      query: async () => [{ id: 7, url: "https://example.test/page" }],
+      onUpdated: event(),
+      onActivated: event(),
+    },
+    webNavigation: { getAllFrames: async () => [] },
+    scripting: {
+      executeScript: async ({ target }) =>
+        target.documentIds
+          ? target.documentIds.map((documentId) => ({
+              documentId,
+              result: true,
+            }))
+          : [{ frameId: 0, documentId: "doc-a", result: payload() }],
+    },
+  };
+  return api;
+}
+test("restricted URL handling is based on parsed origins, not substrings", () => {
+  for (const u of [
+    "chrome://settings",
+    "file:///secret",
+    "https://chromewebstore.google.com/detail/x",
+    "https://chrome.google.com/webstore/detail/x",
+  ])
+    assert.equal(supportedPage(u), false);
+  assert.equal(supportedPage("https://example.test/chromewebstore"), true);
+});
+test("scan rejects late results after same-URL navigation and removes listeners on close", async () => {
+  const api = fakeBrowser(),
+    states = [];
+  let resolve;
+  api.scripting.executeScript = () =>
+    new Promise((r) => {
+      resolve = r;
+    });
+  const s = new ScanSession(api, (state) => states.push(state));
+  s.start();
+  const work = s.scan();
+  await Promise.resolve();
+  api.tabs.onUpdated.fire(7, { status: "loading" });
+  resolve([{ frameId: 0, documentId: "old", result: payload() }]);
+  await work;
+  assert.equal(states.at(-1).status, "stale");
+  assert.equal(states.at(-1).data, null);
+  s.dispose();
+  assert.equal(api.tabs.onUpdated.listeners.size, 0);
+  assert.equal(api.tabs.onActivated.listeners.size, 0);
+});
+test("document identity is rechecked even if the URL has not changed", async () => {
+  const api = fakeBrowser(),
+    states = [];
+  const orig = api.scripting.executeScript;
+  api.scripting.executeScript = (args) =>
+    args.target.documentIds ? Promise.resolve([]) : orig(args);
+  const s = new ScanSession(api, (x) => states.push(x));
+  s.start();
+  await s.scan();
+  assert.equal(states.at(-1).status, "error");
+  s.dispose();
+});
+test("permitted frames are document-pinned and missing/cross-origin frames are disclosed", async () => {
+  const api = fakeBrowser(),
+    states = [],
+    calls = [];
+  api.webNavigation.getAllFrames = async () => [
+    { frameId: 0, documentId: "main", url: "https://example.test/page" },
+    { frameId: 2, documentId: "child", url: "https://example.test/frame" },
+    { frameId: 3, documentId: "remote", url: "https://other.test/frame" },
+    { frameId: 4, documentId: "sandbox", url: "about:blank" },
+  ];
+  api.scripting.executeScript = async (args) => {
+    calls.push(args);
+    if (args.func === extractPage) {
+      const p = payload();
+      p.frames = args.target.documentIds ? 0 : 3;
+      return [
+        {
+          frameId: args.target.documentIds ? 2 : 0,
+          documentId: args.target.documentIds?.[0] || "main",
+          result: p,
+        },
+      ];
+    }
+    return args.target.documentIds.map((documentId) => ({
+      documentId,
+      result: true,
+    }));
+  };
+  const s = new ScanSession(api, (x) => states.push(x));
+  s.start();
+  await s.scan();
+  assert.equal(states.at(-1).data.frames, 2);
+  assert.match(states.at(-1).message, /2 embedded/);
+  assert.deepEqual(calls.at(-1).target.documentIds, ["main", "child"]);
+  s.dispose();
+});
+test("blocked pages, failed injection, cancellation and popup closure cannot publish a pass", async () => {
+  for (const mode of ["blocked", "failed", "cancel", "close"]) {
+    const api = fakeBrowser(),
+      states = [];
+    if (mode === "blocked")
+      api.tabs.query = async () => [{ id: 7, url: "chrome://settings" }];
+    if (mode === "failed")
+      api.scripting.executeScript = async () => {
+        throw Error("denied");
+      };
+    const s = new ScanSession(api, (x) => states.push(x));
+    s.start();
+    const p = s.scan();
+    if (mode === "cancel") s.cancel();
+    if (mode === "close") s.dispose();
+    await p;
+    assert.notEqual(states.at(-1).status, "ready");
+    s.dispose();
+  }
+});
