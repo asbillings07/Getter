@@ -28,6 +28,16 @@ assert.equal(
     .digest("hex"),
   "e055a95caa78654fafd4aab080c91e216c262cada22d92173a5de0542ec60d80",
 );
+for (const size of [16, 32, 48, 128]) {
+  const icon = `images/CSS-Getter-Icon-${size}px.png`;
+  assert.equal(m.icons[size], icon);
+  assert.equal(m.action.default_icon[size], icon);
+  const png = await readFile(`dist/${icon}`);
+  assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+  assert.equal(png.toString("ascii", 12, 16), "IHDR");
+  assert.equal(png.readUInt32BE(16), size);
+  assert.equal(png.readUInt32BE(20), size);
+}
 const popup = await readFile("dist/popup.js", "utf8");
 assert.match(popup, /Created by Aptelum Labs/);
 assert.match(popup, /mailto:support@aptelum\.com/);

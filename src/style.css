@@ -1,35 +1,36 @@
 :root {
   color-scheme: light dark;
-  --bg: #f6f5f2;
+  --bg: #f4f7fc;
   --paper: #fff;
-  --ink: #202a33;
-  --dim: #58636d;
-  --line: #d9ddd9;
-  --accent: #874421;
-  --active: #f3e2d4;
+  --ink: #17253b;
+  --dim: #53647d;
+  --line: #d5dfed;
+  --accent: #2059be;
+  --active: #e6eeff;
   font:
-    14px/1.5 system-ui,
+    16px/1.5 system-ui,
     sans-serif;
   color: var(--ink);
   background: var(--bg);
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #111519;
-    --paper: #1a2026;
-    --ink: #edf0f2;
-    --dim: #acb5be;
-    --line: #303941;
-    --accent: #f2b48a;
-    --active: #3c2d24;
+    --bg: #0c1220;
+    --paper: #141e30;
+    --ink: #edf3ff;
+    --dim: #a6b6ce;
+    --line: #2b3b55;
+    --accent: #a9ccff;
+    --active: #21385b;
   }
 }
 * {
   box-sizing: border-box;
 }
+html,
 body {
   margin: 0;
-  width: 480px;
+  width: 720px;
   max-width: 100vw;
 }
 button,
@@ -60,7 +61,7 @@ input {
   accent-color: var(--accent);
 }
 .window {
-  height: 590px;
+  height: 600px;
   max-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -70,8 +71,22 @@ input {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 22px;
-  border-bottom: 1px solid var(--line);
+  padding: 15px 22px;
+  gap: 16px;
+}
+.top,
+.context,
+.tabs,
+footer {
+  flex-shrink: 0;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.product-mark {
+  object-fit: contain;
 }
 .wordmark {
   font-size: 26px;
@@ -79,22 +94,19 @@ input {
   letter-spacing: -1.2px;
   line-height: 1.2;
 }
-.wordmark span {
-  color: var(--accent);
-}
-.top p {
-  font-size: 12px;
-  color: var(--dim);
-  margin: 4px 0 0;
-}
-.icon-button {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
+.settings-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 9px;
+}
+.settings-button[aria-pressed="true"] {
+  background: var(--active);
+  color: var(--accent);
 }
 .icon {
   font-size: 18px;
@@ -108,8 +120,8 @@ input {
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  padding: 9px 22px;
-  font-size: 12px;
+  padding: 0 22px 13px;
+  font-size: 14px;
   color: var(--dim);
 }
 .context > span {
@@ -122,7 +134,7 @@ input {
   border: 0;
   padding: 5px 0;
   color: var(--accent);
-  font-size: 12px;
+  font-size: 14px;
   white-space: nowrap;
 }
 .text-button .icon {
@@ -140,7 +152,8 @@ input {
   justify-content: center;
   gap: 7px;
   flex: 1;
-  padding: 9px 6px;
+  padding: 10px 14px;
+  font-size: 15px;
   border: 0;
   border-radius: 8px;
   background: none;
@@ -151,14 +164,14 @@ input {
   color: var(--accent);
 }
 main {
-  padding: 16px 22px;
+  padding: 19px 22px;
   overflow-y: auto;
   flex: 1;
   min-height: 0;
   scrollbar-color: var(--line) var(--bg);
 }
 h1 {
-  font-size: 19px;
+  font-size: 21px;
   font-weight: 600;
   letter-spacing: -0.4px;
   line-height: 1.3;
@@ -180,13 +193,13 @@ h2 {
   margin: 0;
 }
 .heading > span {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--dim);
   white-space: nowrap;
 }
 .swatches {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 .swatch {
@@ -200,21 +213,21 @@ h2 {
 }
 .color {
   display: block;
-  height: 56px;
+  height: 65px;
   box-shadow: inset 0 0 0 1px #80808020;
 }
 .color-label {
   display: block;
   padding: 9px 10px;
   font:
-    12px/1.5 ui-monospace,
+    14px/1.5 ui-monospace,
     monospace;
   overflow-wrap: anywhere;
 }
 .color-label small {
   display: block;
   font:
-    11px/1.5 system-ui,
+    12px/1.5 system-ui,
     sans-serif;
   color: var(--dim);
   margin-top: 3px;
@@ -226,14 +239,14 @@ h2 {
 }
 .small,
 .scan-note {
-  font-size: 12px;
+  font-size: 13px;
 }
 .scan-note {
   border-left: 2px solid var(--accent);
   padding-left: 10px;
 }
 .notice {
-  font-size: 12px;
+  font-size: 13px;
   min-height: 18px;
   margin: 12px 0 0;
   color: var(--accent);
@@ -245,7 +258,7 @@ footer {
   gap: 10px;
   border-top: 1px solid var(--line);
   padding: 10px 22px;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--dim);
 }
 footer > span {
@@ -260,28 +273,31 @@ footer .text-button {
   color: var(--dim);
 }
 .font {
-  padding: 12px 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 18px;
+  padding: 16px 0;
   border-bottom: 1px solid var(--line);
 }
 .font:first-child {
   padding-top: 0;
 }
 .font h2 {
-  font-size: 22px;
+  font-size: 26px;
   overflow-wrap: anywhere;
 }
 .font p {
-  font-size: 12px;
+  font-size: 13px;
   margin: 3px 0 8px;
   color: var(--dim);
 }
 dl {
   margin: 0 0 8px;
-  font-size: 12px;
+  font-size: 14px;
 }
 dl > div {
   display: grid;
-  grid-template-columns: 100px 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
 }
 dt {
@@ -292,18 +308,25 @@ dd {
   overflow-wrap: anywhere;
 }
 .font a {
-  font-size: 12px;
+  font-size: 13px;
+}
+.preferences {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 24px;
 }
 .setting {
   display: flex;
   gap: 10px;
   align-items: center;
-  padding: 9px 0;
+  padding: 7px 0;
+  font-size: 15px;
 }
 .setting input,
 .image-actions input {
-  width: 16px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
   margin: 0;
 }
 .image-actions {
@@ -311,7 +334,7 @@ dd {
   gap: 10px;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
+  font-size: 14px;
 }
 .image-actions label {
   display: flex;
@@ -320,7 +343,7 @@ dd {
 }
 .images {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 13px;
 }
 .image-card {
@@ -332,26 +355,26 @@ dd {
   padding-bottom: 12px;
 }
 .image-preview {
-  height: 100px;
+  height: 112px;
   display: grid;
   place-items: center;
   background: var(--bg);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--dim);
 }
 .image-preview img {
-  max-height: 100px;
+  max-height: 112px;
   width: 100%;
   object-fit: contain;
 }
 .image-card h3 {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   margin: 9px 10px 0;
   overflow-wrap: anywhere;
 }
 .image-card p {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--dim);
   margin: 3px 10px 7px;
   overflow-wrap: anywhere;
@@ -364,7 +387,7 @@ dd {
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 6px 10px;
-  font-size: 12px;
+  font-size: 14px;
   background: var(--paper);
   color: var(--ink);
 }
@@ -389,7 +412,7 @@ dd {
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 14px;
 }
 .export-confirm button + button {
   margin-left: 8px;
@@ -403,7 +426,19 @@ dd {
 .error-text {
   color: var(--accent);
 }
-@media (max-width: 380px) {
+@media (max-width: 600px) {
+  .images {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .swatches {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 520px) {
+  .font,
+  .preferences {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .top,
   .context,
   main,
@@ -417,6 +452,9 @@ dd {
   }
   .swatches {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tabs button {
+    padding: 10px 8px;
   }
   footer {
     flex-wrap: wrap;

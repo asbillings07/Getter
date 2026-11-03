@@ -280,6 +280,76 @@ test("images load only on request; ZIP has a real download outcome", async ({}, 
     await app.context.close();
   }
 });
+test("roomier popup keeps labeled Settings and preferences visible in both appearances", async ({}, info) => {
+  const app = await launch(info);
+  try {
+    const popup = await app.openPopup();
+    await popup.setViewportSize({ width: 720, height: 600 });
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    for (const colorScheme of ["light", "dark"]) {
+      await popup.emulateMedia({ colorScheme });
+      const settings = popup.getByRole("button", {
+        name: "Settings",
+        exact: true,
+      });
+      // A label in the accessibility tree alone would not fix the owner's concern.
+      await expect(settings).toContainText("Settings");
+      await expect(popup.locator(".product-mark")).toHaveJSProperty(
+        "naturalWidth",
+        48,
+      );
+      await settings.click();
+      await expect(settings).toHaveAttribute("aria-pressed", "true");
+      const bounds = await popup.evaluate(() => {
+        const main = document.querySelector("main").getBoundingClientRect();
+        const preferences = [...document.querySelectorAll(".setting")].map(
+          (el) => el.getBoundingClientRect(),
+        );
+        return {
+          width: document.body.getBoundingClientRect().width,
+          height: document.querySelector(".window").getBoundingClientRect()
+            .height,
+          horizontalOverflow: document.documentElement.scrollWidth > innerWidth,
+          visiblePreferences: preferences.filter(
+            (rect) => rect.top >= main.top && rect.bottom <= main.bottom,
+          ).length,
+          preferenceCount: preferences.length,
+        };
+      });
+      expect(bounds).toEqual({
+        width: 720,
+        height: 600,
+        horizontalOverflow: false,
+        visiblePreferences: 10,
+        preferenceCount: 10,
+      });
+      await popup.screenshot({
+        path: info.outputPath(`settings-${colorScheme}.png`),
+      });
+      await settings.click();
+      await expect(
+        popup.getByRole("heading", { name: "Page palette", exact: true }),
+      ).toBeVisible();
+    }
+    await popup.setViewportSize({ width: 360, height: 600 });
+    await popup.getByRole("button", { name: "Settings", exact: true }).click();
+    await popup
+      .getByLabel("Image dimensions", { exact: true })
+      .scrollIntoViewIfNeeded();
+    await expect(
+      popup.getByLabel("Image dimensions", { exact: true }),
+    ).toBeInViewport();
+    expect(
+      await popup.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  } finally {
+    await app.context.close();
+  }
+});
 test("partial ZIP counts precede saving; discard and navigation cannot save stale preparation", async ({}, info) => {
   const app = await launch(info);
   try {

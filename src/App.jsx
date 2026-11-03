@@ -29,7 +29,7 @@ function Icon({ name }) {
   return (
     <span className="icon" aria-hidden="true">
       {
-        { colors: "◉", fonts: "T", images: "▧", settings: "☷", refresh: "↻" }[
+        { colors: "◉", fonts: "T", images: "▧", settings: "⚙︎", refresh: "↻" }[
           name
         ]
       }
@@ -351,19 +351,23 @@ function App() {
   return (
     <div className="window">
       <header className="top">
-        <div>
-          <div className="wordmark">
-            Getter<span>.</span>
-          </div>
-          <p>Details worth discovering.</p>
+        <div className="brand">
+          <img
+            className="product-mark"
+            src="images/CSS-Getter-Icon-48px.png"
+            alt=""
+            width="36"
+            height="36"
+          />
+          <div className="wordmark">Getter</div>
         </div>
         <button
-          className="icon-button"
-          onClick={() => setView("settings")}
-          aria-label="Settings"
+          className="settings-button"
+          onClick={() => setView(view === "settings" ? "colors" : "settings")}
           aria-pressed={view === "settings"}
         >
           <Icon name="settings" />
+          Settings
         </button>
       </header>
       <div className="context">
@@ -436,27 +440,29 @@ function App() {
           <>
             <h1>Display preferences</h1>
             {options ? (
-              Object.entries(labels).map(([key, label]) => {
-                const group =
-                  key in options.fonts
-                    ? "fonts"
-                    : key in options.colors
-                      ? "colors"
-                      : "images";
-                return (
-                  <label className="setting" key={key}>
-                    <input
-                      type="checkbox"
-                      checked={options[group][key]}
-                      disabled={saving}
-                      onChange={(event) =>
-                        saveOption(group, key, event.target.checked)
-                      }
-                    />
-                    {label}
-                  </label>
-                );
-              })
+              <div className="preferences">
+                {Object.entries(labels).map(([key, label]) => {
+                  const group =
+                    key in options.fonts
+                      ? "fonts"
+                      : key in options.colors
+                        ? "colors"
+                        : "images";
+                  return (
+                    <label className="setting" key={key}>
+                      <input
+                        type="checkbox"
+                        checked={options[group][key]}
+                        disabled={saving}
+                        onChange={(event) =>
+                          saveOption(group, key, event.target.checked)
+                        }
+                      />
+                      {label}
+                    </label>
+                  );
+                })}
+              </div>
             ) : (
               <p>Preferences are unavailable. Close and reopen Getter.</p>
             )}
@@ -551,10 +557,21 @@ function App() {
               <div>
                 {shownFonts.map((font, index) => (
                   <article className="font" key={index}>
-                    <h2 style={{ fontFamily: font.fontFamily }}>
-                      Design is in the details.
-                    </h2>
-                    <p>{font.tag.toUpperCase()}</p>
+                    <div className="font-summary">
+                      <h2 style={{ fontFamily: font.fontFamily }}>
+                        Design is in the details.
+                      </h2>
+                      <p>{font.tag.toUpperCase()}</p>
+                      {options.fonts.fontFamily && (
+                        <a
+                          href={`https://fonts.google.com/?query=${encodeURIComponent(font.fontFamily.split(",")[0].replaceAll('"', "").replaceAll("'", ""))}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Search font family
+                        </a>
+                      )}
+                    </div>
                     <dl>
                       {Object.entries(font)
                         .filter(
@@ -567,15 +584,6 @@ function App() {
                           </div>
                         ))}
                     </dl>
-                    {options.fonts.fontFamily && (
-                      <a
-                        href={`https://fonts.google.com/?query=${encodeURIComponent(font.fontFamily.split(",")[0].replaceAll('"', "").replaceAll("'", ""))}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Search font family
-                      </a>
-                    )}
                   </article>
                 ))}
                 {!options.fonts.detailed && (

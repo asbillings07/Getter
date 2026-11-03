@@ -3,16 +3,12 @@
 <svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
 	 viewBox="0 0 800 800" style="enable-background:new 0 0 800 800;" xml:space="preserve">
 <style type="text/css">
-	.st0{fill:url(#SVGID_1_);}
-	.st1{fill:url(#SVGID_2_);}
+	.st0{fill:url(#aptelum-product-colors);}
+	.st1{fill:url(#aptelum-product-colors);}
 </style>
-<g>
+<defs><linearGradient id="aptelum-product-colors" x1="0" y1="0" x2="1" y2=".9"><stop stop-color="#009CFF"/><stop offset=".55" stop-color="#5969FA"/><stop offset="1" stop-color="#6D28D9"/></linearGradient></defs><g>
 	<g>
-		<linearGradient id="SVGID_1_" gradientUnits="userSpaceOnUse" x1="403.1423" y1="706.2198" x2="750.5914" y2="104.4204">
-			<stop  offset="0" style="stop-color:#F15A22"/>
-			<stop  offset="0.5241" style="stop-color:#ED1164"/>
-			<stop  offset="1" style="stop-color:#602D91"/>
-		</linearGradient>
+
 		<path class="st0" d="M505.7,32.5h89.1c13.7,0,27,2.2,39.6,6.6c12.7,4.4,23.8,11.6,33.4,21.5c9.6,9.9,17.2,22.4,22.7,37.6
 			c5.5,15.1,8.3,33.4,8.3,54.9v142c0,12.7,3.6,22.8,10.7,30.5c7.1,7.7,15.5,13.5,25.2,17.3c9.6,3.9,19.4,6.3,29.3,7.4
 			c9.9,1.1,17.9,1.7,23.9,1.7V446c-6.1,0-14,0.6-23.9,1.7c-9.9,1.1-19.7,3.6-29.3,7.4c-9.6,3.9-18,9.6-25.2,17.3
@@ -23,11 +19,7 @@
 			c-5.5-11-8.3-26.1-8.3-45.4V179.4c0-5.5-0.4-11.4-1.2-17.7c-0.8-6.3-3-12.1-6.6-17.3c-3.6-5.2-9-9.5-16.1-12.8
 			c-7.2-3.3-17.1-5-29.7-5h-40.4V32.5z"/>
 	</g>
-	<linearGradient id="SVGID_2_" gradientUnits="userSpaceOnUse" x1="12.0382" y1="401.038" x2="482.8511" y2="401.038">
-		<stop  offset="0" style="stop-color:#602D91"/>
-		<stop  offset="0.5152" style="stop-color:#ED1164"/>
-		<stop  offset="1" style="stop-color:#F15A22"/>
-	</linearGradient>
+
 	<path class="st1" d="M289.4,673.4h-35.5c-12.7,0-22.6-1.7-29.7-5c-7.2-3.3-12.5-7.6-16.1-12.8c-3.6-5.2-5.8-11-6.6-17.3
 		c-0.8-6.3-1.2-12.2-1.2-17.7V486.9c0-19.3-2.8-34.4-8.3-45.4c-5.5-11-12.3-19.4-20.2-25.2c-8-5.8-16.8-9.5-26.4-11.1
 		c-9.6-1.7-18.9-2.7-27.6-3.3v-1.7c8.8-0.5,18-1.8,27.6-3.7c9.6-1.9,18.4-5.8,26.4-11.6c8-5.8,14.7-14.2,20.2-25.2
