@@ -21,7 +21,7 @@ The unpacked extension is in `dist/`. `npm run build:dev` produces an unminified
 
 Open Getter from the toolbar on a regular webpage. Colors can be copied; typography shows captured font styles; images can be previewed or downloaded on request. Display preferences are saved locally. Page results are kept only in the open popup. Navigation invalidates old results; “Scan again” explicitly scans the new document.
 
-Scans are bounded and report omitted frames or truncated results. Previews, file-size reads and ZIP export contact the image hosts only when requested. Some hosts block ZIP fetching; partial export counts are shown, and individual downloads remain available. Keep Getter open until a ZIP download completes. See [architecture, limits and owner QA](docs/refresh.md).
+Scans are bounded and report omitted frames or truncated results. Previews, file-size reads and ZIP export contact the image hosts only when requested. Some hosts block ZIP fetching; partial export counts are shown, and individual downloads remain available. Keep Getter open while the ZIP is prepared. Review the included/skipped counts, then choose Save ZIP. The native save dialog may close Getter; use browser Downloads to check the final result. See [architecture, limits and owner QA](docs/refresh.md).
 
 ## Credits and support
 

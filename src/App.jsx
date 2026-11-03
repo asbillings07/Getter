@@ -129,6 +129,8 @@ function App() {
     [previews, setPreviews] = useState(false),
     [exporting, setExporting] = useState(false),
     [zipConfirm, setZipConfirm] = useState(false),
+    [preparedZip, setPreparedZip] = useState(null),
+    [savingZip, setSavingZip] = useState(false),
     [exportResult, setExportResult] = useState("");
   const scanner = useRef(),
     tracker = useRef(),
@@ -138,6 +140,12 @@ function App() {
       expired = false;
     const session = new ScanSession(api, (value) => {
       if (live) {
+        exportController.current?.abort();
+        exportController.current = null;
+        setPreparedZip(null);
+        setExporting(false);
+        setExportResult("");
+        setNotice("");
         setScan(value);
         setPreviews(false);
         setZipConfirm(false);
@@ -184,15 +192,10 @@ function App() {
       clearTimeout(timer);
       session.dispose();
       exportController.current?.abort();
+      exportController.current = null;
       downloads.dispose();
     };
   }, []);
-  useEffect(() => {
-    setNotice("");
-    setExportResult("");
-    setZipConfirm(false);
-    exportController.current?.abort();
-  }, [scan.data]);
   async function saveOption(group, key, value) {
     const previous = options;
     const next = { ...options, [group]: { ...options[group], [key]: value } };
@@ -229,33 +232,55 @@ function App() {
     setZipConfirm(false);
     setExporting(true);
     setExportResult("");
+    setPreparedZip(null);
     const controller = new AbortController();
     exportController.current = controller;
     const timeout = setTimeout(() => controller.abort(), EXPORT_LIMITS.totalMs);
     try {
       const result = await makeZip(scan.data.images, {
         signal: controller.signal,
-        onProgress: ({ done, total }) =>
-          setExportResult(`Preparing ${done} of ${total} images…`),
+        onProgress: ({ done, total }) => {
+          if (exportController.current === controller)
+            setExportResult(`Preparing ${done} of ${total} images…`);
+        },
       });
-      const url = URL.createObjectURL(result.blob);
-      await tracker.current.start(url, {
-        blob: true,
-        filename: "getter-images.zip",
-      });
+      if (exportController.current !== controller) return;
+      setPreparedZip(result.blob);
       setExportResult(
         `${result.entries.length} image(s) included; ${result.failed.length} unavailable; ${result.omitted} beyond the export limit.`,
       );
     } catch (error) {
-      setExportResult(
-        controller.signal.aborted
-          ? "ZIP preparation cancelled."
-          : error.message ||
-              "ZIP preparation failed. Try individual downloads.",
-      );
+      if (exportController.current === controller)
+        setExportResult(
+          controller.signal.aborted
+            ? "ZIP preparation cancelled."
+            : error.message ||
+                "ZIP preparation failed. Try individual downloads.",
+        );
     } finally {
       clearTimeout(timeout);
-      setExporting(false);
+      if (exportController.current === controller) {
+        exportController.current = null;
+        setExporting(false);
+      }
+    }
+  }
+  async function saveZip() {
+    if (!preparedZip || savingZip) return;
+    const blob = preparedZip;
+    setPreparedZip(null);
+    setSavingZip(true);
+    try {
+      await tracker.current.start(URL.createObjectURL(blob), {
+        blob: true,
+        filename: "getter-images.zip",
+      });
+    } catch {
+      setNotice(
+        "ZIP download was not confirmed. Check browser downloads before preparing it again.",
+      );
+    } finally {
+      setSavingZip(false);
     }
   }
   const data = scan.data,
@@ -512,7 +537,7 @@ function App() {
                   </label>
                   <button
                     className="secondary"
-                    disabled={exporting}
+                    disabled={exporting || !!preparedZip || savingZip}
                     onClick={() => setZipConfirm(true)}
                   >
                     Download ZIP
@@ -531,8 +556,9 @@ function App() {
                     <p>
                       Fetch up to 40 images from their listed hosts, without
                       cookies. Limits: 8 MiB per image, 32 MiB total. Hosts that
-                      block access will be skipped. Keep Getter open until the
-                      download finishes.
+                      block access will be skipped. Keep Getter open while it
+                      prepares the ZIP, then review what is included before
+                      saving.
                     </p>
                     <button className="primary" onClick={exportZip}>
                       Prepare ZIP
@@ -557,6 +583,31 @@ function App() {
                   <p className="scan-note" role="status">
                     {exportResult}
                   </p>
+                )}
+                {preparedZip && (
+                  <section
+                    className="export-confirm"
+                    aria-label="Save prepared ZIP"
+                  >
+                    <h2>Your ZIP is ready</h2>
+                    <p>
+                      Save opens your browser's dialog and may close Getter.
+                      Check browser downloads for the final outcome. Closing
+                      Getter before saving discards this ZIP.
+                    </p>
+                    <button className="primary" onClick={saveZip}>
+                      Save ZIP
+                    </button>
+                    <button
+                      className="secondary"
+                      onClick={() => {
+                        setPreparedZip(null);
+                        setExportResult("Prepared ZIP discarded.");
+                      }}
+                    >
+                      Discard
+                    </button>
+                  </section>
                 )}
                 <div className="images">
                   {current.map((image) => (
