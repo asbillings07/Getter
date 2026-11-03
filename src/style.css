@@ -1,17 +1,28 @@
 :root {
   color-scheme: light dark;
-  --bg: light-dark(#f6f5f2, #111519);
-  --paper: light-dark(#fff, #1a2026);
-  --ink: light-dark(#202a33, #edf0f2);
-  --dim: light-dark(#58636d, #acb5be);
-  --line: light-dark(#d9ddd9, #303941);
-  --accent: light-dark(#874421, #f2b48a);
-  --active: light-dark(#f3e2d4, #3c2d24);
+  --bg: #f6f5f2;
+  --paper: #fff;
+  --ink: #202a33;
+  --dim: #58636d;
+  --line: #d9ddd9;
+  --accent: #874421;
+  --active: #f3e2d4;
   font:
     14px/1.5 system-ui,
     sans-serif;
   color: var(--ink);
   background: var(--bg);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111519;
+    --paper: #1a2026;
+    --ink: #edf0f2;
+    --dim: #acb5be;
+    --line: #303941;
+    --accent: #f2b48a;
+    --active: #3c2d24;
+  }
 }
 * {
   box-sizing: border-box;

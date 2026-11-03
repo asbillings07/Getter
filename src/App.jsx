@@ -194,13 +194,15 @@ function App() {
     exportController.current?.abort();
   }, [scan.data]);
   async function saveOption(group, key, value) {
+    const previous = options;
     const next = { ...options, [group]: { ...options[group], [key]: value } };
+    setOptions(next);
     setSaving(true);
     try {
       await api.storage.local.set({ cssGetterOptions: next });
-      setOptions(next);
       setNotice("Preference saved.");
     } catch {
+      setOptions(previous);
       setNotice("Preference was not saved. Please try again.");
     } finally {
       setSaving(false);

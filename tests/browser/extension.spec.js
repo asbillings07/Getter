@@ -2,6 +2,7 @@ import { test, expect, chromium } from "@playwright/test";
 import { createServer } from "node:http";
 import { cp, readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
+import JSZip from "jszip";
 let server, origin;
 const png = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl1sAAAAASUVORK5CYII=",
@@ -152,6 +153,16 @@ test("images load only on request; ZIP has a real download outcome", async ({}, 
       .getByRole("button", { name: "Read file size", exact: true })
       .click();
     await expect(popup.getByText(/KiB/)).toBeVisible();
+    // Observe, without replacing, the real download API call. Playwright's
+    // allowAndName policy controls disk names and bypasses the native Save As UI.
+    await popup.evaluate(() => {
+      const original = chrome.downloads.download.bind(chrome.downloads);
+      window.downloadRequests = [];
+      chrome.downloads.download = (options) => {
+        window.downloadRequests.push(options);
+        return original(options);
+      };
+    });
     await popup
       .getByRole("button", { name: "Download ZIP", exact: true })
       .click();
@@ -160,8 +171,13 @@ test("images load only on request; ZIP has a real download outcome", async ({}, 
       .getByRole("button", { name: "Prepare ZIP", exact: true })
       .click();
     const download = await downloadEvent;
-    expect(download.suggestedFilename()).toBe("getter-images.zip");
     expect(await download.failure()).toBeNull();
+    expect(await popup.evaluate(() => window.downloadRequests)).toEqual([
+      expect.objectContaining({ filename: "getter-images.zip", saveAs: true }),
+    ]);
+    const zip = await JSZip.loadAsync(await readFile(await download.path()));
+    expect(Object.keys(zip.files)).toEqual(["01-image.png"]);
+    expect(await zip.file("01-image.png").async("nodebuffer")).toEqual(png);
     await expect(
       popup.getByText("Download completed.", { exact: true }),
     ).toBeVisible();

@@ -56,11 +56,11 @@ export async function collectImages(
       () => controller.abort(new Error("Image timed out")),
       limits.fileMs,
     );
-    let reader;
+    let reader, response;
     try {
       if (!/^https?:\/\//i.test(img.src))
         throw new Error("Unsupported image address");
-      const response = await fetcher(img.src, {
+      response = await fetcher(img.src, {
         signal: combined,
         credentials: "omit",
         referrerPolicy: "no-referrer",
@@ -100,8 +100,15 @@ export async function collectImages(
       signal?.throwIfAborted();
       failed.push(index);
     } finally {
+      // Header/MIME failures occur before a reader is acquired. Stop those bodies too.
+      controller.abort();
       clearTimeout(timeout);
-      await reader?.cancel().catch(() => {});
+      if (reader) {
+        await reader.cancel().catch(() => {});
+        reader.releaseLock();
+      } else {
+        await response?.body?.cancel().catch(() => {});
+      }
     }
     onProgress({ done: index + 1, total: chosen.length });
   }

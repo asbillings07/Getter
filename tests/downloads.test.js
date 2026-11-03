@@ -79,6 +79,42 @@ test("cancellation stops before another request", async () => {
   );
   assert.equal(calls, 0);
 });
+test("rejected response bodies are stopped before the next request", async () => {
+  for (const responseOptions of [
+    { status: 403 },
+    { headers: { "content-type": "text/html" } },
+    { headers: { "content-type": "image/png", "content-length": "99999" } },
+  ]) {
+    let previousSignal,
+      cancelled = 0,
+      calls = 0;
+    const result = await collectImages(images, {
+      limits: { files: 2, fileBytes: 10, totalBytes: 20, fileMs: 100 },
+      fetcher: async (_url, { signal }) => {
+        if (previousSignal) {
+          assert.equal(previousSignal.aborted, true);
+          assert.equal(cancelled, calls);
+        }
+        previousSignal = signal;
+        calls++;
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(new Uint8Array([1]));
+            },
+            cancel() {
+              cancelled++;
+            },
+          }),
+          responseOptions,
+        );
+      },
+    });
+    assert.equal(result.failed.length, 2);
+    assert.equal(previousSignal.aborted, true);
+    assert.equal(cancelled, 2);
+  }
+});
 function fixture(download = async () => 7) {
   const listeners = new Set(),
     messages = [],
