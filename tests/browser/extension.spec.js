@@ -378,24 +378,34 @@ test("same-URL navigation clears data; a fresh scan does not reuse the old docum
 test("insecure images, redirect downgrades and denied hosts cannot become downloads", async ({}, info) => {
   const app = await launch(info);
   try {
+    const beforeFixture = insecureHits;
     await app.page.evaluate(
-      ({ imageOrigin, origin }) => {
+      async ({ imageOrigin, origin }) => {
         document.querySelectorAll("img").forEach((img) => img.remove());
+        const loaded = [];
         for (const [name, src] of [
           ["Insecure", `${origin}/insecure-leak.png`],
           ["Redirect", `${imageOrigin}/redirect.png`],
           ["Denied", `${imageOrigin}/denied.png`],
         ]) {
           const img = document.createElement("img");
+          loaded.push(
+            new Promise((resolve) => {
+              img.onload = img.onerror = resolve;
+            }),
+          );
           img.alt = name;
           img.src = src;
           img.width = img.height = 80;
           document.body.append(img);
         }
+        await Promise.all(loaded);
       },
       { imageOrigin, origin },
     );
-    await app.page.waitForLoadState("networkidle");
+    // The page itself loads these HTTP examples. Finish those requests before
+    // measuring whether the extension makes any additional insecure requests.
+    expect(insecureHits).toBe(beforeFixture + 2);
     const baseline = insecureHits;
     const popup = await app.openPopup();
     await expect(
