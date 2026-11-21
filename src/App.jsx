@@ -696,9 +696,6 @@ function App() {
             )}
           </>
         )}
-        <p className="notice" role="status" aria-live="polite">
-          {notice}
-        </p>
       </main>
       <footer>
         <span>
@@ -714,6 +711,9 @@ function App() {
           About Getter
         </button>
       </footer>
+      <p className="notice" role="status" aria-live="polite">
+        {notice}
+      </p>
     </div>
   );
 }

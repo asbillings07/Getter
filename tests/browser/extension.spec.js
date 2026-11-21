@@ -291,6 +291,129 @@ test("screen-limited toolbar popup keeps preferences and image actions reachable
     await app.context.close();
   }
 });
+for (const popupScreen of ["1600x1200", "800x600"]) {
+  test(`notifications stay in the toolbar viewport on a ${popupScreen} screen`, async ({}, info) => {
+    const app = await launch(info, { nativePopup: true, popupScreen });
+    try {
+      await app.page.evaluate(() => {
+        for (let i = 0; i < 60; i++) {
+          const item = document.createElement("p");
+          item.style.color = `rgb(${i}, 80, 120)`;
+          item.textContent = `Palette fixture ${i}`;
+          document.body.append(item);
+        }
+      });
+      const control = await app.openPopup();
+      await app.worker.evaluate(() => chrome.action.openPopup());
+      await expect
+        .poll(() =>
+          control.evaluate(
+            () =>
+              chrome.extension
+                .getViews({ type: "popup" })[0]
+                ?.document.querySelectorAll(".swatch").length,
+          ),
+        )
+        .toBeGreaterThan(60);
+      const before = await control.evaluate(() => {
+        const popup = chrome.extension.getViews({ type: "popup" })[0];
+        const main = popup.document.querySelector("main");
+        // A deterministic clipboard outcome tests the real copy handler without
+        // requiring a trusted gesture or changing the system clipboard.
+        popup.navigator.clipboard.writeText = async (value) => {
+          popup.copiedValue = value;
+        };
+        popup.document.querySelector(".swatch").click();
+        return {
+          width: popup.innerWidth,
+          height: popup.innerHeight,
+          mainHeight: main.clientHeight,
+          scrollTop: main.scrollTop,
+          scrollHeight: main.scrollHeight,
+        };
+      });
+      expect(before.scrollHeight).toBeGreaterThan(before.mainHeight);
+      const readNotice = () =>
+        control.evaluate(() => {
+          const popup = chrome.extension.getViews({ type: "popup" })[0];
+          const notice = popup.document.querySelector(".notice");
+          const rect = notice.getBoundingClientRect();
+          const main = popup.document.querySelector("main");
+          return {
+            text: notice.textContent,
+            copiedValue: popup.copiedValue,
+            visible:
+              rect.width > 0 &&
+              rect.height > 0 &&
+              rect.top >= 0 &&
+              rect.left >= 0 &&
+              rect.bottom <= popup.innerHeight &&
+              rect.right <= popup.innerWidth,
+            width: popup.innerWidth,
+            height: popup.innerHeight,
+            mainHeight: main.clientHeight,
+            scrollTop: main.scrollTop,
+            scrollHeight: main.scrollHeight,
+            horizontalOverflow:
+              popup.document.documentElement.scrollWidth > popup.innerWidth,
+          };
+        });
+      await expect.poll(readNotice).toMatchObject({
+        ...before,
+        text: "Copied #123456.",
+        copiedValue: "#123456",
+        visible: true,
+        horizontalOverflow: false,
+      });
+      await control.evaluate(() => {
+        const popup = chrome.extension.getViews({ type: "popup" })[0];
+        const main = popup.document.querySelector("main");
+        main.scrollTop = main.scrollHeight;
+        popup.scrollTo(0, popup.document.documentElement.scrollHeight);
+      });
+      await expect.poll(readNotice).toMatchObject({ visible: true });
+      expect((await readNotice()).scrollTop).toBeGreaterThan(0);
+      await control.evaluate(() => {
+        const popup = chrome.extension.getViews({ type: "popup" })[0];
+        popup.navigator.clipboard.writeText = async () => {
+          throw new Error("Synthetic clipboard denial");
+        };
+        popup.document.querySelector(".swatch:last-child").click();
+      });
+      await expect.poll(readNotice).toMatchObject({
+        text: "Copy failed. Select and copy the displayed value manually.",
+        visible: true,
+        horizontalOverflow: false,
+      });
+      await control.evaluate(() => {
+        const popup = chrome.extension.getViews({ type: "popup" })[0];
+        popup.document.querySelector(".settings-button").click();
+      });
+      await expect
+        .poll(() =>
+          control.evaluate(() => {
+            const popup = chrome.extension.getViews({ type: "popup" })[0];
+            return popup.document.querySelectorAll(".setting").length;
+          }),
+        )
+        .toBe(10);
+      await control.evaluate(() => {
+        const popup = chrome.extension.getViews({ type: "popup" })[0];
+        popup.document.querySelector(".setting input").click();
+      });
+      await expect.poll(readNotice).toMatchObject({
+        text: "Preference saved.",
+        visible: true,
+      });
+      await writeFile(
+        info.outputPath("notification-viewport.json"),
+        JSON.stringify({ before, after: await readNotice() }, null, 2),
+      );
+    } finally {
+      await app.context.close();
+    }
+  });
+}
 test("production UI scans fixtures without altering the page and retains approved branding", async ({}, info) => {
   const app = await launch(info);
   try {
@@ -420,6 +543,7 @@ test("images load only on request; ZIP has a real download outcome", async ({}, 
     await expect(
       popup.getByText("Download completed.", { exact: true }),
     ).toBeVisible();
+    await expect(popup.locator(".notice")).toBeInViewport({ ratio: 1 });
   } finally {
     await app.context.close();
   }
@@ -469,6 +593,9 @@ test("roomier popup keeps labeled Settings and preferences visible in both appea
         visiblePreferences: 10,
         preferenceCount: 10,
       });
+      await popup.getByLabel("Font size", { exact: true }).click();
+      await expect(popup.locator(".notice")).toHaveText("Preference saved.");
+      await expect(popup.locator(".notice")).toBeInViewport({ ratio: 1 });
       await popup.screenshot({
         path: info.outputPath(`settings-${colorScheme}.png`),
       });
