@@ -1,6 +1,6 @@
 # Getter privacy notice
 
-Applies to the Getter 2.2.0 test candidate. This document does not establish store publication.
+Applies to Getter 3.0.0. This document does not establish store publication.
 
 Getter is created by Aptelum Labs. Contact [support@aptelum.com](mailto:support@aptelum.com) for support or privacy questions.
 

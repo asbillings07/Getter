@@ -29,6 +29,13 @@ test.beforeAll(async () => {
       res.end(png);
       return;
     }
+    if (req.url === "/hidden-frame") {
+      res.setHeader("Content-Type", "text/html");
+      res.end(
+        '<p style="visibility:visible">Hidden embedded confidential marker</p>',
+      );
+      return;
+    }
     if (req.url === "/frame") {
       res.setHeader("Content-Type", "text/html");
       res.end('<p style="color:rgb(10,20,30)">Frame text</p>');
@@ -1211,6 +1218,9 @@ test("Text extracts page, main, and selection; copies exact values and saves rea
       "Private form value",
     );
     await expect(popup.getByText(/Partial results/)).toBeVisible();
+    const pageBlocks = await popup.locator(".text-block p").allTextContents();
+    await popup.getByRole("button", { name: "Page", exact: true }).click();
+    await expect(popup.locator(".text-block p")).toHaveText(pageBlocks);
     await popup
       .getByRole("button", { name: "Main content", exact: true })
       .click();
@@ -1236,6 +1246,10 @@ test("Text extracts page, main, and selection; copies exact values and saves rea
     await expect(popup.locator(".text-block")).toHaveCount(1);
     await expect(popup.locator(".text-block mark")).toHaveText("readable");
     await popup
+      .getByRole("button", { name: "Main content", exact: true })
+      .click();
+    await expect(popup.locator(".text-block mark")).toHaveText("readable");
+    await popup
       .getByRole("button", { name: "Copy paragraph", exact: true })
       .click();
     await expect
@@ -1257,6 +1271,8 @@ test("Text extracts page, main, and selection; copies exact values and saves rea
     await popup
       .getByRole("button", { name: "Extract selection", exact: true })
       .click();
+    await expect(popup.locator(".text-block p")).toHaveText("readable");
+    await popup.getByRole("button", { name: "Selection", exact: true }).click();
     await expect(popup.locator(".text-block p")).toHaveText("readable");
     expect(await app.page.locator("html").evaluate((el) => el.outerHTML)).toBe(
       before,
@@ -1290,6 +1306,17 @@ test("Inspect continuously selects, pauses, shows expanded sections, and cleans 
       navigator.clipboard.writeText = async (value) =>
         window.copied.push(value);
     });
+    await app.page.evaluate(() => {
+      window.pressActions = [];
+      for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup"])
+        document.addEventListener(
+          type,
+          (event) => {
+            if (event.target.id === "action") window.pressActions.push(type);
+          },
+          true,
+        );
+    });
     await panel.getByRole("button", { name: "Inspect", exact: true }).click();
     await expect(
       panel.getByRole("heading", { name: "Choose an element" }),
@@ -1299,6 +1326,7 @@ test("Inspect continuously selects, pauses, shows expanded sections, and cleans 
       "button#action",
     );
     expect(await app.page.evaluate(() => window.actionClicks || 0)).toBe(0);
+    expect(await app.page.evaluate(() => window.pressActions)).toEqual([]);
     await expect(
       panel.getByRole("switch", { name: "Select on page", exact: true }),
     ).toBeChecked();
@@ -1344,6 +1372,12 @@ test("Inspect continuously selects, pauses, shows expanded sections, and cleans 
     await expect(app.page.locator("getter-inspection-overlay")).toHaveCount(0);
     await app.page.locator("#action").click();
     expect(await app.page.evaluate(() => window.actionClicks)).toBe(1);
+    expect(await app.page.evaluate(() => window.pressActions)).toEqual([
+      "pointerdown",
+      "mousedown",
+      "pointerup",
+      "mouseup",
+    ]);
     await expect(panel.locator(".element-title")).toContainText("section#card");
     await panel
       .getByRole("button", { name: "Resume selecting", exact: true })
@@ -1648,6 +1682,112 @@ test("side panel follows tabs, rejects restricted pages, and clears old Inspect 
       panel.getByRole("heading", { name: "This page cannot be inspected" }),
     ).toBeVisible();
     await expect(panel.locator(".element-title")).toHaveCount(0);
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("retained workspaces receive saved preferences without overwriting another view", async ({}, info) => {
+  const app = await launch(info);
+  try {
+    const panel = await app.openPanel();
+    await expect(
+      panel.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await panel.getByRole("button", { name: "Settings", exact: true }).click();
+    const popup = await app.openPopup();
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await popup.getByRole("button", { name: "Settings", exact: true }).click();
+    await popup.getByRole("radio", { name: "Dark", exact: true }).check();
+    await expect(
+      panel.getByRole("radio", { name: "Dark", exact: true }),
+    ).toBeChecked();
+    await expect(panel.locator("html")).toHaveAttribute(
+      "data-appearance",
+      "dark",
+    );
+    await panel
+      .getByRole("switch", { name: "Font size", exact: true })
+      .uncheck();
+    await expect(
+      popup.getByRole("switch", { name: "Font size", exact: true }),
+    ).not.toBeChecked();
+    const saved = await app.worker.evaluate(
+      async () =>
+        (await chrome.storage.local.get("cssGetterOptions")).cssGetterOptions,
+    );
+    expect(saved.appearance).toBe("dark");
+    expect(saved.fonts.fontSize).toBe(false);
+    await popup
+      .getByRole("switch", { name: "Load previews by default", exact: true })
+      .check();
+    await expect(
+      panel.getByRole("switch", {
+        name: "Load previews by default",
+        exact: true,
+      }),
+    ).toBeChecked();
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("Text excludes hidden embedded content from results, clipboard and saved text", async ({}, info) => {
+  const app = await launch(info);
+  try {
+    await app.page.evaluate(() => {
+      for (const style of [
+        "visibility:hidden",
+        "visibility:collapse",
+        "display:none",
+        "opacity:0",
+      ]) {
+        const frame = document.createElement("iframe");
+        frame.src = "/hidden-frame";
+        frame.style.cssText = style;
+        document.body.append(frame);
+      }
+      const parent = document.createElement("div");
+      parent.style.visibility = "hidden";
+      parent.innerHTML = '<iframe src="/hidden-frame"></iframe>';
+      document.body.append(parent);
+    });
+    await expect
+      .poll(
+        () =>
+          app.page
+            .frames()
+            .filter((frame) => frame.url().endsWith("/hidden-frame")).length,
+      )
+      .toBe(5);
+    const popup = await app.openPopup();
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await popup.evaluate(() => {
+      navigator.clipboard.writeText = async (value) => {
+        window.copiedText = value;
+      };
+    });
+    await popup.getByRole("button", { name: "Text", exact: true }).click();
+    await expect(popup.locator(".text-results")).toContainText("Visible text");
+    await expect(popup.locator(".text-results")).toContainText("Frame text");
+    await expect(popup.locator(".text-results")).not.toContainText(
+      "Hidden embedded confidential marker",
+    );
+    await popup.getByRole("button", { name: "Copy text", exact: true }).click();
+    await expect
+      .poll(() => popup.evaluate(() => window.copiedText))
+      .toContain("Visible text");
+    const copied = await popup.evaluate(() => window.copiedText);
+    expect(copied).not.toContain("Hidden embedded confidential marker");
+    const pending = popup.waitForEvent("download");
+    await popup.getByRole("button", { name: /Save .txt/ }).click();
+    const file = await pending;
+    expect(await file.failure()).toBeNull();
+    expect(await readFile(await file.path(), "utf8")).toBe(copied);
   } finally {
     await app.context.close();
   }

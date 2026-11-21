@@ -1,8 +1,8 @@
 {
   "name": "getter",
-  "version": "2.2.0",
+  "version": "3.0.0",
   "private": true,
-  "description": "Discover a page's colors, fonts and images. Created by Aptelum Labs.",
+  "description": "Explore colors, fonts, images, text and element styles in a popup or side panel. Created by Aptelum Labs.",
   "type": "module",
   "engines": {
     "node": ">=24.15 <25"

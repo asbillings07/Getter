@@ -39,7 +39,9 @@ if (!globalThis.__getterInspector) {
   function pause() {
     state.picking = false;
     document.removeEventListener("pointerover", hover, true);
-    document.removeEventListener("click", select, true);
+    window.removeEventListener("click", select, true);
+    for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup"])
+      window.removeEventListener(type, suppressPress, true);
     document.removeEventListener("keydown", key, true);
     window.removeEventListener("scroll", position, true);
     window.removeEventListener("resize", position);
@@ -79,6 +81,12 @@ if (!globalThis.__getterInspector) {
     if (event.composedPath().includes(state.host)) return;
     state.hovered = target(event);
     position();
+  }
+  function suppressPress(event) {
+    if (event.composedPath().includes(state.host) || !state.picking) return;
+    // Stop page actions that run before click (including document capture handlers).
+    event.preventDefault();
+    event.stopImmediatePropagation();
   }
   function select(event) {
     if (event.composedPath().includes(state.host) || !state.picking) return;
@@ -142,7 +150,9 @@ if (!globalThis.__getterInspector) {
     shadow.append(style, box, banner);
     document.documentElement.append(host);
     document.addEventListener("pointerover", hover, true);
-    document.addEventListener("click", select, true);
+    window.addEventListener("click", select, true);
+    for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup"])
+      window.addEventListener(type, suppressPress, true);
     document.addEventListener("keydown", key, true);
     window.addEventListener("scroll", position, true);
     window.addEventListener("resize", position);

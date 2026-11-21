@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ScanSession } from "./core/scan.js";
-import { migrateStorage } from "./core/preferences.js";
+import { migrateStorage, preferences } from "./core/preferences.js";
 import TextView from "./components/TextView.jsx";
 import InspectView from "./components/InspectView.jsx";
 import Info from "./components/Info.jsx";
@@ -314,12 +314,21 @@ function App() {
       return true;
     };
     api.runtime.onMessage.addListener(receiveWorkspace);
+    let receivedPreferences;
+    const receivePreferences = (changes, area) => {
+      if (!live || area !== "local" || !changes.cssGetterOptions) return;
+      receivedPreferences = preferences(changes.cssGetterOptions.newValue);
+      optionsRef.current = receivedPreferences;
+      setOptions(receivedPreferences);
+    };
+    api.storage.onChanged.addListener(receivePreferences);
     migrateStorage(api.storage.local)
       .then(async (value) => {
         if (live && !expired) {
           clearTimeout(timer);
-          setOptions(value);
-          optionsRef.current = value;
+          const current = receivedPreferences || value;
+          setOptions(current);
+          optionsRef.current = current;
           let restored = false;
           try {
             restored = await restoreWorkspace();
@@ -344,6 +353,7 @@ function App() {
       clearTimeout(timer);
       session.dispose();
       api.runtime.onMessage.removeListener(receiveWorkspace);
+      api.storage.onChanged.removeListener(receivePreferences);
       exportController.current?.abort();
       exportController.current = null;
       downloads.dispose();
@@ -402,7 +412,7 @@ function App() {
       await api.storage.local.set({ cssGetterOptions: next });
       addNotice("Preference saved.");
     } catch {
-      setOptions(previous);
+      setOptions((current) => (current === next ? previous : current));
       addNotice("Preference was not saved. Please try again.");
     } finally {
       setSaving(false);

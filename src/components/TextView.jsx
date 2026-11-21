@@ -119,9 +119,10 @@ export default function TextView({
             <button
               key={id}
               aria-pressed={model.scope === id}
-              onClick={() =>
-                onChange({ ...model, scope: id, query: "", result: null })
-              }
+              onClick={() => {
+                if (model.scope !== id)
+                  onChange({ ...model, scope: id, query: "", result: null });
+              }}
             >
               {label}
             </button>

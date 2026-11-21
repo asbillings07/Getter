@@ -174,7 +174,12 @@ export function extractText({
       continue;
     }
     if (node.localName === "iframe" || node.localName === "frame") {
-      if (range) continue;
+      if (
+        range ||
+        style(node).visibility === "hidden" ||
+        style(node).visibility === "collapse"
+      )
+        continue;
       try {
         const child = node.contentDocument;
         if (

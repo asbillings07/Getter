@@ -1,7 +1,7 @@
 {
   "name": "Getter",
-  "version": "2.2.0",
-  "description": "Explore colors, fonts, images, text and element styles. Created by Aptelum Labs.",
+  "version": "3.0.0",
+  "description": "Explore colors, fonts, images, text and element styles in a popup or side panel. Created by Aptelum Labs.",
   "permissions": [
     "activeTab",
     "scripting",
@@ -34,7 +34,6 @@
   },
   "manifest_version": 3,
   "minimum_chrome_version": "141",
-  "version_name": "2.2.0 compact-header test build",
   "side_panel": {
     "default_path": "sidepanel.html"
   }

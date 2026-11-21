@@ -1,86 +1,89 @@
-# Getter 2.1.1 submission preparation
+# Getter 3.0.0 submission preparation
 
-Owner: @asbillings07. Tracks #8 and #11; depends on #6 and the ZIP repair in #9 / PR #10. **Candidate preparation only: human QA, merge and store submission/publication remain separate decisions.** Do not upload or submit from this checklist alone.
+This package follows the owner's acceptance of the compact Inspect Chrome build and explicit authorization to finish review, merge passing changes, prepare a store ZIP, and update screenshots and description. Uploading or submitting the store item is a separate action; preparing these materials does not change the dashboard or establish publication.
 
-## Existing item and candidate
+## Item and release
 
-- Existing item: [Getter](https://chromewebstore.google.com/detail/getter/nkgabfmcijbajgobbeloaobhbhpacnim), ID `nkgabfmcijbajgobbeloaobhbhpacnim`.
-- Public listing checked November 21, 2026: version 2.1.0, last updated November 4, 2026, offered by Aptelum Labs. Preserve this item's identity; this refresh is an update, not a duplicate listing.
-- Historical November 3 evidence: Google's update service supplied the then-current 2.0.0 CRX (544,744 bytes; SHA-256 `876a883e87ab2c0f31fab9f42bb29b04a9530e5d1737dbf41deabaa596160b63`). Its manifest independently confirmed version 2.0.0. It was downloaded/read without running it. Downloading an archive is not upgrade QA or cryptographic signature verification.
-- Proposed version: **2.1.1**, consistently recorded in the manifest, package and lockfile. This advances the already-published 2.1.0 version for the requested update ZIP. Authenticated dashboard inspection on November 3, 2026 showed Draft and Published packages at 2.0.0; that dashboard snapshot is historical and does not establish the current highest draft. Recheck before uploading.
-- On November 21, 2026, the owner accepted PR #16's 454bc81 Chrome test package and authorized merging after passing checks, followed by a store upload ZIP. The subsequent 2.1.1 preparation changes release metadata and these notes only; the tested popup implementation is unchanged. Upload, submission and publication are separate from package preparation.
-- Approved support/privacy email: **support@aptelum.com**, selected by the owner November 3, 2026. No email was sent and mailbox delivery has not been tested.
-- Proposed privacy URL after merge: `https://github.com/asbillings07/Getter/blob/main/PRIVACY.md`. Verify that the final accepted notice is publicly accessible before submission. Do not point the store at a missing file or an unaccepted draft.
+- Existing item: [Getter](https://chromewebstore.google.com/detail/getter/nkgabfmcijbajgobbeloaobhbhpacnim), ID `nkgabfmcijbajgobbeloaobhbhpacnim`. Update this item rather than creating another listing.
+- The public listing retrieved November 21, 2026 reports 2.1.0. That public page does not establish the highest uploaded draft or review state. Inspect the authenticated dashboard before uploading, especially if an earlier submission is still in review.
+- Release version: **3.0.0**, consistently recorded in the manifest, package and lockfile. The test-build version name is removed.
+- Owner-accepted UI: `2ba1a0a955f25e421ec80ee660ac3146919ccc8f`. The v3.0 preparation updates version/description metadata and documentation, and corrects four independently reviewed edge cases in Text, preference synchronization and picker interception. It preserves the accepted layout and intended normal interactions; regression checks cover the corrections. Record the final candidate, independent review, CI and merge SHA in the PR and release verification notes.
+- Support: **support@aptelum.com**. No support email is sent as part of preparation.
+- Privacy notice: [PRIVACY.md](https://github.com/asbillings07/Getter/blob/main/PRIVACY.md). Verify the merged v3.0 notice is publicly accessible before submission.
 
-## Listing copy for owner review
+## Listing fields
 
 **Name:** Getter
 
-**Short description:** Explore colors, fonts and images on the page you choose. Created by Aptelum Labs.
+**Short description:** Explore colors, fonts, images, text and element styles in a popup or side panel. Created by Aptelum Labs.
 
-**Detailed description:**
+**Detailed description:** Use [store-description.txt](store-description.txt) verbatim. It replaces the older listing's statement that text extraction and element-level inspection are unavailable.
 
-Notice the details that make a webpage work. Getter helps designers and developers explore colors, typography and images in a compact browser popup.
+**Single purpose:** Help people inspect the design and visible content of a webpage they choose, and copy or save those details through a popup or side panel.
 
-- Explore the page palette and copy color values.
-- Inspect font families and style details, with display preferences saved on your device.
-- See image dimensions, request previews or file sizes, and choose individual downloads or a bounded ZIP export.
-- Review included and unavailable image counts before saving a ZIP.
+**Category and language:** Preserve Workflow & Planning and English (United States), as displayed by the current public listing. Preserve the existing publisher, distribution, homepage and support settings unless the owner requests a change. The repository and issue tracker remain the proposed product/support destinations; do not change company domains or other store items.
 
-Open Getter from the toolbar on the page you want to inspect. Page results stay in the popup; image requests happen only when you choose them. Browser settings, the Chrome Web Store and other restricted pages cannot be inspected. Some frames and image hosts are inaccessible, and large pages use a limited scan. Getter shows those limits rather than promising complete coverage.
+## Screenshots
 
-Created by Aptelum Labs. Support: support@aptelum.com.
+Prepare five **1280 × 800** PNG screenshots using the actual merged extension UI and non-sensitive demonstration data. Capture-only framing may add descriptive text beside the UI, but must not invent controls, values or behavior. The shipped ZIP must not contain capture pages or capture-only host grants.
 
-This release covers colors, fonts and images. It does not provide general text extraction or element-level CSS inspection.
+Recommended order:
 
-**Proposed single purpose:** Help designers and developers inspect the colors, typography and images of a webpage they explicitly choose, and copy or download those details on request.
+1. **Colors / popup** — quick access to the page palette, with Fonts and Images available alongside it.
+2. **Text / side panel** — the source selector, copy/save actions and extracted text.
+3. **Inspect / Layout** — compact selected-element header, dimensions, box model and layout values.
+4. **Inspect / Element** — attributes and a readable long value, in dark appearance; Styles and Effects remain visible section choices.
+5. **Settings** — Popup / Side panel default, appearance and the preview/display toggles.
 
-**Category:** the authenticated dashboard confirms Workflow & Planning and English (United States). It already shows Aptelum Labs as the selected publisher; no publisher setting was changed. Keep those values. Developer account changes can affect other items; review them separately. Preserve current distribution settings. Do not change the main company website/domain to obtain a listing URL. The current draft has empty homepage/support URLs, no displayed screenshots, and legacy promo video/tiles. Replace or remove outdated promotional content only as part of the accepted listing package; do not imply it depicts the new UI. Proposed homepage and support URLs are the public Getter repository and its issues page, with support@aptelum.com prominent in the description and privacy notice.
+Use the existing approved Getter icon and exact Aptelum attribution asset. Screenshot assets are separate from the extension ZIP. Do not substitute design mocks for screenshots of the accepted build. Store submission accepts a maximum of five screenshots; optional promotional assets are a separate category.
 
 ## Permissions and data disclosures
 
-| Permission    | Justification for this candidate                                                                                                                        |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| activeTab     | Temporary access to the selected page when the person invokes Getter from its toolbar action.                                                           |
-| scripting     | Run bounded, read-only style/image extraction in the selected permitted document and frames; verify document identity to reject stale results.          |
-| storage       | Save local display preferences and remove specifically identified legacy Getter caches during migration. No persistent inspection history or telemetry. |
-| downloads     | Start explicitly requested image/ZIP downloads and observe their owned IDs while the popup is open. No broad history search.                            |
-| webNavigation | Enumerate frames in the selected tab on request, pin document identities and report omitted frames. No background navigation listener.                  |
+| Permission    | Purpose in v3.0                                                                                                                        |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| activeTab     | Temporary access to the selected page when Getter is invoked from its toolbar action.                                                  |
+| scripting     | Run bounded extraction and the on-demand element picker in the permitted document; verify document identity before using results.      |
+| storage       | Save local preferences and hold short-lived, in-memory workspace transfers. No persistent inspection history or telemetry.             |
+| downloads     | Start requested text, image and ZIP downloads and observe only their owned IDs while the workspace is loaded.                          |
+| webNavigation | Enumerate frames in the selected tab on request, pin document identities and report omitted frames. No background navigation listener. |
+| sidePanel     | Offer a persistent workspace beside the webpage and host element-level Inspect.                                                        |
 
-There are no standing or optional host grants in the shipping candidate, no web-accessible resources and no remote executable code. Compared with 2.0.0, the candidate removes `tabs`, `declarativeContent`, broad `*://*/*` host access, the exposed ZIP library resource and the permissive development CSP. Do not add permissions to make QA easier.
+The shipping manifest has no standing or optional host grants, web-accessible resources or remote executable code. Relative to the prior 2.1.1 source, `sidePanel` is the only added permission. No provider keys or credentials are required.
 
-Do not copy the old listing's blanket “will not collect or use your data” claim. Getter handles selected website content and current page/frame addresses locally even without an analytics backend. The owner must review the actual dashboard data categories and declarations against this code and the privacy notice. Proposed disclosure scope: website content (styles/image metadata) and selected-page/frame addresses used for the feature; no background browsing history, persistent inspection log, personal-account system or telemetry. Image hosts receive explicitly requested resource URLs and normal connection information; image requests omit credentials/referrers, and only prepared local files reach Chrome's downloader. Support emails are voluntarily supplied communications, separate from extension telemetry.
+The public listing currently discloses Website content and Web history. Getter handles selected-page/frame addresses locally to identify the active document; this does not mean it collects a background browsing history. Review these declarations against the merged privacy notice and the dashboard's current definitions. Website content now also includes extracted text and selected element attributes/computed styles. Preferences are local; view transfers use browser-session memory. Chrome can retain a hidden side panel's in-memory results until navigation, rescan or view release. Hiding the panel pauses selection.
 
-The November 3 authenticated Privacy screen has no data categories selected and an empty privacy-policy URL. The proposed refresh must replace that outdated disclosure: Website content clearly applies; review Web history against the limited current-page/frame URL use, with no saved history, and review voluntary support communications separately. The form’s three existing limited-use certifications were observed, not changed or newly submitted. The owner must make any required limited-use/trader/account certifications truthfully in the dashboard. This document does not make or submit those attestations.
+Previews contact HTTPS image hosts when enabled, including through the saved default. File-size reads and downloads require explicit requests and use bounded credential-free/referrer-free fetches with redirects rejected. Only prepared local blobs reach Chrome's downloader. Do not claim that the feature handles no website data or makes no network requests. Getter has no account system, analytics, advertising or backend receiving inspection results. Voluntary support emails are separate from extension telemetry.
+
+Dashboard limited-use, trader and account certifications must remain truthful owner declarations. This document does not make or submit those attestations.
 
 ## Store reviewer steps
 
-No account, payment or credentials are needed. Open an ordinary webpage, invoke Getter, and inspect Colors and Fonts. Change a display preference, reopen and verify it persists. On a page with images, enable previews or request a size explicitly. Prepare a ZIP, read its included/unavailable counts, and choose Save ZIP or Discard. Native Save As may close the popup: Chrome Downloads supplies the final outcome. Restricted pages produce an explanation rather than results. HTTP images, redirecting download URLs, oversized files and hosts denying access are unavailable for download; there is no insecure fallback. Secure image previews also reject HTTP redirect targets.
+No account, payment or credentials are needed. Requires Chrome 141 or newer.
 
-Use synthetic or public non-sensitive pages for review. The new permission model needs the real toolbar gesture; navigating directly to popup.html is not equivalent. See [the complete QA checklist](refresh.md#verification-and-remaining-owner-qa).
+1. Open an ordinary webpage and invoke Getter from the toolbar. Explore Colors, Fonts and Images; copy a color and optionally request an image preview or download.
+2. Open Text and compare Page, Main content and Selection. Find text, copy a block, copy the source and save a .txt file. Select text before opening the popup, or use the side panel and Extract selection.
+3. Choose Inspect. It opens in the side panel. Click several elements, then pause selection to interact normally with the page; resume to select again.
+4. Explore Styles, Layout, Effects and Element. Search within a section, show additional properties, copy a value and preview/copy CSS. Missing attributes are labeled Not set. The compact header shows the selected element name.
+5. In Settings, change the preferred workspace and appearance. Reopen Getter to check persistence. Use the button beside Settings to switch once without changing the saved default.
+6. Reload the page or change tabs. Old results clear; a newly selected site may require invoking the toolbar icon and Scan again for access. Restricted pages show an explanation.
 
-## Submission gate
+Frames, closed components and certain resources are inaccessible. Scans and exports are bounded and report limits. Native Save As may close a popup; Chrome Downloads supplies the final outcome. See [architecture and QA](refresh.md#verification-and-remaining-owner-qa) for the full scope and test limitations.
 
-- [ ] Current source and ZIP contents/hashes frozen; package contains production files at its root and no tests, test grants, source maps, private docs or credentials.
-- [ ] Required CI/browser gates and independent current-head review pass; human QA supplies its final verdict and merge authorization.
-- [ ] Actual old-release upgrade, worker recovery, keyboard/light-mode and remaining navigation/lifetime scenarios are qualified; original frame-count observation is explained or has an owner-reviewed disposition.
-- [ ] Secure image transport (#11): verify HTTPS-only preview connections, bounded credential-free fetches with redirects rejected, blob-only saves, and negative browser tests. Renew native QA for the changed download behavior; prior direct-download results do not qualify it.
-- [ ] Final store screenshots demonstrate the accepted actual UI on non-sensitive examples (1280×800 or 640×400); existing QA images are evidence, not automatically submission-ready screenshots. Store icon is the owner-selected Evolved Getter 128×128 PNG, matching the revised toolbar and popup header; verify its appearance on light/dark backgrounds. Earlier screenshots of the smaller popup or orange/pink Getter icon do not represent this candidate.
-- [ ] Confirm authenticated dashboard item, highest uploaded version, draft/review state, distribution and publisher details; avoid duplicate uploads or changes to other items.
-- [ ] Final privacy notice, disclosure categories, support contact and source/support links match behavior and are accessible. Mailbox operation and legal/account attestations remain owner checks.
-- [ ] Owner approves the concrete ZIP, listing, privacy declarations and submission. Prefer deferred publication so store review and publication are distinct decisions.
-- [ ] After store approval and owner publication approval, verify the intended public version and install/update behavior. Only then can the main-site release dependency be satisfied.
+## Release and submission gates
 
-## Protection evidence
+Before merge, record the exact immutable candidate, passing required `Getter checks`, resolved review threads, independent review and the owner's Chrome acceptance/merge authorization. Metadata-only v3.0 changes preserve the accepted UI; any material behavior change requires assessing renewed owner QA.
 
-On November 3, 2026, the owner authorized Getter to mirror Aptelum's protections. [Protect main](https://github.com/asbillings07/Getter/rules/26469517) requires PRs, resolved conversations and the GitHub Actions `Getter checks` result on an up-to-date branch, blocks force pushes/deletion and has no bypass actors. The browser tests run inside that required check. Saved and effective rules were read back. Formal GitHub approvals remain zero, matching the existing single-account setup; independent source review and the final human-QA decision remain mandatory recorded gates. Auto-merge is disabled. Recheck effective settings before relying on this dated observation.
+Before uploading, verify that the ZIP was built from merged source, contains production files at its root, matches its recorded checksum, and contains no tests, test-only grants or capture pages. Verify screenshot dimensions/content, listing copy and the public privacy/source links. Inspect the existing dashboard draft/review state and highest uploaded version before changing it. Do not cancel a pending review or alter distribution automatically.
 
-## Official references checked November 3, 2026
+Submission and publication require the applicable owner instruction for the concrete package and declarations. Passing tests, merging source and building a ZIP do not establish a Chrome Web Store release. After publication, verify the intended public version and install/update behavior separately.
 
-- [Updating an existing item](https://developer.chrome.com/docs/webstore/update): increment the version, upload the complete ZIP, update changed listing fields and review submission/publication separately.
-- [Images](https://developer.chrome.com/docs/webstore/images): store icon and screenshots; optional promotional assets are separate from actual UI screenshots.
-- [Limited Use](https://developer.chrome.com/docs/webstore/program-policies/limited-use): the proposed privacy notice includes the required affirmative compliance statement for owner review.
-- [Privacy fields](https://developer.chrome.com/docs/webstore/cws-dashboard-privacy): single purpose, permissions, remote-code declarations and data-use/privacy fields.
-- [User-data FAQ](https://developer.chrome.com/docs/webstore/program-policies/user-data-faq): local processing still requires disclosure; handling selected website data is not the same as collecting nothing.
-- [Secure transmission](https://developer.chrome.com/docs/webstore/troubleshooting#user-data-policy---secure-transmission): protect transmitted user data, including resource requests.
-- [Listing requirements](https://developer.chrome.com/docs/webstore/program-policies/listing-requirements): metadata and privacy claims must match actual behavior.
+## Protection check
+
+GitHub's effective rules for `main` were read on November 21, 2026: pull requests, resolved review discussions and an up-to-date passing `Getter checks` result are required; branch deletion and force pushes are blocked. Formal approving review count is zero, consistent with the single-account setup. Independent source review and the owner's final human-QA merge decision remain recorded gates. Do not bypass these protections.
+
+## Official references checked November 21, 2026
+
+- [Store images](https://developer.chrome.com/docs/webstore/images): 1280 × 800 or 640 × 400 screenshots; maximum five; demonstrate the actual experience.
+- [Listing fields](https://developer.chrome.com/docs/webstore/cws-dashboard-listing): detailed description, screenshots and related links.
+- [Updating an existing item](https://developer.chrome.com/docs/webstore/update): versioned package and update workflow.
+- [Privacy fields](https://developer.chrome.com/docs/webstore/cws-dashboard-privacy) and [Limited Use](https://developer.chrome.com/docs/webstore/program-policies/limited-use): disclosures and owner certifications.
