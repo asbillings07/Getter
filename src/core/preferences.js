@@ -8,7 +8,7 @@ export const DEFAULTS = Object.freeze({
     detailed: false,
   },
   colors: { hex: true, buttonColor: true },
-  images: { fileSize: true, imageDimensions: true },
+  images: { fileSize: true, imageDimensions: true, loadPreviews: false },
 });
 const record = (value) =>
   value && typeof value === "object" && !Array.isArray(value);
@@ -16,6 +16,8 @@ export function preferences(value) {
   const result = record(value) ? { ...value } : {};
   if (!["system", "light", "dark"].includes(result.appearance))
     result.appearance = "system";
+  if (!["popup", "panel"].includes(result.workspace))
+    result.workspace = "popup";
   for (const [group, defaults] of Object.entries(DEFAULTS)) {
     result[group] = { ...(record(result[group]) ? result[group] : {}) };
     for (const [key, fallback] of Object.entries(defaults)) {

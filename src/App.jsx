@@ -2,6 +2,10 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ScanSession } from "./core/scan.js";
 import { migrateStorage } from "./core/preferences.js";
+import TextView from "./components/TextView.jsx";
+import InspectView from "./components/InspectView.jsx";
+import Info from "./components/Info.jsx";
+import { initialWorkspace, takeWorkspace } from "./core/workspace.js";
 import { colorLabel } from "./core/extract.js";
 import {
   collectImages,
@@ -12,6 +16,8 @@ import {
 } from "./core/downloads.js";
 
 const api = globalThis.chrome;
+const mode =
+  document.documentElement.dataset.mode === "panel" ? "panel" : "popup";
 const labels = {
   fontFamily: "Font family",
   fontWeight: "Font weight",
@@ -23,15 +29,22 @@ const labels = {
   buttonColor: "Color swatches",
   fileSize: "Image file size",
   imageDimensions: "Image dimensions",
+  loadPreviews: "Load previews by default",
 };
 const empty = { status: "loading", message: "Opening Getter…", data: null };
 function Icon({ name }) {
   return (
     <span className="icon" aria-hidden="true">
       {
-        { colors: "◉", fonts: "T", images: "▧", settings: "⚙︎", refresh: "↻" }[
-          name
-        ]
+        {
+          colors: "◉",
+          fonts: "T",
+          images: "▧",
+          text: "☷",
+          inspect: "⌖",
+          settings: "⚙︎",
+          refresh: "↻",
+        }[name]
       }
     </span>
   );
@@ -170,6 +183,9 @@ function Notice({ id, text, onDismiss }) {
   return <p className="notice">{text}</p>;
 }
 function App() {
+  const [features, setFeatures] = useState(initialWorkspace),
+    [lastTool, setLastTool] = useState("colors"),
+    [switching, setSwitching] = useState(false);
   const [view, setView] = useState("colors"),
     [scan, setScan] = useState(empty),
     [options, setOptions] = useState(null),
@@ -185,7 +201,11 @@ function App() {
     tracker = useRef(),
     exportController = useRef(),
     currentScan = useRef(empty),
-    noticeId = useRef(0);
+    noticeId = useRef(0),
+    optionsRef = useRef(null),
+    workspaceWindow = useRef(null),
+    returnView = useRef("colors");
+  optionsRef.current = options;
   const addNotice = useCallback((text) => {
     const id = noticeId.current++;
     setNotices((current) => [...current, { id, text }].slice(-3));
@@ -200,20 +220,26 @@ function App() {
   useEffect(() => {
     let live = true,
       expired = false;
-    const session = new ScanSession(api, (value) => {
-      if (live) {
-        currentScan.current = value;
-        exportController.current?.abort();
-        exportController.current = null;
-        setPreparedZip(null);
-        setExporting(false);
-        setExportResult("");
-        setNotices([]);
-        setScan(value);
-        setPreviews(false);
-        setZipConfirm(false);
-      }
-    });
+    api.windows.getCurrent().then((win) => (workspaceWindow.current = win.id));
+    const session = new ScanSession(
+      api,
+      (value) => {
+        if (live) {
+          currentScan.current = value;
+          exportController.current?.abort();
+          exportController.current = null;
+          setPreparedZip(null);
+          setExporting(false);
+          setExportResult("");
+          setNotices([]);
+          setScan(value);
+          setPreviews(optionsRef.current?.images.loadPreviews || false);
+          if (value.status !== "ready") setFeatures(initialWorkspace());
+          setZipConfirm(false);
+        }
+      },
+      { followTabs: mode === "panel" },
+    );
     scanner.current = session;
     session.start();
     const downloads = new DownloadTracker(
@@ -231,12 +257,74 @@ function App() {
             "Preferences are taking too long to load. Close and reopen Getter.",
         });
     }, 5000);
+    let restoration;
+    const restoreWorkspace = () => {
+      if (restoration) return restoration;
+      restoration = (async () => {
+        const transfer = await takeWorkspace(api);
+        if (!live || !transfer) return false;
+        const adopted =
+          transfer.scan?.status === "ready" &&
+          (await session.adopt(transfer.scan));
+        if (!live) return false;
+        const next = [
+          "colors",
+          "fonts",
+          "images",
+          "text",
+          "inspect",
+          "settings",
+          "about",
+        ].includes(transfer.view)
+          ? transfer.view
+          : "colors";
+        setView(
+          mode === "popup" && next === "inspect"
+            ? transfer.lastTool || "colors"
+            : next,
+        );
+        setLastTool(transfer.lastTool || "colors");
+        if (adopted) {
+          setFeatures(transfer.features || initialWorkspace());
+          setPreviews(
+            transfer.previews ?? optionsRef.current.images.loadPreviews,
+          );
+        } else session.scan();
+        return true;
+      })().finally(() => {
+        restoration = null;
+      });
+      return restoration;
+    };
+    const receiveWorkspace = (message, sender, respond) => {
+      if (
+        sender.id !== api.runtime.id ||
+        message?.type !== "getter:workspace-ready" ||
+        message.mode !== mode ||
+        message.windowId !== workspaceWindow.current ||
+        !optionsRef.current
+      )
+        return;
+      // Only a native popup/panel receives one-off transfers, not an extension tab used for diagnostics.
+      if (api.extension.getViews({ type: "tab" }).includes(window)) return;
+      restoreWorkspace().then(
+        () => respond({ ok: true }),
+        () => respond({ ok: false }),
+      );
+      return true;
+    };
+    api.runtime.onMessage.addListener(receiveWorkspace);
     migrateStorage(api.storage.local)
-      .then((value) => {
+      .then(async (value) => {
         if (live && !expired) {
           clearTimeout(timer);
           setOptions(value);
-          session.scan();
+          optionsRef.current = value;
+          let restored = false;
+          try {
+            restored = await restoreWorkspace();
+          } catch {}
+          if (live && !restored) session.scan();
         }
       })
       .catch(() => {
@@ -255,11 +343,56 @@ function App() {
       currentScan.current = null;
       clearTimeout(timer);
       session.dispose();
+      api.runtime.onMessage.removeListener(receiveWorkspace);
       exportController.current?.abort();
       exportController.current = null;
       downloads.dispose();
     };
   }, [addNotice]);
+  useEffect(() => {
+    if (options) setPreviews(options.images.loadPreviews);
+  }, [options?.images.loadPreviews]);
+  async function switchWorkspace(nextMode, intent = view) {
+    if (switching || !workspaceWindow.current) return;
+    setSwitching(true);
+    const nextView =
+      nextMode === "popup" && intent === "inspect" ? lastTool : intent;
+    try {
+      const result = await api.runtime.sendMessage({
+        type: "getter:switch",
+        mode: nextMode,
+        windowId: workspaceWindow.current,
+        workspace: {
+          scan: currentScan.current,
+          view: nextView,
+          lastTool,
+          features,
+          previews,
+        },
+      });
+      if (!result?.ok) throw Error();
+      if (mode === "popup") window.close();
+    } catch {
+      addNotice(
+        "Could not switch views. Try again from the Getter toolbar icon.",
+      );
+    } finally {
+      setSwitching(false);
+    }
+  }
+  function chooseView(next) {
+    if (next === "inspect" && mode === "popup") {
+      switchWorkspace("panel", "inspect");
+      return;
+    }
+    if (["colors", "fonts", "images", "text"].includes(next)) setLastTool(next);
+    if (next === "images" && view !== "images")
+      setPreviews(options?.images.loadPreviews || false);
+    setView(next);
+  }
+  function updateFeature(name, value) {
+    setFeatures((current) => ({ ...current, [name]: value }));
+  }
   async function saveOptions(next) {
     if (saving) return;
     const previous = options;
@@ -275,10 +408,11 @@ function App() {
       setSaving(false);
     }
   }
-  async function copy(value) {
+  async function copy(value, label, sourceScan) {
+    if (sourceScan && currentScan.current !== sourceScan) return;
     try {
       await navigator.clipboard.writeText(value);
-      addNotice(`Copied ${value}.`);
+      addNotice(`Copied ${label || (value.length > 80 ? "value" : value)}.`);
     } catch {
       addNotice("Copy failed. Select and copy the displayed value manually.");
     }
@@ -375,19 +509,38 @@ function App() {
             className="product-mark"
             src="images/CSS-Getter-Icon-48px.png"
             alt=""
-            width="36"
-            height="36"
+            width="24"
+            height="24"
           />
           <div className="wordmark">Getter</div>
         </div>
-        <button
-          className="settings-button"
-          onClick={() => setView(view === "settings" ? "colors" : "settings")}
-          aria-pressed={view === "settings"}
-        >
-          <Icon name="settings" />
-          Settings
-        </button>
+        <div className="top-actions">
+          <button
+            className="mode-button"
+            disabled={
+              !options || switching || exporting || !!preparedZip || savingZip
+            }
+            onClick={() =>
+              switchWorkspace(mode === "popup" ? "panel" : "popup")
+            }
+          >
+            {mode === "popup" ? "▥ Side panel" : "↗ Popup"}
+          </button>
+          <button
+            className="settings-button"
+            onClick={() => {
+              if (view === "settings") chooseView(returnView.current);
+              else {
+                returnView.current = view;
+                setView("settings");
+              }
+            }}
+            aria-pressed={view === "settings"}
+          >
+            <Icon name="settings" />
+            Settings
+          </button>
+        </div>
       </header>
       <div className="context">
         <span className="site-identity" title={scan.host}>
@@ -415,24 +568,40 @@ function App() {
         </button>
       </div>
       <nav className="tabs" aria-label="Explore page">
-        {["colors", "fonts", "images"].map((name) => (
+        {["colors", "fonts", "images", "text", "inspect"].map((name) => (
           <button
             key={name}
             aria-pressed={view === name}
-            onClick={() => setView(name)}
+            onClick={() => chooseView(name)}
+            disabled={switching}
+            title={
+              name === "inspect" && mode === "popup"
+                ? "Open Inspect in the side panel"
+                : undefined
+            }
           >
             <Icon name={name} />
             {name[0].toUpperCase() + name.slice(1)}
           </button>
         ))}
       </nav>
-      <main>
+      <main
+        className={
+          view === "inspect" && ready
+            ? "inspect-main"
+            : view === "text" && ready
+              ? "text-main"
+              : view === "settings"
+                ? "settings-main"
+                : ""
+        }
+      >
         {view === "about" ? (
           <>
             <h1>Getter</h1>
             <p className="about-lead">
-              Discover the colors, typography and images that make a page feel
-              like itself.
+              Explore a page’s colors, typography, images, text and element
+              styles.
             </p>
             <p>
               <strong>Created by Aptelum Labs.</strong>
@@ -465,16 +634,50 @@ function App() {
               </a>
             </p>
             <p className="muted">
-              Scans stay in this popup. Preferences are saved locally. Previews,
-              file-size requests and downloads contact the image hosts only when
-              you request them.
+              Page data stays in the current workspace, with a short-lived
+              transfer when switching views. Preferences are saved locally.
+              Image previews contact their hosts when you enable them, including
+              when you turn on “Load previews by default.” File-size requests
+              and downloads contact image hosts when you request them.
             </p>
           </>
         ) : view === "settings" ? (
           <>
-            <h1>Display preferences</h1>
+            <h1>Settings</h1>
             {options ? (
               <>
+                <section className="workspace-setting">
+                  <span>
+                    Open Getter in{" "}
+                    <Info label="About opening Getter">
+                      Used when you click Getter in the toolbar. Inspect always
+                      opens in the side panel.
+                    </Info>
+                  </span>
+                  <div
+                    className="appearance-options workspace-options"
+                    role="radiogroup"
+                    aria-label="Default Getter view"
+                  >
+                    {[
+                      ["popup", "Popup"],
+                      ["panel", "Side panel"],
+                    ].map(([workspace, label]) => (
+                      <label key={workspace}>
+                        <input
+                          type="radio"
+                          name="workspace"
+                          checked={options.workspace === workspace}
+                          aria-disabled={saving}
+                          onChange={() =>
+                            saveOptions({ ...options, workspace })
+                          }
+                        />
+                        <span>{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </section>
                 <section className="appearance">
                   <span id="appearance-label">Appearance</span>
                   <div
@@ -536,6 +739,23 @@ function App() {
               <p>Preferences are unavailable. Close and reopen Getter.</p>
             )}
           </>
+        ) : ready && view === "text" ? (
+          <TextView
+            scan={scan}
+            model={features.text}
+            onChange={(value) => updateFeature("text", value)}
+            onCopy={copy}
+            onNotice={addNotice}
+            onDownload={(blob, name) => download(blob, name, scan)}
+          />
+        ) : ready && view === "inspect" ? (
+          <InspectView
+            scan={scan}
+            model={features.inspect}
+            onChange={(value) => updateFeature("inspect", value)}
+            onCopy={copy}
+            onNotice={addNotice}
+          />
         ) : !ready ? (
           <section className="state" aria-live="polite">
             <h1>
@@ -561,15 +781,22 @@ function App() {
         ) : (
           <>
             <div className="heading">
-              <h1>
-                {
+              <div className="title-with-info">
+                <h1>
                   {
-                    colors: "Page palette",
-                    fonts: "Typography",
-                    images: "Images",
-                  }[view]
-                }
-              </h1>
+                    {
+                      colors: "Page palette",
+                      fonts: "Typography",
+                      images: "Images",
+                    }[view]
+                  }
+                </h1>
+                {["colors", "fonts"].includes(view) && (
+                  <Info label="How to copy values">
+                    Click a value to copy it.
+                  </Info>
+                )}
+              </div>
               <span>
                 {view === "fonts" ? shownFonts?.length : current.length}{" "}
                 {view === "fonts" ? "styles" : view}
@@ -620,7 +847,6 @@ function App() {
                     );
                   })}
                 </div>
-                <p className="muted small">Select a color to copy its value.</p>
               </>
             ) : view === "fonts" ? (
               <div>
@@ -668,6 +894,7 @@ function App() {
                   <label>
                     <input
                       type="checkbox"
+                      role="switch"
                       checked={previews}
                       onChange={(event) => setPreviews(event.target.checked)}
                     />{" "}

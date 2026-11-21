@@ -34,6 +34,16 @@ test.beforeAll(async () => {
       res.end('<p style="color:rgb(10,20,30)">Frame text</p>');
       return;
     }
+    if (req.url === "/workbench") {
+      res.setHeader("Content-Type", "text/html");
+      res.end(`<!doctype html><html><head><title>Getter workspace fixture</title><style>
+        body{font:16px Arial;margin:40px;color:#123456}main{max-width:650px}
+        #card{display:flex;gap:24px;padding:24px;border:1px solid #ced8e8;border-radius:18px;background:linear-gradient(135deg,#edf4ff,#fff);box-shadow:0 8px 24px #12345622}
+        #action{padding:12px 20px;background:#2468df;color:white;border:0;border-radius:8px;cursor:pointer}
+        #plain{border:0;background:none;box-shadow:none;outline:none}
+      </style></head><body><nav>Fixture navigation</nav><main><h1 id="title">Design in the details</h1><p id="intro">Hello <strong>readable world</strong>!</p><div hidden>Hidden secret</div><textarea>Private form value</textarea><input type="password" value="private-password"><section id="card" aria-label="Feature card"><span>Flexible spacing</span><button id="action" onclick="window.actionClicks=(window.actionClicks||0)+1">Try Getter</button></section><p id="plain">Plain content</p><a id="long-link" href="https://example.test/a/very/long/path/that/must/wrap/inside/the/side/panel?fixture=long-value">Read the guide</a><img id="sample" alt="Sample artwork" src="${imageOrigin}/image.png" width="80" height="60"><div id="shadow-host"></div></main><footer>Fixture footer</footer><iframe src="/frame"></iframe><iframe sandbox src="/frame"></iframe><script>document.querySelector('#shadow-host').attachShadow({mode:'open'}).innerHTML='<button id="shadow-button">Shadow action</button>';</script></body></html>`);
+      return;
+    }
     res.setHeader("Content-Type", "text/html");
     res.end(
       `<!doctype html><html><head><title>Synthetic Getter fixture</title></head><body style="color:rgb(18,52,86);background:white;font-family:Arial"><h1 id="unchanged" style="font-family:Georgia;font-size:32px">A test page</h1><p>Visible text</p><img alt="Sample image" src="${imageOrigin}/image.png" width="80" height="80"><iframe src="/frame"></iframe><iframe src="${origin.replace("127.0.0.1", "localhost")}/frame"></iframe><iframe sandbox src="/frame"></iframe></body></html>`,
@@ -71,7 +81,7 @@ async function launch(
     testInfo.outputPath("profile"),
     {
       channel: "chromium",
-      headless: true,
+      headless: process.env.GETTER_HEADED !== "1",
       // Native popup sizing must not inherit Playwright's device-metrics viewport.
       ...(nativePopup ? { viewport: null } : {}),
       acceptDownloads: true,
@@ -147,17 +157,24 @@ async function launch(
   await page.bringToFront();
   await page.waitForLoadState("networkidle");
   const before = await page.locator("html").evaluate((el) => el.outerHTML);
-  const openPopup = async () => {
+  const openPopup = async (filename = "popup.html") => {
     const newPage = context.waitForEvent("page");
     await worker.evaluate(
       (url) => chrome.tabs.create({ url, active: false }),
-      `chrome-extension://${id}/popup.html`,
+      `chrome-extension://${id}/${filename}`,
     );
     const popup = await newPage;
     await popup.waitForLoadState();
     return popup;
   };
-  return { context, worker, page, before, openPopup };
+  return {
+    context,
+    worker,
+    page,
+    before,
+    openPopup,
+    openPanel: () => openPopup("sidepanel.html"),
+  };
 }
 test("toolbar popup sizes itself without a test-supplied viewport", async ({}, info) => {
   const app = await launch(info, { nativePopup: true });
@@ -215,10 +232,10 @@ test("toolbar popup sizes itself without a test-supplied viewport", async ({}, i
           }).length;
         }),
       )
-      .toBe(10);
+      .toBe(11);
     await writeFile(
       info.outputPath("toolbar-sizing.json"),
-      JSON.stringify({ palette, visiblePreferences: 10 }, null, 2),
+      JSON.stringify({ palette, visiblePreferences: 11 }, null, 2),
     );
   } finally {
     await app.context.close();
@@ -408,7 +425,7 @@ for (const popupScreen of ["1600x1200", "800x600"]) {
             return popup.document.querySelectorAll(".setting").length;
           }),
         )
-        .toBe(10);
+        .toBe(11);
       await control.evaluate(() => {
         const popup = chrome.extension.getViews({ type: "popup" })[0];
         popup.document.querySelector(".setting input").click();
@@ -670,7 +687,7 @@ test("roomier popup keeps labeled Settings and preferences visible in both appea
       );
       await settings.click();
       await expect(settings).toHaveAttribute("aria-pressed", "true");
-      await expect(popup.getByRole("switch")).toHaveCount(10);
+      await expect(popup.getByRole("switch")).toHaveCount(11);
       await expect(
         popup.getByRole("radiogroup", { name: "Appearance" }),
       ).toBeInViewport({ ratio: 1 });
@@ -694,8 +711,8 @@ test("roomier popup keeps labeled Settings and preferences visible in both appea
         width: 720,
         height: 600,
         horizontalOverflow: false,
-        visiblePreferences: 10,
-        preferenceCount: 10,
+        visiblePreferences: 11,
+        preferenceCount: 11,
       });
       await popup.getByLabel("Font size", { exact: true }).click();
       await expect(popup.locator(".notice").last()).toHaveText(
@@ -874,13 +891,15 @@ test("high contrast keeps switch states and the selected appearance visible", as
       expect(colors.thumb).not.toBe(colors.track);
       expect(colors.shadow).toBe("none");
     }
-    const selected = popup.locator(".appearance-options input:checked + span");
+    const selected = popup.locator(
+      ".appearance .appearance-options input:checked + span",
+    );
     const colors = await selected.evaluate((segment) => ({
       text: getComputedStyle(segment).color,
       background: getComputedStyle(segment).backgroundColor,
       other: getComputedStyle(
         document.querySelector(
-          ".appearance-options input:not(:checked) + span",
+          ".appearance .appearance-options input:not(:checked) + span",
         ),
       ).backgroundColor,
     }));
@@ -1146,6 +1165,489 @@ test("navigation invalidation rejects an image completing before React cleanup",
       objectUrls: 0,
       downloads: 0,
     });
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("Text extracts page, main, and selection; copies exact values and saves real text bytes", async ({}, info) => {
+  const app = await launch(info);
+  try {
+    await app.page.goto(`${origin}/workbench`);
+    const before = await app.page
+      .locator("html")
+      .evaluate((el) => el.outerHTML);
+    const popup = await app.openPopup();
+    await popup.setViewportSize({ width: 720, height: 600 });
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    // Capture the submitted clipboard bytes; native clipboard success/failure is covered separately.
+    await popup.evaluate(() => {
+      window.copied = [];
+      navigator.clipboard.writeText = async (value) => {
+        window.copied.push(value);
+      };
+    });
+    await popup.getByRole("button", { name: "Text", exact: true }).click();
+    expect(
+      await popup
+        .locator(".text-source-row .segments button")
+        .evaluateAll((buttons) =>
+          buttons.every((button) => button.scrollWidth <= button.clientWidth),
+        ),
+    ).toBe(true);
+    await expect(popup.locator(".text-results")).toContainText(
+      "Fixture navigation",
+    );
+    await expect(popup.locator(".text-results")).toContainText(
+      "Hello readable world!",
+    );
+    await expect(popup.locator(".text-results")).toContainText("Frame text");
+    await expect(popup.locator(".text-results")).not.toContainText(
+      "Hidden secret",
+    );
+    await expect(popup.locator(".text-results")).not.toContainText(
+      "Private form value",
+    );
+    await expect(popup.getByText(/Partial results/)).toBeVisible();
+    await popup
+      .getByRole("button", { name: "Main content", exact: true })
+      .click();
+    await expect(popup.locator(".text-results")).not.toContainText(
+      "Fixture navigation",
+    );
+    await expect(popup.locator(".text-results")).not.toContainText(
+      "Fixture footer",
+    );
+    await popup.getByRole("button", { name: "Copy text", exact: true }).click();
+    await expect.poll(() => popup.evaluate(() => window.copied.length)).toBe(1);
+    const copied = await popup.evaluate(() => window.copied.at(-1));
+    expect(copied).toContain("Design in the details\n\nHello readable world!");
+    expect(copied).not.toMatch(/private-password|Private form value/);
+    const downloaded = popup.waitForEvent("download");
+    await popup.getByRole("button", { name: /Save .txt/ }).click();
+    const file = await downloaded;
+    expect(await file.failure()).toBeNull();
+    expect(await readFile(await file.path(), "utf8")).toBe(copied);
+    await popup
+      .getByRole("searchbox", { name: "Find in extracted text" })
+      .fill("readable");
+    await expect(popup.locator(".text-block")).toHaveCount(1);
+    await expect(popup.locator(".text-block mark")).toHaveText("readable");
+    await popup
+      .getByRole("button", { name: "Copy paragraph", exact: true })
+      .click();
+    await expect
+      .poll(() => popup.evaluate(() => window.copied.at(-1)))
+      .toBe("Hello readable world!");
+    await popup.screenshot({ path: info.outputPath("text-popup.png") });
+    await popup.getByRole("button", { name: "Selection", exact: true }).click();
+    await expect(
+      popup.getByRole("heading", { name: "No text selected" }),
+    ).toBeVisible();
+    await app.page.evaluate(() => {
+      const range = document.createRange();
+      const node = document.querySelector("#intro strong").firstChild;
+      range.setStart(node, 0);
+      range.setEnd(node, 8);
+      getSelection().removeAllRanges();
+      getSelection().addRange(range);
+    });
+    await popup
+      .getByRole("button", { name: "Extract selection", exact: true })
+      .click();
+    await expect(popup.locator(".text-block p")).toHaveText("readable");
+    expect(await app.page.locator("html").evaluate((el) => el.outerHTML)).toBe(
+      before,
+    );
+    await app.page.reload();
+    await expect(
+      popup.getByRole("heading", { name: "Scan again when ready" }),
+    ).toBeVisible();
+    await expect(popup.locator(".text-block")).toHaveCount(0);
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("Inspect continuously selects, pauses, shows expanded sections, and cleans up", async ({}, info) => {
+  const app = await launch(info);
+  try {
+    await app.page.goto(`${origin}/workbench`);
+    const before = await app.page
+      .locator("html")
+      .evaluate((el) => el.outerHTML);
+    const panel = await app.openPanel();
+    await panel.setViewportSize({ width: 400, height: 820 });
+    const errors = [];
+    panel.on("pageerror", (error) => errors.push(error.message));
+    await expect(
+      panel.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await panel.evaluate(() => {
+      window.copied = [];
+      navigator.clipboard.writeText = async (value) =>
+        window.copied.push(value);
+    });
+    await panel.getByRole("button", { name: "Inspect", exact: true }).click();
+    await expect(
+      panel.getByRole("heading", { name: "Choose an element" }),
+    ).toBeVisible();
+    await app.page.locator("#action").click();
+    await expect(panel.locator(".element-title")).toContainText(
+      "button#action",
+    );
+    expect(await app.page.evaluate(() => window.actionClicks || 0)).toBe(0);
+    await expect(
+      panel.getByRole("switch", { name: "Select on page", exact: true }),
+    ).toBeChecked();
+    await app.page.locator("#card").click({ position: { x: 10, y: 10 } });
+    await expect(panel.locator(".element-title")).toContainText("section#card");
+    await panel.getByRole("button", { name: "Layout", exact: true }).click();
+    await expect(
+      panel.getByText("Flex layout", { exact: false }).first(),
+    ).toBeVisible();
+    await expect(panel.getByTitle("Copy gap", { exact: true })).toHaveText(
+      "24px",
+    );
+    await panel.getByText("Box model", { exact: false }).first().click();
+    await expect(panel.locator(".box-core")).toBeVisible();
+    await panel.screenshot({
+      path: info.outputPath("inspect-layout-light.png"),
+    });
+    await panel.getByRole("button", { name: "Effects", exact: true }).click();
+    await expect(
+      panel.getByTitle("Copy background-image", { exact: true }),
+    ).toContainText("linear-gradient");
+    await panel.getByTitle("Copy box-shadow", { exact: true }).click();
+    await expect
+      .poll(() => panel.evaluate(() => window.copied.at(-1)))
+      .toContain("8px 24px");
+    await panel.getByRole("button", { name: /Copy CSS/ }).click();
+    await expect(panel.locator(".code-preview")).toContainText(
+      "display: flex;",
+    );
+    await expect(panel.locator(".code-preview")).not.toContainText(
+      "aria-label:",
+    );
+    await panel
+      .getByRole("button", { name: "Copy snippet", exact: true })
+      .click();
+    await expect
+      .poll(() => panel.evaluate(() => window.copied.at(-1)))
+      .toContain("section#card {");
+    await panel.getByRole("button", { name: /Back to/ }).click();
+    await panel
+      .getByRole("switch", { name: "Select on page", exact: true })
+      .uncheck();
+    await expect(app.page.locator("getter-inspection-overlay")).toHaveCount(0);
+    await app.page.locator("#action").click();
+    expect(await app.page.evaluate(() => window.actionClicks)).toBe(1);
+    await expect(panel.locator(".element-title")).toContainText("section#card");
+    await panel
+      .getByRole("button", { name: "Resume selecting", exact: true })
+      .click();
+    await app.page.locator("#plain").click();
+    await expect(
+      panel.getByRole("heading", { name: "No effects applied" }),
+    ).toBeVisible();
+    await panel
+      .getByRole("searchbox", { name: "Find CSS property" })
+      .fill("opacity");
+    await expect(panel.getByTitle("Copy opacity", { exact: true })).toHaveText(
+      "1",
+    );
+    await panel.getByRole("searchbox", { name: "Find CSS property" }).fill("");
+    await panel
+      .getByRole("switch", { name: "Show all properties", exact: true })
+      .check();
+    await expect(panel.getByTitle("Copy opacity", { exact: true })).toHaveText(
+      "1",
+    );
+    await app.page.locator("#long-link").click();
+    expect(app.page.url()).toBe(`${origin}/workbench`);
+    await panel.getByRole("button", { name: "Element", exact: true }).click();
+    await expect(panel.getByTitle("Copy href", { exact: true })).toContainText(
+      "https://example.test/a/very/long/path",
+    );
+    await expect(
+      panel.getByText("Not set", { exact: true }).first(),
+    ).toBeVisible();
+    await panel.emulateMedia({ colorScheme: "dark" });
+    await panel.setViewportSize({ width: 320, height: 720 });
+    expect(
+      await panel.evaluate(
+        () => document.documentElement.scrollWidth > innerWidth,
+      ),
+    ).toBe(false);
+    await panel.screenshot({
+      path: info.outputPath("inspect-element-dark-narrow.png"),
+    });
+    await app.page.locator("#sample").click();
+    await expect(panel.getByTitle("Copy alt", { exact: true })).toHaveText(
+      "Sample artwork",
+    );
+    await expect(
+      panel.getByTitle("Copy original size", { exact: true }),
+    ).toHaveText("1 × 1 px");
+    await app.page.locator("#shadow-host button").click();
+    await expect(panel.locator(".element-title")).toContainText(
+      "button#shadow-button",
+    );
+    await expect(panel.getByText(/inside a shadow root/)).toBeVisible();
+    await app.page.keyboard.press("Escape");
+    await expect(
+      panel.getByRole("button", { name: "Resume selecting", exact: true }),
+    ).toBeVisible();
+    await panel
+      .getByRole("button", { name: "Resume selecting", exact: true })
+      .click();
+    await app.page.locator("#plain").click();
+    await app.page.locator("#plain").evaluate((el) => el.remove());
+    await expect(
+      panel.getByRole("heading", { name: "Element no longer available" }),
+    ).toBeVisible();
+    await panel.getByRole("button", { name: "Colors", exact: true }).click();
+    await expect(app.page.locator("getter-inspection-overlay")).toHaveCount(0);
+    expect(await app.page.locator("#action").getAttribute("id")).toBe("action");
+    expect(errors).toEqual([]);
+    // Removing one fixture element was the only persistent page change.
+    const after = await app.page.locator("html").evaluate((el) => el.outerHTML);
+    expect(after).toBe(before.replace('<p id="plain">Plain content</p>', ""));
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("workspace preference configures toolbar and preview preference survives reopening", async ({}, info) => {
+  const app = await launch(info);
+  try {
+    const popup = await app.openPopup();
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await popup.getByRole("button", { name: "Settings", exact: true }).click();
+    await popup
+      .locator(".workspace-options label")
+      .filter({ hasText: "Side panel" })
+      .click();
+    await expect
+      .poll(() => app.worker.evaluate(() => chrome.action.getPopup({})))
+      .toBe("");
+    expect(
+      await app.worker.evaluate(() => chrome.sidePanel.getPanelBehavior()),
+    ).toEqual({ openPanelOnActionClick: true });
+    await popup
+      .getByRole("switch", { name: "Load previews by default", exact: true })
+      .check();
+    await popup.close();
+    const panel = await app.openPanel();
+    await panel.setViewportSize({ width: 400, height: 820 });
+    await expect(
+      panel.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await panel.getByRole("button", { name: "Images", exact: true }).click();
+    await expect(
+      panel.getByRole("switch", { name: "Load previews", exact: true }),
+    ).toBeChecked();
+    await expect(
+      panel.getByRole("img", { name: "Sample image", exact: true }),
+    ).toBeVisible();
+    await panel.getByRole("button", { name: "Settings", exact: true }).click();
+    await panel
+      .locator(".workspace-options label")
+      .filter({ hasText: "Popup" })
+      .click();
+    await expect
+      .poll(() => app.worker.evaluate(() => chrome.action.getPopup({})))
+      .toMatch(/popup.html$/);
+    expect(
+      await app.worker.evaluate(() => chrome.sidePanel.getPanelBehavior()),
+    ).toEqual({ openPanelOnActionClick: false });
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("native popup and side panel transfer Text state and keep Inspect in the panel", async ({}, info) => {
+  const app = await launch(info, { nativePopup: true });
+  try {
+    await app.page.goto(`${origin}/workbench`);
+    const control = await app.openPopup();
+    await app.worker.evaluate(() => chrome.action.openPopup());
+    const read = () =>
+      control.evaluate(() =>
+        chrome.extension
+          .getViews()
+          .filter(
+            (w) =>
+              !w.location.href.includes("popup.html") ||
+              chrome.extension.getViews({ type: "popup" }).includes(w),
+          )
+          .map((w) => ({
+            path: w.location.pathname,
+            text: w.document.body?.innerText || "",
+            query:
+              w.document.querySelector('input[type="search"]')?.value || "",
+          })),
+      );
+    // Native extension views are CDP targets, not Playwright Pages. Supply the gesture
+    // in the target view itself; clicking it from an observer window loses activation.
+    const cdp = await app.context.newCDPSession(control);
+    const controlTarget = (await cdp.send("Target.getTargetInfo")).targetInfo
+      .targetId;
+    let commandId = 0;
+    const click = async (mode, selector) => {
+      const targets = (await cdp.send("Target.getTargets")).targetInfos;
+      const target = targets.find(
+        (t) =>
+          t.url.endsWith(
+            mode === "popup" ? "/popup.html" : "/sidepanel.html",
+          ) && t.targetId !== controlTarget,
+      );
+      if (!target)
+        throw Error(
+          `Missing native ${mode} target: ${JSON.stringify(targets)}`,
+        );
+      const { sessionId } = await cdp.send("Target.attachToTarget", {
+        targetId: target.targetId,
+        flatten: false,
+      });
+      const id = ++commandId;
+      const result = new Promise((resolve, reject) => {
+        const handler = (event) => {
+          if (event.sessionId !== sessionId) return;
+          const value = JSON.parse(event.message);
+          if (value.id === id) {
+            cdp.off("Target.receivedMessageFromTarget", handler);
+            value.error
+              ? reject(Error(value.error.message))
+              : resolve(value.result);
+          }
+        };
+        cdp.on("Target.receivedMessageFromTarget", handler);
+      });
+      await cdp.send("Target.sendMessageToTarget", {
+        sessionId,
+        message: JSON.stringify({
+          id,
+          method: "Runtime.evaluate",
+          params: {
+            expression: `document.querySelector(${JSON.stringify(selector)}).click()`,
+            userGesture: true,
+            returnByValue: true,
+          },
+        }),
+      });
+      await result;
+      await cdp.send("Target.detachFromTarget", { sessionId }).catch(() => {});
+    };
+    await expect
+      .poll(async () => JSON.stringify(await read()))
+      .toContain("Page palette");
+    await click("popup", ".tabs button:nth-child(4)");
+    await expect
+      .poll(async () => JSON.stringify(await read()))
+      .toContain("Hello readable world!");
+    await control.evaluate(() => {
+      const w = chrome.extension.getViews({ type: "popup" })[0];
+      const input = w.document.querySelector('input[type="search"]');
+      Object.getOwnPropertyDescriptor(
+        w.HTMLInputElement.prototype,
+        "value",
+      ).set.call(input, "readable");
+      input.dispatchEvent(new w.Event("input", { bubbles: true }));
+    });
+    await click("popup", ".mode-button");
+    await expect
+      .poll(async () => await read())
+      .toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: "/sidepanel.html",
+            query: "readable",
+          }),
+        ]),
+      );
+    await click("panel", ".mode-button");
+    await expect
+      .poll(async () => await read())
+      .toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "/popup.html", query: "readable" }),
+        ]),
+      );
+    await click("popup", ".tabs button:nth-child(5)");
+    await expect
+      .poll(async () => JSON.stringify(await read()))
+      .toContain("Choose an element");
+    await expect(app.page.locator("getter-inspection-overlay")).toHaveCount(1);
+    await app.page.locator("#action").click();
+    await expect
+      .poll(async () => JSON.stringify(await read()))
+      .toContain("button#action");
+    await click("panel", ".mode-button");
+    await expect
+      .poll(async () => await read())
+      .toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "/popup.html", query: "readable" }),
+        ]),
+      );
+    const prefs = await app.worker.evaluate(() =>
+      chrome.storage.local.get("cssGetterOptions"),
+    );
+    expect(prefs.cssGetterOptions.workspace).toBe("popup");
+    await expect
+      .poll(() => app.worker.evaluate(() => chrome.storage.session.get(null)))
+      .toEqual({});
+    await expect(app.page.locator("getter-inspection-overlay")).toHaveCount(0);
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("side panel follows tabs, rejects restricted pages, and clears old Inspect data", async ({}, info) => {
+  const app = await launch(info);
+  try {
+    await app.page.goto(`${origin}/workbench`);
+    const panel = await app.openPanel();
+    await panel.setViewportSize({ width: 400, height: 820 });
+    await expect(
+      panel.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await panel.getByRole("button", { name: "Inspect", exact: true }).click();
+    await expect(
+      panel.getByRole("heading", { name: "Choose an element" }),
+    ).toBeVisible();
+    await app.page.locator("#action").click();
+    await expect(panel.locator(".element-title")).toContainText(
+      "button#action",
+    );
+    await app.page.locator("iframe").first().hover();
+    await app.page.locator("getter-inspection-overlay .box").click();
+    await expect(
+      panel.getByText(/Embedded page content is unavailable/),
+    ).toBeVisible();
+    const newTab = await app.context.newPage();
+    await newTab.goto(origin);
+    await newTab.bringToFront();
+    // A tab that is still loading is intentionally stale until an explicit scan.
+    await panel.getByRole("button", { name: /Scan again/ }).click();
+    await expect(
+      panel.getByRole("heading", { name: "Choose an element" }),
+    ).toBeVisible();
+    await expect(app.page.locator("getter-inspection-overlay")).toHaveCount(0);
+    await expect(panel.locator(".element-title")).toHaveCount(0);
+    await newTab.locator("h1").click({ position: { x: 10, y: 10 } });
+    await expect(panel.locator(".element-title")).toContainText("h1#unchanged");
+    await newTab.goto("chrome://settings");
+    await panel.getByRole("button", { name: /Scan again/ }).click();
+    await expect(
+      panel.getByRole("heading", { name: "This page cannot be inspected" }),
+    ).toBeVisible();
+    await expect(panel.locator(".element-title")).toHaveCount(0);
   } finally {
     await app.context.close();
   }

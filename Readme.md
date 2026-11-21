@@ -1,10 +1,8 @@
 # Getter
 
-**Created by Aptelum Labs.** Discover a webpage's colors, fonts and images.
+**Created by Aptelum Labs.** Explore a webpage's colors, fonts, images, text and element styles.
 
-Getter is a Chrome Manifest V3 extension. The Palette refresh is being reviewed in [issue 6](https://github.com/asbillings07/Getter/issues/6); it has not been published to the Chrome Web Store. Text extraction and element-level CSS inspection are outside this refresh's scope.
-
-Version 2.1.1 is the proposed release candidate, following the existing store version 2.1.0 (public listing checked November 21, 2026). See the [submission preparation](docs/store-submission.md) and [privacy notice](PRIVACY.md). Building a ZIP does not authorize or establish a store submission.
+Getter is a Chrome Manifest V3 extension. Version **2.2.0 test build** implements the approved Text, expanded Inspect, and popup/side panel designs. This is a local Chrome test candidate, not a store release. Chrome 141 or later is required for switching back from the side panel. See the [privacy notice](PRIVACY.md) and [architecture and owner QA](docs/refresh.md). The existing [store submission preparation](docs/store-submission.md) concerns the earlier release and is not a submission for this candidate.
 
 ## Build and verify
 
@@ -21,9 +19,15 @@ The unpacked extension is in `dist/`. `npm run build:dev` produces an unminified
 
 ## Use
 
-Open Getter from the toolbar on a regular webpage. Colors can be copied; typography shows captured font styles; images can be previewed or downloaded on request. Display preferences are saved locally. Page results are kept only in the open popup. Navigation invalidates old results; “Scan again” explicitly scans the new document.
+Open Getter from the toolbar on a regular webpage. In Settings, choose **Open Getter in → Popup / Side panel**. The button next to Settings switches views once without changing that preference; verified results and the current tool follow the switch. Inspect always opens in the side panel. Returning to the popup restores your last non-Inspect tool.
 
-Scans are bounded and report omitted frames or truncated results. Previews, file-size reads and ZIP export contact the image hosts only when requested. Image requests require HTTPS. File-size reads and downloads omit credentials/referrers, reject redirects, and respect host access and size limits. Inaccessible images are reported; partial ZIP counts are shown. Keep Getter open while the ZIP is prepared. Review the included/skipped counts, then choose Save ZIP. The native save dialog may close Getter; use browser Downloads to check the final result. See [architecture, limits and owner QA](docs/refresh.md).
+- **Colors / Fonts / Images:** copy values, read typography, and preview or download images. **Load previews by default** is off initially; enabling it saves that preference.
+- **Text:** read Page, Main content, or Selection; find and copy individual blocks or copy/save the complete current source as `.txt`. Search filters the displayed blocks; full-text actions still include the entire extracted source. Select text on the page before opening the popup, or use the side panel and Extract selection.
+- **Inspect:** click an element to see Styles, Layout, Effects, and Element details. Selection stays active until paused or Escape is pressed. Pause lets you use the page normally while keeping the selected values; Resume selecting picks another element. Search and Show all properties apply to the current section. Copy CSS opens a preview; DOM attributes are copied separately.
+
+Results are local to the open workspace. A brief transfer through browser-session memory preserves them when switching views. Navigation clears old results; Scan again reads the new document. The side panel follows tab changes, but a new site may require opening Getter from its toolbar icon to grant access. Display preferences are stored locally.
+
+Scans are bounded and report omitted frames or truncated results. Previews contact image hosts when enabled, including by the saved default. File-size reads and ZIP export require an explicit request. Image requests require HTTPS. File-size reads and downloads omit credentials/referrers, reject redirects, and respect host access and size limits. Inaccessible images are reported; partial ZIP counts are shown. Keep Getter open while the ZIP is prepared. Review the included/skipped counts, then choose Save ZIP. The native save dialog may close Getter; use browser Downloads to check the final result. See [architecture, limits and owner QA](docs/refresh.md).
 
 ## Credits and support
 

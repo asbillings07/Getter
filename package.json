@@ -1,6 +1,6 @@
 {
   "name": "getter",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "private": true,
   "description": "Discover a page's colors, fonts and images. Created by Aptelum Labs.",
   "type": "module",
