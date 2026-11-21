@@ -254,15 +254,8 @@ export default function InspectView({
         {snapshot && (
           <>
             <div className="element-title">
-              <code>{snapshot.selector}</code>
-              <span>{snapshot.tag}</span>
+              <code title={snapshot.selector}>{snapshot.selector}</code>
             </div>
-            {snapshot.text && (
-              <p className="element-subtitle">
-                “{snapshot.text.slice(0, 160)}”
-              </p>
-            )}
-            <p className="breadcrumbs">{snapshot.path.join(" › ")}</p>
             {snapshot.limited && (
               <p className="scan-note">Some long values were limited.</p>
             )}

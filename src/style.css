@@ -981,43 +981,13 @@ dd {
   white-space: nowrap;
 }
 .element-title {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 10px;
 }
 .element-title code {
+  display: block;
   font:
     600 13px/1.5 ui-monospace,
     monospace;
-  overflow-wrap: anywhere;
-  min-width: 0;
-}
-.element-title > span {
-  font-size: 10px;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-  border-radius: 4px;
-  background: var(--active);
-  color: var(--accent);
-  padding: 1px 5px;
-  flex-shrink: 0;
-}
-.element-subtitle {
-  font-size: 12px;
-  margin: 0 0 4px;
-  color: var(--dim);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.breadcrumbs {
-  font:
-    10px/1.5 ui-monospace,
-    monospace;
-  margin: 0 0 11px;
-  color: var(--dim);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -34,7 +34,7 @@
   },
   "manifest_version": 3,
   "minimum_chrome_version": "141",
-  "version_name": "2.2.0 test build",
+  "version_name": "2.2.0 compact-header test build",
   "side_panel": {
     "default_path": "sidepanel.html"
   }
