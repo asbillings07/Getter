@@ -1,13 +1,14 @@
-# Getter 2.1.0 submission preparation
+# Getter 2.1.1 submission preparation
 
 Owner: @asbillings07. Tracks #8 and #11; depends on #6 and the ZIP repair in #9 / PR #10. **Candidate preparation only: human QA, merge and store submission/publication remain separate decisions.** Do not upload or submit from this checklist alone.
 
 ## Existing item and candidate
 
 - Existing item: [Getter](https://chromewebstore.google.com/detail/getter/nkgabfmcijbajgobbeloaobhbhpacnim), ID `nkgabfmcijbajgobbeloaobhbhpacnim`.
-- Public listing checked November 3, 2026: version 2.0.0, last updated June 19, 2024, offered by `abdevelops`. Preserve this item's identity; this refresh is an update, not a duplicate listing.
-- Google's update service supplied the current 2.0.0 CRX (544,744 bytes; SHA-256 `876a883e87ab2c0f31fab9f42bb29b04a9530e5d1737dbf41deabaa596160b63`). Its manifest independently confirms version 2.0.0. It was downloaded/read without running it. Downloading an archive is not upgrade QA or cryptographic signature verification.
-- Proposed version: **2.1.0**, consistently recorded in the manifest, package and lockfile. Authenticated dashboard inspection on November 3, 2026 confirmed both Draft and Published packages are 2.0.0, with no higher draft displayed. Recheck before uploading.
+- Public listing checked November 21, 2026: version 2.1.0, last updated November 4, 2026, offered by Aptelum Labs. Preserve this item's identity; this refresh is an update, not a duplicate listing.
+- Historical November 3 evidence: Google's update service supplied the then-current 2.0.0 CRX (544,744 bytes; SHA-256 `876a883e87ab2c0f31fab9f42bb29b04a9530e5d1737dbf41deabaa596160b63`). Its manifest independently confirmed version 2.0.0. It was downloaded/read without running it. Downloading an archive is not upgrade QA or cryptographic signature verification.
+- Proposed version: **2.1.1**, consistently recorded in the manifest, package and lockfile. This advances the already-published 2.1.0 version for the requested update ZIP. Authenticated dashboard inspection on November 3, 2026 showed Draft and Published packages at 2.0.0; that dashboard snapshot is historical and does not establish the current highest draft. Recheck before uploading.
+- On November 21, 2026, the owner accepted PR #16's 454bc81 Chrome test package and authorized merging after passing checks, followed by a store upload ZIP. The subsequent 2.1.1 preparation changes release metadata and these notes only; the tested popup implementation is unchanged. Upload, submission and publication are separate from package preparation.
 - Approved support/privacy email: **support@aptelum.com**, selected by the owner November 3, 2026. No email was sent and mailbox delivery has not been tested.
 - Proposed privacy URL after merge: `https://github.com/asbillings07/Getter/blob/main/PRIVACY.md`. Verify that the final accepted notice is publicly accessible before submission. Do not point the store at a missing file or an unaccepted draft.
 

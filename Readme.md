@@ -4,7 +4,7 @@
 
 Getter is a Chrome Manifest V3 extension. The Palette refresh is being reviewed in [issue 6](https://github.com/asbillings07/Getter/issues/6); it has not been published to the Chrome Web Store. Text extraction and element-level CSS inspection are outside this refresh's scope.
 
-Version 2.1.0 is the proposed release candidate, following the existing store version 2.0.0. See the [submission preparation](docs/store-submission.md) and [privacy notice](PRIVACY.md). Building a ZIP does not authorize or establish a store submission.
+Version 2.1.1 is the proposed release candidate, following the existing store version 2.1.0 (public listing checked November 21, 2026). See the [submission preparation](docs/store-submission.md) and [privacy notice](PRIVACY.md). Building a ZIP does not authorize or establish a store submission.
 
 ## Build and verify
 
