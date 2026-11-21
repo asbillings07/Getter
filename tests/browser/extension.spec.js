@@ -336,11 +336,20 @@ for (const popupScreen of ["1600x1200", "800x600"]) {
       const readNotice = () =>
         control.evaluate(() => {
           const popup = chrome.extension.getViews({ type: "popup" })[0];
-          const notice = popup.document.querySelector(".notice");
-          const rect = notice.getBoundingClientRect();
+          const notices = [...popup.document.querySelectorAll(".notice")];
+          const rect = popup.document
+            .querySelector(".notices")
+            .getBoundingClientRect();
           const main = popup.document.querySelector("main");
           return {
-            text: notice.textContent,
+            text: notices.at(-1)?.textContent || "",
+            count: notices.length,
+            stacked: notices.every(
+              (notice, index) =>
+                !index ||
+                notices[index - 1].getBoundingClientRect().bottom <
+                  notice.getBoundingClientRect().top,
+            ),
             copiedValue: popup.copiedValue,
             visible:
               rect.width > 0 &&
@@ -378,10 +387,13 @@ for (const popupScreen of ["1600x1200", "800x600"]) {
         popup.navigator.clipboard.writeText = async () => {
           throw new Error("Synthetic clipboard denial");
         };
-        popup.document.querySelector(".swatch:last-child").click();
+        for (let i = 0; i < 3; i++)
+          popup.document.querySelector(".swatch:last-child").click();
       });
       await expect.poll(readNotice).toMatchObject({
         text: "Copy failed. Select and copy the displayed value manually.",
+        count: 3,
+        stacked: true,
         visible: true,
         horizontalOverflow: false,
       });
@@ -409,11 +421,99 @@ for (const popupScreen of ["1600x1200", "800x600"]) {
         info.outputPath("notification-viewport.json"),
         JSON.stringify({ before, after: await readNotice() }, null, 2),
       );
+      await expect.poll(readNotice).toMatchObject({ count: 0, visible: false });
     } finally {
       await app.context.close();
     }
   });
 }
+test("notifications keep the newest three and expire independently after two seconds", async ({}, info) => {
+  const app = await launch(info);
+  try {
+    await app.context.clock.install({ time: "2026-01-01T00:00:00Z" });
+    const popup = await app.openPopup();
+    await popup.setViewportSize({ width: 720, height: 498 });
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await app.context.clock.pauseAt("2026-01-01T01:00:00Z");
+    await popup.evaluate(() => {
+      navigator.clipboard.writeText = async () => {};
+    });
+    const notices = popup.locator(".notice");
+    const copy = (value) =>
+      popup
+        .getByRole("button", { name: `Copy ${value}`, exact: true })
+        .dispatchEvent("click");
+    await copy("#123456");
+    await expect(notices).toHaveText(["Copied #123456."]);
+    await app.context.clock.runFor(500);
+    await copy("#000000");
+    await expect(notices).toHaveCount(2);
+    await app.context.clock.runFor(500);
+    await copy("#0A141E");
+    await expect(notices).toHaveCount(3);
+    await app.context.clock.runFor(500);
+    await copy("#123456");
+    const newest = ["Copied #000000.", "Copied #0A141E.", "Copied #123456."];
+    await expect(notices).toHaveText(newest);
+    for (const colorScheme of ["light", "dark"]) {
+      await popup.emulateMedia({ colorScheme });
+      await expect(popup.locator(".notices")).toBeInViewport({ ratio: 1 });
+      await popup.screenshot({
+        path: info.outputPath(`notifications-${colorScheme}.png`),
+      });
+    }
+    // Evicting the first message must not leave a timer that removes newer ones.
+    await app.context.clock.runFor(500);
+    await expect(notices).toHaveText(newest);
+    await app.context.clock.runFor(499);
+    await expect(notices).toHaveText(newest);
+    await app.context.clock.runFor(1);
+    await expect(notices).toHaveText(newest.slice(1));
+    await app.context.clock.runFor(500);
+    await expect(notices).toHaveText(newest.slice(2));
+    await app.context.clock.runFor(499);
+    await expect(notices).toHaveCount(1);
+    await app.context.clock.runFor(1);
+    await expect(notices).toHaveCount(0);
+    await expect(popup.locator(".notices")).toHaveAttribute(
+      "aria-live",
+      "polite",
+    );
+
+    // Identical text still represents two separate copy actions and lifetimes.
+    await copy("#123456");
+    await expect(notices).toHaveCount(1);
+    await app.context.clock.runFor(500);
+    await copy("#123456");
+    await expect(notices).toHaveText(["Copied #123456.", "Copied #123456."]);
+    await app.context.clock.runFor(1500);
+    await expect(notices).toHaveText(["Copied #123456."]);
+    await app.context.clock.runFor(500);
+    await expect(notices).toHaveCount(0);
+
+    // A new scan clears old notices without affecting the next notice's timer.
+    await copy("#123456");
+    await expect(notices).toHaveCount(1);
+    await app.context.clock.runFor(1000);
+    await popup
+      .getByRole("button", { name: /Scan again/ })
+      .dispatchEvent("click");
+    await expect(notices).toHaveCount(0);
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await copy("#000000");
+    await expect(notices).toHaveText(["Copied #000000."]);
+    await app.context.clock.runFor(1000);
+    await expect(notices).toHaveText(["Copied #000000."]);
+    await app.context.clock.runFor(1000);
+    await expect(notices).toHaveCount(0);
+  } finally {
+    await app.context.close();
+  }
+});
 test("production UI scans fixtures without altering the page and retains approved branding", async ({}, info) => {
   const app = await launch(info);
   try {
@@ -541,9 +641,9 @@ test("images load only on request; ZIP has a real download outcome", async ({}, 
     expect(Object.keys(zip.files)).toEqual(["01-image.png"]);
     expect(await zip.file("01-image.png").async("nodebuffer")).toEqual(png);
     await expect(
-      popup.getByText("Download completed.", { exact: true }),
+      popup.getByText("Download completed.", { exact: true }).last(),
     ).toBeVisible();
-    await expect(popup.locator(".notice")).toBeInViewport({ ratio: 1 });
+    await expect(popup.locator(".notices")).toBeInViewport({ ratio: 1 });
   } finally {
     await app.context.close();
   }
@@ -594,8 +694,10 @@ test("roomier popup keeps labeled Settings and preferences visible in both appea
         preferenceCount: 10,
       });
       await popup.getByLabel("Font size", { exact: true }).click();
-      await expect(popup.locator(".notice")).toHaveText("Preference saved.");
-      await expect(popup.locator(".notice")).toBeInViewport({ ratio: 1 });
+      await expect(popup.locator(".notice").last()).toHaveText(
+        "Preference saved.",
+      );
+      await expect(popup.locator(".notices")).toBeInViewport({ ratio: 1 });
       await popup.screenshot({
         path: info.outputPath(`settings-${colorScheme}.png`),
       });

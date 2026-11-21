@@ -245,7 +245,7 @@ h2 {
   border-left: 2px solid var(--accent);
   padding-left: 10px;
 }
-.notice {
+.notices {
   /* Anchor to Chrome's visible popup, including when the screen limits its height. */
   position: fixed;
   z-index: 10;
@@ -254,6 +254,14 @@ h2 {
   transform: translateX(-50%);
   width: max-content;
   max-width: min(440px, calc(100% - 32px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.notice {
+  max-width: 100%;
   padding: 10px 14px;
   border: 1px solid var(--line);
   border-radius: 9px;
@@ -263,12 +271,6 @@ h2 {
   margin: 0;
   color: var(--accent);
   overflow-wrap: anywhere;
-  pointer-events: none;
-}
-.notice:empty {
-  padding: 0;
-  border: 0;
-  box-shadow: none;
 }
 footer {
   display: flex;
