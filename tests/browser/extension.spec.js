@@ -1700,7 +1700,10 @@ test("retained workspaces receive saved preferences without overwriting another 
       popup.getByRole("heading", { name: "Page palette", exact: true }),
     ).toBeVisible();
     await popup.getByRole("button", { name: "Settings", exact: true }).click();
-    await popup.getByRole("radio", { name: "Dark", exact: true }).check();
+    await popup
+      .locator(".appearance-options label")
+      .filter({ hasText: "Dark" })
+      .click();
     await expect(
       panel.getByRole("radio", { name: "Dark", exact: true }),
     ).toBeChecked();
