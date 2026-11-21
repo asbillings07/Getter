@@ -259,3 +259,32 @@ test("blocked pages, failed injection, cancellation and popup closure cannot pub
     s.dispose();
   }
 });
+
+test("workspace restoration rejects a reload or closure during document verification", async () => {
+  for (const mode of ["navigate", "close"]) {
+    const api = fakeBrowser(),
+      states = [];
+    let release, begin;
+    const started = new Promise((resolve) => (begin = resolve));
+    api.scripting.executeScript = () => {
+      begin();
+      return new Promise((resolve) => (release = resolve));
+    };
+    const session = new ScanSession(api, (state) => states.push(state));
+    session.start();
+    const pending = session.adopt({
+      status: "ready",
+      tabId: 7,
+      windowId: 1,
+      documentId: "old",
+      data: payload(),
+    });
+    await started;
+    if (mode === "navigate") api.tabs.onUpdated.fire(7, { status: "loading" });
+    else session.dispose();
+    release([{ documentId: "old", result: true }]);
+    assert.equal(await pending, false);
+    assert.ok(!states.some((state) => state.status === "ready"));
+    session.dispose();
+  }
+});

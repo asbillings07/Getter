@@ -1,0 +1,31 @@
+Getter helps you explore a webpage’s design and content, then copy or save the details you need.
+
+QUICK POPUP OR ROOMY SIDE PANEL
+Use the popup for quick copying or keep Getter beside the page in a side panel. Choose your preferred view in Settings, or switch views once without changing that preference. Inspect always opens in the side panel.
+
+COLORS, FONTS AND IMAGES
+Explore the page palette and copy color values. Review font families and typography details. See image addresses and dimensions, enable previews, request file sizes, and download individual images or prepare an image ZIP. Review included and unavailable image counts before saving.
+
+VISIBLE TEXT EXTRACTION
+Read text from the page, its main content or your current selection. Find matching text, copy a block, copy the current text source, or save it as a .txt file. Text follows document reading order; CSS visual ordering may differ.
+
+ELEMENT-LEVEL CSS INSPECTION
+Select an element directly on the page and explore:
+• Styles: colors and typography.
+• Layout: dimensions, box model, flex/grid, spacing, position and overflow.
+• Effects: gradients, shadows, borders, opacity, filters and transforms.
+• Element: available attributes, text, links and image details.
+
+Keep selecting to compare elements, or pause selection to use the page normally. Search within each section, reveal additional properties, copy individual values, or preview a computed CSS snippet before copying it.
+
+MAKE GETTER YOUR OWN
+Choose System, Light or Dark appearance. Use toggles for display preferences and decide whether image previews load by default. Preferences are saved locally.
+
+Open Getter from the toolbar on a regular webpage to get started. Page inspection runs locally; Getter has no account, advertising, analytics or backend receiving your inspection results. Image previews contact their hosts when enabled, including through the saved default. File-size requests and downloads contact image hosts when requested. A temporary in-memory transfer preserves results when switching views.
+
+Browser settings, the Chrome Web Store and other restricted pages cannot be inspected. Some embedded content and image hosts are unavailable. Large pages use bounded scans and can produce partial results. Inspect supports the main page and open shadow-root elements; text extraction does not include shadow-component, canvas or generated pseudo-content. Image downloads require HTTPS and permitted host access.
+
+Requires Chrome 141 or newer.
+
+Created by Aptelum Labs.
+Support: support@aptelum.com

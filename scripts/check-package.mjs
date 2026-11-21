@@ -8,12 +8,15 @@ assert.equal(m.version, pkg.version);
 assert.equal(lock.version, pkg.version);
 assert.equal(lock.packages[""].version, pkg.version);
 assert.equal(m.manifest_version, 3);
+assert.equal(m.side_panel.default_path, "sidepanel.html");
+assert.equal(m.minimum_chrome_version, "141");
 assert.deepEqual(m.permissions, [
   "activeTab",
   "scripting",
   "storage",
   "downloads",
   "webNavigation",
+  "sidePanel",
 ]);
 assert.equal(m.host_permissions, undefined);
 assert.equal(m.optional_host_permissions, undefined);
@@ -49,10 +52,12 @@ assert.doesNotMatch(popup, /Created by Aaron Billings|An Aptelum product/);
 assert.deepEqual((await readdir("dist")).sort(), [
   "background.js",
   "images",
+  "inspect.js",
   "manifest.json",
   "popup.css",
   "popup.html",
   "popup.js",
+  "sidepanel.html",
 ]);
 console.log(
   "Package permissions, CSP, attribution, exact logo and inventory verified.",

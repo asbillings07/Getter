@@ -14,7 +14,8 @@ export function supportedPage(url) {
   }
 }
 export class ScanSession {
-  constructor(api, onState) {
+  constructor(api, onState, { followTabs = false } = {}) {
+    this.followTabs = followTabs;
     this.api = api;
     this.onState = onState;
     this.sequence = 0;
@@ -27,10 +28,13 @@ export class ScanSession {
       if (id === this.tabId && (change.status === "loading" || change.url))
         this.invalidate("The page changed. Scan again for current results.");
     };
-    this.activated = () =>
+    this.activated = ({ windowId } = {}) => {
+      if (this.windowId && windowId && this.windowId !== windowId) return;
       this.invalidate(
-        "The active tab changed. Reopen Getter on the page you want to inspect.",
+        "The active tab changed. Scan again for the current page.",
       );
+      if (this.followTabs) this.scan();
+    };
     this.api.tabs.onUpdated.addListener(this.updated);
     this.api.tabs.onActivated.addListener(this.activated);
   }
@@ -61,6 +65,7 @@ export class ScanSession {
       });
       if (!current()) return;
       this.tabId = tab?.id;
+      this.windowId = tab?.windowId;
       if (!tab || !supportedPage(tab.url)) {
         clearTimeout(this.timer);
         this.onState({
@@ -140,6 +145,10 @@ export class ScanSession {
         status: "ready",
         data,
         host: new URL(tab.url).hostname,
+        tabId: tab.id,
+        windowId: tab.windowId,
+        documentId: main.documentId,
+        url: tab.url,
         message: notes.join(" "),
       });
     } catch {
@@ -153,6 +162,21 @@ export class ScanSession {
         });
       }
     }
+  }
+  async adopt(value) {
+    const run = ++this.sequence;
+    this.tabId = value.tabId;
+    this.windowId = value.windowId;
+    const { verifyDocument } = await import("./workspace.js");
+    if (
+      this.disposed ||
+      !(await verifyDocument(this.api, value)) ||
+      this.disposed ||
+      run !== this.sequence
+    )
+      return false;
+    this.onState(value);
+    return true;
   }
   cancel() {
     this.invalidate("Scan cancelled.");

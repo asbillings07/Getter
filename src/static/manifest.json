@@ -1,13 +1,14 @@
 {
   "name": "Getter",
-  "version": "2.1.1",
-  "description": "Explore colors, fonts and images on the page you choose. Created by Aptelum Labs.",
+  "version": "3.0.0",
+  "description": "Explore colors, fonts, images, text and element styles in a popup or side panel. Created by Aptelum Labs.",
   "permissions": [
     "activeTab",
     "scripting",
     "storage",
     "downloads",
-    "webNavigation"
+    "webNavigation",
+    "sidePanel"
   ],
   "background": {
     "service_worker": "background.js"
@@ -32,5 +33,8 @@
     "128": "images/CSS-Getter-Icon-128px.png"
   },
   "manifest_version": 3,
-  "minimum_chrome_version": "120"
+  "minimum_chrome_version": "141",
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  }
 }

@@ -1,0 +1,467 @@
+import React, { useEffect, useRef, useState } from "react";
+import { sections, inspectGroups, cssSnippet } from "../core/inspect.js";
+import { verifyDocument } from "../core/workspace.js";
+import Info from "./Info.jsx";
+export default function InspectView({
+  scan,
+  model,
+  onChange,
+  onCopy,
+  onNotice,
+}) {
+  const [status, setStatus] = useState("connecting"),
+    [note, setNote] = useState("");
+  const connection = useRef(),
+    latest = useRef(),
+    waiters = useRef(new Map()),
+    requestId = useRef(0);
+  latest.current = { model, onChange };
+  useEffect(() => {
+    let live = true,
+      port;
+    setStatus("connecting");
+    setNote("");
+    (async () => {
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: scan.tabId, documentIds: [scan.documentId] },
+          files: ["inspect.js"],
+        });
+        if (!live) return;
+        port = chrome.tabs.connect(scan.tabId, {
+          name: "getter-inspect",
+          documentId: scan.documentId,
+        });
+        connection.current = port;
+        port.onMessage.addListener((message) => {
+          if (!live) return;
+          const { model: m, onChange: change } = latest.current;
+          if (message.requestId) {
+            waiters.current.get(message.requestId)?.(
+              message.type === "snapshot" ? message.snapshot : null,
+            );
+            waiters.current.delete(message.requestId);
+          }
+          if (message.type === "connected") {
+            setStatus("ready");
+            port.postMessage({ type: m.picking ? "start" : "pause" });
+          }
+          if (message.type === "snapshot") {
+            setStatus("ready");
+            setNote("");
+            change({ ...m, snapshot: message.snapshot });
+          }
+          if (message.type === "paused") change({ ...m, picking: false });
+          if (message.type === "removed") {
+            setStatus("removed");
+            change({ ...m, snapshot: null });
+          }
+          if (message.type === "unavailable") setNote(message.message);
+          if (message.type === "error") {
+            setNote(message.message);
+          }
+        });
+        port.onDisconnect.addListener(() => {
+          void chrome.runtime.lastError;
+          if (live) {
+            setStatus("error");
+            setNote(
+              "The page connection ended. Scan again or reopen Getter from the toolbar.",
+            );
+          }
+          for (const resolve of waiters.current.values()) resolve(null);
+          waiters.current.clear();
+        });
+      } catch {
+        if (live) {
+          setStatus("error");
+          setNote(
+            "Inspect could not access this page. Open Getter from the toolbar and try again.",
+          );
+        }
+      }
+    })();
+    return () => {
+      live = false;
+      port?.disconnect();
+      connection.current = null;
+      for (const resolve of waiters.current.values()) resolve(null);
+      waiters.current.clear();
+    };
+  }, [scan.tabId, scan.documentId]);
+  useEffect(() => {
+    try {
+      connection.current?.postMessage({
+        type: model.picking ? "start" : "pause",
+      });
+    } catch {}
+  }, [model.picking]);
+  useEffect(() => {
+    const esc = (e) => {
+      if (e.key === "Escape")
+        latest.current.onChange({ ...latest.current.model, picking: false });
+    };
+    const hide = () => {
+      if (!document.hidden) return;
+      try {
+        connection.current?.postMessage({ type: "pause" });
+      } catch {}
+      latest.current.onChange({ ...latest.current.model, picking: false });
+    };
+    document.addEventListener("keydown", esc);
+    document.addEventListener("visibilitychange", hide);
+    return () => {
+      document.removeEventListener("keydown", esc);
+      document.removeEventListener("visibilitychange", hide);
+    };
+  }, []);
+  async function copy(value, label) {
+    const selected = model.snapshot?.selector;
+    if (!(await verifyDocument(chrome, scan))) {
+      onNotice("The page changed. Scan again before copying.");
+      return;
+    }
+    const fresh = await new Promise((resolve) => {
+      const id = ++requestId.current;
+      const timeout = setTimeout(() => {
+        waiters.current.delete(id);
+        resolve(null);
+      }, 2000);
+      waiters.current.set(id, (snapshot) => {
+        clearTimeout(timeout);
+        resolve(snapshot);
+      });
+      try {
+        connection.current?.postMessage({ type: "refresh", requestId: id });
+      } catch {
+        clearTimeout(timeout);
+        waiters.current.delete(id);
+        resolve(null);
+      }
+    });
+    if (
+      !fresh ||
+      fresh.selector !== selected ||
+      !(await verifyDocument(chrome, scan))
+    ) {
+      onNotice("The selection changed. Choose an element and try again.");
+      return;
+    }
+    onCopy(value, label, scan);
+  }
+  const snapshot = model.snapshot,
+    groups = inspectGroups(snapshot, model.section, model.all, model.query);
+  const toggle = (key, value) => onChange({ ...model, [key]: value });
+  const controls = (
+    <div className="inspect-mode-row">
+      <div className="inspect-switches">
+        <label className="setting">
+          Select on page
+          <input
+            type="checkbox"
+            role="switch"
+            checked={model.picking}
+            disabled={status === "error" || status === "connecting"}
+            onChange={(e) => {
+              setStatus("ready");
+              toggle("picking", e.target.checked);
+            }}
+          />
+        </label>
+        <label className="setting">
+          Show all properties
+          <input
+            type="checkbox"
+            role="switch"
+            checked={model.all}
+            onChange={(e) => toggle("all", e.target.checked)}
+          />
+        </label>
+      </div>
+      {snapshot && (
+        <button
+          className="primary"
+          onClick={() =>
+            onChange({
+              ...model,
+              previousSection: model.section,
+              section: "code",
+              query: "",
+            })
+          }
+        >
+          ▣ Copy CSS
+        </button>
+      )}
+    </div>
+  );
+  if (status === "connecting")
+    return (
+      <section className="state" role="status">
+        Connecting to this page…
+      </section>
+    );
+  if (status === "error")
+    return (
+      <section className="state" role="status">
+        <h1>Inspect unavailable</h1>
+        <p>{note}</p>
+      </section>
+    );
+  const valueRow = (r) => (
+    <div
+      className={`property ${["text", "src", "href", "alt"].includes(r.name) ? "property-long" : ""}`}
+      key={r.name}
+    >
+      <dt>{r.name}</dt>
+      <dd>
+        {r.value === null || r.value === undefined ? (
+          <span className="missing-value">Not set</span>
+        ) : (
+          <button
+            className="value-copy"
+            title={`Copy ${r.name}`}
+            onClick={() => copy(String(r.value), r.name)}
+          >
+            {r.value}
+          </button>
+        )}
+      </dd>
+    </div>
+  );
+  const n = (value) => Number.parseFloat(value) || 0;
+  return (
+    <section className="inspect-view">
+      <div className="inspector-pinned">
+        {controls}
+        {note && (
+          <p className="scan-note" role="status">
+            {note}
+          </p>
+        )}
+        {snapshot && !model.picking && (
+          <div className="selection-paused">
+            <strong>Selection paused</strong>
+            <span>Use the page normally; this element stays selected.</span>
+            <button
+              className="secondary"
+              onClick={() => toggle("picking", true)}
+            >
+              Resume selecting
+            </button>
+          </div>
+        )}
+        {snapshot && (
+          <>
+            <div className="element-title">
+              <code title={snapshot.selector}>{snapshot.selector}</code>
+            </div>
+            {snapshot.limited && (
+              <p className="scan-note">Some long values were limited.</p>
+            )}
+            {snapshot.shadow && (
+              <p className="scan-note">
+                This element is inside a shadow root; its selector is relative
+                to that root.
+              </p>
+            )}
+            {model.section !== "code" && (
+              <>
+                <div className="inspect-tabs-row">
+                  <div
+                    className="segments"
+                    role="group"
+                    aria-label="Inspect sections"
+                  >
+                    {sections.map(([id, label]) => (
+                      <button
+                        key={id}
+                        aria-pressed={model.section === id}
+                        onClick={() =>
+                          onChange({ ...model, section: id, query: "" })
+                        }
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <Info label="How to copy values">
+                    Click a value to copy it. Show all properties reveals
+                    additional values and attributes.
+                  </Info>
+                </div>
+                <label className="search-field">
+                  <span aria-hidden="true">⌕</span>
+                  <input
+                    type="search"
+                    aria-label={
+                      model.section === "element"
+                        ? "Find element detail"
+                        : "Find CSS property"
+                    }
+                    placeholder={
+                      model.section === "element"
+                        ? "Find a detail"
+                        : "Find a property"
+                    }
+                    value={model.query}
+                    onChange={(e) => toggle("query", e.target.value)}
+                  />
+                </label>
+              </>
+            )}
+          </>
+        )}
+      </div>
+      {!snapshot ? (
+        <div className="state">
+          <h2>
+            {status === "removed"
+              ? "Element no longer available"
+              : model.picking
+                ? "Choose an element"
+                : "Selection paused"}
+          </h2>
+          <p>
+            {status === "removed"
+              ? "Choose another element on the page."
+              : "Click any element on the page to inspect it. Selection stays active until you pause."}
+          </p>
+          {!model.picking && (
+            <button className="primary" onClick={() => toggle("picking", true)}>
+              Resume selecting
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="inspect-results" aria-label="Inspect results">
+          {model.section === "code" ? (
+            <>
+              <button
+                className="text-button"
+                onClick={() =>
+                  toggle("section", model.previousSection || "styles")
+                }
+              >
+                ← Back to {model.previousSection || "Styles"}
+              </button>
+              <div className="title-with-info">
+                <h2>Copy CSS</h2>
+                <Info label="About this CSS snippet">
+                  Computed CSS from Styles, Layout, and Effects. Copy element
+                  attributes separately. The surrounding layout and available
+                  fonts may affect the result elsewhere.
+                </Info>
+              </div>
+              <pre className="code-preview">{cssSnippet(snapshot)}</pre>
+              <button
+                className="primary snippet-copy"
+                onClick={() => copy(cssSnippet(snapshot), "CSS snippet")}
+              >
+                Copy snippet
+              </button>
+            </>
+          ) : (
+            <>
+              {model.section === "layout" && !model.query && (
+                <>
+                  <div className="dimension-summary">
+                    {["width", "height"].map((key) => (
+                      <button
+                        key={key}
+                        onClick={() => copy(String(snapshot.rect[key]), key)}
+                      >
+                        <span>Rendered {key}</span>
+                        <strong>
+                          {snapshot.rect[key]}
+                          <small> px</small>
+                        </strong>
+                      </button>
+                    ))}
+                  </div>
+                  <details className="box-disclosure">
+                    <summary>
+                      Box model <small>padding {snapshot.css.padding}</small>
+                    </summary>
+                    <div className="box-model-live">
+                      <div className="box-margin">
+                        <span>margin · {snapshot.css.margin}</span>
+                        <div className="box-border">
+                          <span>border · {snapshot.css["border-width"]}</span>
+                          <div className="box-padding">
+                            <span>padding · {snapshot.css.padding}</span>
+                            <div className="box-core">
+                              {Math.max(
+                                0,
+                                Math.round(
+                                  snapshot.box.width -
+                                    n(snapshot.css["padding-left"]) -
+                                    n(snapshot.css["padding-right"]) -
+                                    n(snapshot.css["border-left-width"]) -
+                                    n(snapshot.css["border-right-width"]),
+                                ),
+                              )}{" "}
+                              ×{" "}
+                              {Math.max(
+                                0,
+                                Math.round(
+                                  snapshot.box.height -
+                                    n(snapshot.css["padding-top"]) -
+                                    n(snapshot.css["padding-bottom"]) -
+                                    n(snapshot.css["border-top-width"]) -
+                                    n(snapshot.css["border-bottom-width"]),
+                                ),
+                              )}
+                              <small>content · px</small>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </details>
+                </>
+              )}
+              {groups.map((g) => (
+                <details
+                  className="inspect-group"
+                  key={`${model.section}:${g.name}:${!!model.query}:${model.all}`}
+                  open={g.open}
+                >
+                  <summary>
+                    {g.name}
+                    <span>{g.rows.length}</span>
+                  </summary>
+                  <dl>{g.rows.map(valueRow)}</dl>
+                </details>
+              ))}
+              {!groups.length && (
+                <div className="state">
+                  <h2>
+                    {model.query
+                      ? "No matching properties"
+                      : model.section === "effects"
+                        ? "No effects applied"
+                        : "No details available"}
+                  </h2>
+                  <p>
+                    {model.query
+                      ? "Try another search within this section."
+                      : "No additional effects are applied to this element."}
+                  </p>
+                  <button
+                    className="text-button"
+                    onClick={() =>
+                      model.query ? toggle("query", "") : toggle("all", true)
+                    }
+                  >
+                    {model.query ? "Clear search" : "Show default values"}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
