@@ -1,6 +1,6 @@
 {
   "name": "Getter",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Explore colors, fonts and images on the page you choose. Created by Aptelum Labs.",
   "permissions": [
     "activeTab",

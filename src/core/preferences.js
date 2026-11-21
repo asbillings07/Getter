@@ -14,6 +14,8 @@ const record = (value) =>
   value && typeof value === "object" && !Array.isArray(value);
 export function preferences(value) {
   const result = record(value) ? { ...value } : {};
+  if (!["system", "light", "dark"].includes(result.appearance))
+    result.appearance = "system";
   for (const [group, defaults] of Object.entries(DEFAULTS)) {
     result[group] = { ...(record(result[group]) ? result[group] : {}) };
     for (const [key, fallback] of Object.entries(defaults)) {

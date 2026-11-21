@@ -336,11 +336,20 @@ for (const popupScreen of ["1600x1200", "800x600"]) {
       const readNotice = () =>
         control.evaluate(() => {
           const popup = chrome.extension.getViews({ type: "popup" })[0];
-          const notice = popup.document.querySelector(".notice");
-          const rect = notice.getBoundingClientRect();
+          const notices = [...popup.document.querySelectorAll(".notice")];
+          const rect = popup.document
+            .querySelector(".notices")
+            .getBoundingClientRect();
           const main = popup.document.querySelector("main");
           return {
-            text: notice.textContent,
+            text: notices.at(-1)?.textContent || "",
+            count: notices.length,
+            stacked: notices.every(
+              (notice, index) =>
+                !index ||
+                notices[index - 1].getBoundingClientRect().bottom <
+                  notice.getBoundingClientRect().top,
+            ),
             copiedValue: popup.copiedValue,
             visible:
               rect.width > 0 &&
@@ -378,10 +387,13 @@ for (const popupScreen of ["1600x1200", "800x600"]) {
         popup.navigator.clipboard.writeText = async () => {
           throw new Error("Synthetic clipboard denial");
         };
-        popup.document.querySelector(".swatch:last-child").click();
+        for (let i = 0; i < 3; i++)
+          popup.document.querySelector(".swatch:last-child").click();
       });
       await expect.poll(readNotice).toMatchObject({
         text: "Copy failed. Select and copy the displayed value manually.",
+        count: 3,
+        stacked: true,
         visible: true,
         horizontalOverflow: false,
       });
@@ -409,11 +421,99 @@ for (const popupScreen of ["1600x1200", "800x600"]) {
         info.outputPath("notification-viewport.json"),
         JSON.stringify({ before, after: await readNotice() }, null, 2),
       );
+      await expect.poll(readNotice).toMatchObject({ count: 0, visible: false });
     } finally {
       await app.context.close();
     }
   });
 }
+test("notifications keep the newest three and expire independently after two seconds", async ({}, info) => {
+  const app = await launch(info);
+  try {
+    await app.context.clock.install({ time: "2026-01-01T00:00:00Z" });
+    const popup = await app.openPopup();
+    await popup.setViewportSize({ width: 720, height: 498 });
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await app.context.clock.pauseAt("2026-01-01T01:00:00Z");
+    await popup.evaluate(() => {
+      navigator.clipboard.writeText = async () => {};
+    });
+    const notices = popup.locator(".notice");
+    const copy = (value) =>
+      popup
+        .getByRole("button", { name: `Copy ${value}`, exact: true })
+        .dispatchEvent("click");
+    await copy("#123456");
+    await expect(notices).toHaveText(["Copied #123456."]);
+    await app.context.clock.runFor(500);
+    await copy("#000000");
+    await expect(notices).toHaveCount(2);
+    await app.context.clock.runFor(500);
+    await copy("#0A141E");
+    await expect(notices).toHaveCount(3);
+    await app.context.clock.runFor(500);
+    await copy("#123456");
+    const newest = ["Copied #000000.", "Copied #0A141E.", "Copied #123456."];
+    await expect(notices).toHaveText(newest);
+    for (const colorScheme of ["light", "dark"]) {
+      await popup.emulateMedia({ colorScheme });
+      await expect(popup.locator(".notices")).toBeInViewport({ ratio: 1 });
+      await popup.screenshot({
+        path: info.outputPath(`notifications-${colorScheme}.png`),
+      });
+    }
+    // Evicting the first message must not leave a timer that removes newer ones.
+    await app.context.clock.runFor(500);
+    await expect(notices).toHaveText(newest);
+    await app.context.clock.runFor(499);
+    await expect(notices).toHaveText(newest);
+    await app.context.clock.runFor(1);
+    await expect(notices).toHaveText(newest.slice(1));
+    await app.context.clock.runFor(500);
+    await expect(notices).toHaveText(newest.slice(2));
+    await app.context.clock.runFor(499);
+    await expect(notices).toHaveCount(1);
+    await app.context.clock.runFor(1);
+    await expect(notices).toHaveCount(0);
+    await expect(popup.locator(".notices")).toHaveAttribute(
+      "aria-live",
+      "polite",
+    );
+
+    // Identical text still represents two separate copy actions and lifetimes.
+    await copy("#123456");
+    await expect(notices).toHaveCount(1);
+    await app.context.clock.runFor(500);
+    await copy("#123456");
+    await expect(notices).toHaveText(["Copied #123456.", "Copied #123456."]);
+    await app.context.clock.runFor(1500);
+    await expect(notices).toHaveText(["Copied #123456."]);
+    await app.context.clock.runFor(500);
+    await expect(notices).toHaveCount(0);
+
+    // A new scan clears old notices without affecting the next notice's timer.
+    await copy("#123456");
+    await expect(notices).toHaveCount(1);
+    await app.context.clock.runFor(1000);
+    await popup
+      .getByRole("button", { name: /Scan again/ })
+      .dispatchEvent("click");
+    await expect(notices).toHaveCount(0);
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await copy("#000000");
+    await expect(notices).toHaveText(["Copied #000000."]);
+    await app.context.clock.runFor(1000);
+    await expect(notices).toHaveText(["Copied #000000."]);
+    await app.context.clock.runFor(1000);
+    await expect(notices).toHaveCount(0);
+  } finally {
+    await app.context.close();
+  }
+});
 test("production UI scans fixtures without altering the page and retains approved branding", async ({}, info) => {
   const app = await launch(info);
   try {
@@ -541,9 +641,9 @@ test("images load only on request; ZIP has a real download outcome", async ({}, 
     expect(Object.keys(zip.files)).toEqual(["01-image.png"]);
     expect(await zip.file("01-image.png").async("nodebuffer")).toEqual(png);
     await expect(
-      popup.getByText("Download completed.", { exact: true }),
+      popup.getByText("Download completed.", { exact: true }).last(),
     ).toBeVisible();
-    await expect(popup.locator(".notice")).toBeInViewport({ ratio: 1 });
+    await expect(popup.locator(".notices")).toBeInViewport({ ratio: 1 });
   } finally {
     await app.context.close();
   }
@@ -570,6 +670,10 @@ test("roomier popup keeps labeled Settings and preferences visible in both appea
       );
       await settings.click();
       await expect(settings).toHaveAttribute("aria-pressed", "true");
+      await expect(popup.getByRole("switch")).toHaveCount(10);
+      await expect(
+        popup.getByRole("radiogroup", { name: "Appearance" }),
+      ).toBeInViewport({ ratio: 1 });
       const bounds = await popup.evaluate(() => {
         const main = document.querySelector("main").getBoundingClientRect();
         const preferences = [...document.querySelectorAll(".setting")].map(
@@ -594,8 +698,10 @@ test("roomier popup keeps labeled Settings and preferences visible in both appea
         preferenceCount: 10,
       });
       await popup.getByLabel("Font size", { exact: true }).click();
-      await expect(popup.locator(".notice")).toHaveText("Preference saved.");
-      await expect(popup.locator(".notice")).toBeInViewport({ ratio: 1 });
+      await expect(popup.locator(".notice").last()).toHaveText(
+        "Preference saved.",
+      );
+      await expect(popup.locator(".notices")).toBeInViewport({ ratio: 1 });
       await popup.screenshot({
         path: info.outputPath(`settings-${colorScheme}.png`),
       });
@@ -604,6 +710,233 @@ test("roomier popup keeps labeled Settings and preferences visible in both appea
         popup.getByRole("heading", { name: "Page palette", exact: true }),
       ).toBeVisible();
     }
+  } finally {
+    await app.context.close();
+  }
+});
+test("appearance follows System, overrides either system scheme, and persists with keyboard-operated switches", async ({}, info) => {
+  const app = await launch(info);
+  try {
+    let popup = await app.openPopup();
+    await popup.setViewportSize({ width: 720, height: 600 });
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await expect(popup.locator(".site-identity > span")).toHaveText(
+      new URL(origin).hostname,
+    );
+    await expect(popup.locator(".site-identity svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    await popup.getByRole("button", { name: "Settings", exact: true }).click();
+    const appearance = (name) =>
+      popup.getByRole("radio", { name, exact: true });
+    const choose = async (name) => {
+      await popup
+        .locator(".appearance-options label")
+        .filter({ hasText: name })
+        .click();
+      await expect(appearance(name)).toBeChecked();
+      await expect(appearance(name)).toBeEnabled();
+    };
+    const scheme = async (name) => {
+      await expect(popup.locator("html")).toHaveCSS("color-scheme", name);
+      await expect(popup.locator(".window")).toHaveCSS(
+        "background-color",
+        name === "dark" ? "rgb(12, 18, 32)" : "rgb(244, 247, 252)",
+      );
+    };
+    await expect(appearance("System")).toBeChecked();
+    await popup.emulateMedia({ colorScheme: "dark" });
+    await scheme("dark");
+    await popup.emulateMedia({ colorScheme: "light" });
+    await scheme("light");
+    // Slow real writes must not blur controls or allow overlapping saves.
+    await popup.evaluate(() => {
+      const save = chrome.storage.local.set.bind(chrome.storage.local);
+      window.preferenceWrites = 0;
+      window.holdPreferenceSaves = true;
+      chrome.storage.local.set = async (values) => {
+        window.preferenceWrites++;
+        if (window.holdPreferenceSaves) {
+          await new Promise((resolve) => {
+            window.releasePreferenceSave = () => {
+              window.holdPreferenceSaves = false;
+              resolve();
+            };
+          });
+        } else {
+          await new Promise((resolve) => setTimeout(resolve, 250));
+        }
+        return save(values);
+      };
+    });
+    await appearance("System").focus();
+    await popup.keyboard.press("ArrowRight");
+    await expect(appearance("Light")).toBeChecked();
+    await expect(appearance("Light")).toBeDisabled();
+    // DOM activation deliberately bypasses Playwright's aria-disabled guard.
+    await popup.evaluate(() =>
+      document.querySelector('input[value="dark"]').click(),
+    );
+    await expect(appearance("Light")).toBeChecked();
+    await popup.evaluate(() => window.releasePreferenceSave());
+    await expect(appearance("Light")).toBeEnabled();
+    expect(await popup.evaluate(() => window.preferenceWrites)).toBe(1);
+    await expect(appearance("Light")).toBeFocused();
+    await popup.keyboard.press("ArrowRight");
+    await expect(appearance("Dark")).toBeChecked();
+    await expect(appearance("Dark")).toBeEnabled();
+    await expect(appearance("Dark")).toBeFocused();
+    await popup.keyboard.press("ArrowLeft");
+    await expect(appearance("Light")).toBeChecked();
+    await expect(appearance("Light")).toBeEnabled();
+    await expect(appearance("Light")).toBeFocused();
+    await popup.emulateMedia({ colorScheme: "dark" });
+    await scheme("light");
+    await choose("Dark");
+    await popup.emulateMedia({ colorScheme: "light" });
+    await scheme("dark");
+    const fontSize = popup.getByRole("switch", {
+      name: "Font size",
+      exact: true,
+    });
+    await popup.evaluate(() => {
+      window.holdPreferenceSaves = true;
+    });
+    await fontSize.focus();
+    await fontSize.press("Space");
+    await expect(fontSize).not.toBeChecked();
+    await expect(fontSize).toBeDisabled();
+    await fontSize.evaluate((input) => input.click());
+    await expect(fontSize).not.toBeChecked();
+    await popup.evaluate(() => window.releasePreferenceSave());
+    await expect(fontSize).toBeEnabled();
+    await expect(fontSize).toBeFocused();
+    await expect
+      .poll(() =>
+        popup.evaluate(
+          async () =>
+            (await chrome.storage.local.get("cssGetterOptions"))
+              .cssGetterOptions,
+        ),
+      )
+      .toMatchObject({ appearance: "dark", fonts: { fontSize: false } });
+    await popup.close();
+    popup = await app.openPopup();
+    await popup.setViewportSize({ width: 720, height: 600 });
+    await popup.emulateMedia({ colorScheme: "light" });
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await scheme("dark");
+    await popup.getByRole("button", { name: "Settings", exact: true }).click();
+    await expect(appearance("Dark")).toBeChecked();
+    await expect(
+      popup.getByRole("switch", { name: "Font size", exact: true }),
+    ).not.toBeChecked();
+    await expect(popup.locator("footer")).toBeInViewport({ ratio: 1 });
+    await popup.screenshot({ path: info.outputPath("appearance-dark.png") });
+    await choose("System");
+    await scheme("light");
+    await popup.emulateMedia({ colorScheme: "dark" });
+    await scheme("dark");
+    await choose("Light");
+    await scheme("light");
+    await expect(popup.locator(".notice")).toHaveCount(0);
+    await popup.screenshot({ path: info.outputPath("appearance-light.png") });
+  } finally {
+    await app.context.close();
+  }
+});
+test("high contrast keeps switch states and the selected appearance visible", async ({}, info) => {
+  const app = await launch(info);
+  try {
+    const popup = await app.openPopup();
+    await popup.setViewportSize({ width: 720, height: 600 });
+    await popup.emulateMedia({ forcedColors: "active" });
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await popup.getByRole("button", { name: "Settings", exact: true }).click();
+    for (const [name, checked] of [
+      ["Font size", true],
+      ["All font styles", false],
+    ]) {
+      const control = popup.getByRole("switch", { name, exact: true });
+      await expect(control).toBeChecked({ checked });
+      const colors = await control.evaluate((input) => ({
+        track: getComputedStyle(input).backgroundColor,
+        thumb: getComputedStyle(input, "::before").backgroundColor,
+        shadow: getComputedStyle(input, "::before").boxShadow,
+      }));
+      expect(colors.thumb).not.toBe(colors.track);
+      expect(colors.shadow).toBe("none");
+    }
+    const selected = popup.locator(".appearance-options input:checked + span");
+    const colors = await selected.evaluate((segment) => ({
+      text: getComputedStyle(segment).color,
+      background: getComputedStyle(segment).backgroundColor,
+      other: getComputedStyle(
+        document.querySelector(
+          ".appearance-options input:not(:checked) + span",
+        ),
+      ).backgroundColor,
+    }));
+    expect(colors.text).not.toBe(colors.background);
+    expect(colors.background).not.toBe(colors.other);
+    await popup.screenshot({
+      path: info.outputPath("settings-high-contrast.png"),
+    });
+  } finally {
+    await app.context.close();
+  }
+});
+test("failed appearance and switch saves restore the previous display and stored preferences", async ({}, info) => {
+  const app = await launch(info);
+  try {
+    const popup = await app.openPopup();
+    await popup.emulateMedia({ colorScheme: "light" });
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await popup.getByRole("button", { name: "Settings", exact: true }).click();
+    const before = await popup.evaluate(async () => {
+      const saved = await chrome.storage.local.get("cssGetterOptions");
+      chrome.storage.local.set = async () => {
+        throw new Error("Synthetic storage failure");
+      };
+      return saved.cssGetterOptions;
+    });
+    await popup
+      .locator(".appearance-options label")
+      .filter({ hasText: "Dark" })
+      .click();
+    await expect(popup.locator(".notice").last()).toHaveText(
+      "Preference was not saved. Please try again.",
+    );
+    await expect(
+      popup.getByRole("radio", { name: "System", exact: true }),
+    ).toBeChecked();
+    await expect(popup.locator("html")).toHaveCSS("color-scheme", "light");
+    await expect(popup.locator(".window")).toHaveCSS(
+      "background-color",
+      "rgb(244, 247, 252)",
+    );
+    await popup.getByRole("switch", { name: "Font size", exact: true }).click();
+    await expect(
+      popup.getByRole("switch", { name: "Font size", exact: true }),
+    ).toBeChecked();
+    await expect(
+      popup.getByRole("switch", { name: "Font size", exact: true }),
+    ).toBeEnabled();
+    expect(
+      await popup.evaluate(
+        async () =>
+          (await chrome.storage.local.get("cssGetterOptions")).cssGetterOptions,
+      ),
+    ).toEqual(before);
   } finally {
     await app.context.close();
   }

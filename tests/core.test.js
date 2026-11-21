@@ -30,6 +30,7 @@ test("update preserves false preferences and unknown keys; cleanup is narrowly i
   const p = await migrateStorage(storage);
   assert.equal(p.fonts.fontSize, false);
   assert.equal(p.colors.hex, false);
+  assert.equal(p.appearance, "system");
   assert.equal(p.fonts.future, "keep");
   assert.deepEqual(p.custom, { a: 1 });
   assert.equal(values.privateNotes, "keep");
@@ -42,6 +43,14 @@ test("update preserves false preferences and unknown keys; cleanup is narrowly i
 test("malformed/missing preferences get defaults without enabling invented options", () => {
   assert.equal(preferences(null).fonts.fontSize, true);
   assert.equal(preferences({ colors: { hex: "false" } }).colors.hex, true);
+});
+test("appearance accepts the three supported choices and defaults old or malformed values to system", () => {
+  for (const appearance of ["system", "light", "dark"]) {
+    assert.equal(preferences({ appearance }).appearance, appearance);
+  }
+  for (const appearance of [undefined, null, false, {}, "sepia", "Dark"]) {
+    assert.equal(preferences({ appearance }).appearance, "system");
+  }
 });
 function domFixture() {
   const dom = new JSDOM(

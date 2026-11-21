@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ScanSession } from "./core/scan.js";
 import { migrateStorage } from "./core/preferences.js";
@@ -162,11 +162,18 @@ function ImageCard({ image, options, previews, onDownload }) {
     </article>
   );
 }
+function Notice({ id, text, onDismiss }) {
+  useEffect(() => {
+    const timer = setTimeout(() => onDismiss(id), 2000);
+    return () => clearTimeout(timer);
+  }, [id, onDismiss]);
+  return <p className="notice">{text}</p>;
+}
 function App() {
   const [view, setView] = useState("colors"),
     [scan, setScan] = useState(empty),
     [options, setOptions] = useState(null),
-    [notice, setNotice] = useState(""),
+    [notices, setNotices] = useState([]),
     [saving, setSaving] = useState(false),
     [previews, setPreviews] = useState(false),
     [exporting, setExporting] = useState(false),
@@ -177,7 +184,19 @@ function App() {
   const scanner = useRef(),
     tracker = useRef(),
     exportController = useRef(),
-    currentScan = useRef(empty);
+    currentScan = useRef(empty),
+    noticeId = useRef(0);
+  const addNotice = useCallback((text) => {
+    const id = noticeId.current++;
+    setNotices((current) => [...current, { id, text }].slice(-3));
+  }, []);
+  const dismissNotice = useCallback((id) => {
+    setNotices((current) => current.filter((notice) => notice.id !== id));
+  }, []);
+  useEffect(() => {
+    document.documentElement.dataset.appearance =
+      options?.appearance || "system";
+  }, [options?.appearance]);
   useEffect(() => {
     let live = true,
       expired = false;
@@ -189,7 +208,7 @@ function App() {
         setPreparedZip(null);
         setExporting(false);
         setExportResult("");
-        setNotice("");
+        setNotices([]);
         setScan(value);
         setPreviews(false);
         setZipConfirm(false);
@@ -199,7 +218,7 @@ function App() {
     session.start();
     const downloads = new DownloadTracker(
       api.downloads,
-      (text) => live && setNotice(text),
+      (text) => live && addNotice(text),
     );
     tracker.current = downloads;
     const timer = setTimeout(() => {
@@ -240,18 +259,18 @@ function App() {
       exportController.current = null;
       downloads.dispose();
     };
-  }, []);
-  async function saveOption(group, key, value) {
+  }, [addNotice]);
+  async function saveOptions(next) {
+    if (saving) return;
     const previous = options;
-    const next = { ...options, [group]: { ...options[group], [key]: value } };
     setOptions(next);
     setSaving(true);
     try {
       await api.storage.local.set({ cssGetterOptions: next });
-      setNotice("Preference saved.");
+      addNotice("Preference saved.");
     } catch {
       setOptions(previous);
-      setNotice("Preference was not saved. Please try again.");
+      addNotice("Preference was not saved. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -259,9 +278,9 @@ function App() {
   async function copy(value) {
     try {
       await navigator.clipboard.writeText(value);
-      setNotice(`Copied ${value}.`);
+      addNotice(`Copied ${value}.`);
     } catch {
-      setNotice("Copy failed. Select and copy the displayed value manually.");
+      addNotice("Copy failed. Select and copy the displayed value manually.");
     }
   }
   async function download(blob, filename, sourceScan) {
@@ -274,7 +293,7 @@ function App() {
         filename,
       });
     } catch {
-      setNotice(
+      addNotice(
         "Download could not be confirmed. Check browser downloads before retrying.",
       );
     }
@@ -327,7 +346,7 @@ function App() {
         filename: "getter-images.zip",
       });
     } catch {
-      setNotice(
+      addNotice(
         "ZIP download was not confirmed. Check browser downloads before preparing it again.",
       );
     } finally {
@@ -371,7 +390,22 @@ function App() {
         </button>
       </header>
       <div className="context">
-        <span title={scan.host}>{scan.host || "Your current page"}</span>
+        <span className="site-identity" title={scan.host}>
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <ellipse cx="12" cy="12" rx="4" ry="9" />
+            <path d="M3 12h18M5 6.5h14M5 17.5h14" />
+          </svg>
+          <span>{scan.host || "Your current page"}</span>
+        </span>
         <button
           className="text-button"
           disabled={!options || scan.status === "loading" || exporting}
@@ -440,29 +474,64 @@ function App() {
           <>
             <h1>Display preferences</h1>
             {options ? (
-              <div className="preferences">
-                {Object.entries(labels).map(([key, label]) => {
-                  const group =
-                    key in options.fonts
-                      ? "fonts"
-                      : key in options.colors
-                        ? "colors"
-                        : "images";
-                  return (
-                    <label className="setting" key={key}>
-                      <input
-                        type="checkbox"
-                        checked={options[group][key]}
-                        disabled={saving}
-                        onChange={(event) =>
-                          saveOption(group, key, event.target.checked)
-                        }
-                      />
-                      {label}
-                    </label>
-                  );
-                })}
-              </div>
+              <>
+                <section className="appearance">
+                  <span id="appearance-label">Appearance</span>
+                  <div
+                    className="appearance-options"
+                    role="radiogroup"
+                    aria-labelledby="appearance-label"
+                  >
+                    {["system", "light", "dark"].map((appearance) => (
+                      <label key={appearance}>
+                        <input
+                          type="radio"
+                          name="appearance"
+                          value={appearance}
+                          checked={options.appearance === appearance}
+                          aria-disabled={saving}
+                          onChange={() =>
+                            saveOptions({ ...options, appearance })
+                          }
+                        />
+                        <span>
+                          {appearance[0].toUpperCase() + appearance.slice(1)}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </section>
+                <div className="preferences">
+                  {Object.entries(labels).map(([key, label]) => {
+                    const group =
+                      key in options.fonts
+                        ? "fonts"
+                        : key in options.colors
+                          ? "colors"
+                          : "images";
+                    return (
+                      <label className="setting" key={key}>
+                        <input
+                          type="checkbox"
+                          role="switch"
+                          checked={options[group][key]}
+                          aria-disabled={saving}
+                          onChange={(event) =>
+                            saveOptions({
+                              ...options,
+                              [group]: {
+                                ...options[group],
+                                [key]: event.target.checked,
+                              },
+                            })
+                          }
+                        />
+                        {label}
+                      </label>
+                    );
+                  })}
+                </div>
+              </>
             ) : (
               <p>Preferences are unavailable. Close and reopen Getter.</p>
             )}
@@ -711,9 +780,17 @@ function App() {
           About Getter
         </button>
       </footer>
-      <p className="notice" role="status" aria-live="polite">
-        {notice}
-      </p>
+      <div
+        className="notices"
+        role="status"
+        aria-live="polite"
+        aria-atomic="false"
+        aria-relevant="additions"
+      >
+        {notices.map((notice) => (
+          <Notice key={notice.id} {...notice} onDismiss={dismissNotice} />
+        ))}
+      </div>
     </div>
   );
 }

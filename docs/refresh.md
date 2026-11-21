@@ -14,6 +14,8 @@ The popup separates DOM extraction, current-document orchestration, preferences,
 
 ## Access and limits
 
+Settings includes a locally saved System / Light / Dark appearance selector. System is the default for existing and new installations and follows the browser's color preference; explicit Light or Dark overrides it. The ten display options use labeled native checkbox switches, and the segmented appearance selector uses native radios for keyboard navigation. Failed saves restore the previous selection and appearance. A decorative, packaged SVG globe identifies the hostname; it does not fetch a website logo or request favicon permissions. All settings fit the full desktop popup; constrained screens retain scrolling.
+
 - `activeTab` and `scripting` cover an explicit toolbar invocation. No standing or optional all-site host grants are requested. Scans do not edit page IDs, borders or other DOM content.
 - `webNavigation` is retained only to enumerate frames in the selected tab on request; there is no background navigation listener or browsing log. Up to seven same-origin child frames plus the main document are inspected. Browser-provided document IDs are pinned and rechecked. Cross-origin, opaque, inaccessible and excess frames are explicitly reported as omitted; the product does not claim an exhaustive scan of all frames, pseudo-elements, shadow roots or background images.
 - Main extraction stops at 4,000 nodes/100 ms; each child at 1,000 nodes/40 ms. Each result category is capped at 500 after aggregation. A five-second orchestration timeout/cancellation invalidates late results; already injected read-only work is bounded, not remotely killed.
@@ -33,7 +35,7 @@ For human UI QA, the owner should load the unpacked `dist/` in an isolated brows
 
 - Toolbar invocation on two distinct sites; same-URL reload, cross-origin navigation, switching tabs and repeated open/close; no cross-tab results.
 - Fresh install and update from 2.0.0 with custom options; no lost preferences, no legacy snapshots, toolbar stays enabled.
-- Palette layout, keyboard focus/tab sequence, system light/dark appearance, colors and alpha copy, detailed/summary fonts and settings.
+- Palette layout, keyboard focus/tab sequence, System / Light / Dark appearance (including persistence after reopening), display switches, hostname globe, colors and alpha copy, detailed/summary fonts and settings.
 - Blocked pages, empty pages, slow/large pages, denied/opaque/cross-origin frames, worker suspension and recovery, cancellation and actionable errors.
 - Images, unavailable previews, file-size failures, secure individual downloads and bounded/partial ZIP exports; close during preparation and during an in-progress ZIP. Browser download completion must match the UI. Current popup-lifetime limitations are explicit above and must be assessed in QA.
 - “Created by Aptelum Labs,” exact blended mark, support@aptelum.com and the public privacy/source destinations.
