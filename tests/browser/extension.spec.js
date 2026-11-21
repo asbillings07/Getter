@@ -1780,7 +1780,9 @@ test("Text excludes hidden embedded content from results, clipboard and saved te
     await expect(popup.locator(".text-results")).not.toContainText(
       "Hidden embedded confidential marker",
     );
-    await popup.getByRole("button", { name: "Copy text", exact: true }).click();
+    await popup
+      .getByRole("button", { name: "Copy available text", exact: true })
+      .click();
     await expect
       .poll(() => popup.evaluate(() => window.copiedText))
       .toContain("Visible text");
