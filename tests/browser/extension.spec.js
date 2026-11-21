@@ -670,6 +670,10 @@ test("roomier popup keeps labeled Settings and preferences visible in both appea
       );
       await settings.click();
       await expect(settings).toHaveAttribute("aria-pressed", "true");
+      await expect(popup.getByRole("switch")).toHaveCount(10);
+      await expect(
+        popup.getByRole("radiogroup", { name: "Appearance" }),
+      ).toBeInViewport({ ratio: 1 });
       const bounds = await popup.evaluate(() => {
         const main = document.querySelector("main").getBoundingClientRect();
         const preferences = [...document.querySelectorAll(".setting")].map(
@@ -706,6 +710,146 @@ test("roomier popup keeps labeled Settings and preferences visible in both appea
         popup.getByRole("heading", { name: "Page palette", exact: true }),
       ).toBeVisible();
     }
+  } finally {
+    await app.context.close();
+  }
+});
+test("appearance follows System, overrides either system scheme, and persists with keyboard-operated switches", async ({}, info) => {
+  const app = await launch(info);
+  try {
+    let popup = await app.openPopup();
+    await popup.setViewportSize({ width: 720, height: 600 });
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await expect(popup.locator(".site-identity > span")).toHaveText(
+      new URL(origin).hostname,
+    );
+    await expect(popup.locator(".site-identity svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    await popup.getByRole("button", { name: "Settings", exact: true }).click();
+    const appearance = (name) =>
+      popup.getByRole("radio", { name, exact: true });
+    const choose = async (name) => {
+      await popup
+        .locator(".appearance-options label")
+        .filter({ hasText: name })
+        .click();
+      await expect(appearance(name)).toBeChecked();
+      await expect(appearance(name)).toBeEnabled();
+    };
+    const scheme = async (name) => {
+      await expect(popup.locator("html")).toHaveCSS("color-scheme", name);
+      await expect(popup.locator(".window")).toHaveCSS(
+        "background-color",
+        name === "dark" ? "rgb(12, 18, 32)" : "rgb(244, 247, 252)",
+      );
+    };
+    await expect(appearance("System")).toBeChecked();
+    await popup.emulateMedia({ colorScheme: "dark" });
+    await scheme("dark");
+    await popup.emulateMedia({ colorScheme: "light" });
+    await scheme("light");
+    // Native radios support keyboard navigation as well as clicking the segments.
+    await appearance("System").focus();
+    await appearance("System").press("ArrowRight");
+    await expect(appearance("Light")).toBeChecked();
+    await expect(appearance("Light")).toBeEnabled();
+    await popup.emulateMedia({ colorScheme: "dark" });
+    await scheme("light");
+    await choose("Dark");
+    await popup.emulateMedia({ colorScheme: "light" });
+    await scheme("dark");
+    const fontSize = popup.getByRole("switch", {
+      name: "Font size",
+      exact: true,
+    });
+    await fontSize.focus();
+    await fontSize.press("Space");
+    await expect(fontSize).not.toBeChecked();
+    await expect(fontSize).toBeEnabled();
+    await expect
+      .poll(() =>
+        popup.evaluate(
+          async () =>
+            (await chrome.storage.local.get("cssGetterOptions"))
+              .cssGetterOptions,
+        ),
+      )
+      .toMatchObject({ appearance: "dark", fonts: { fontSize: false } });
+    await popup.close();
+    popup = await app.openPopup();
+    await popup.setViewportSize({ width: 720, height: 600 });
+    await popup.emulateMedia({ colorScheme: "light" });
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await scheme("dark");
+    await popup.getByRole("button", { name: "Settings", exact: true }).click();
+    await expect(appearance("Dark")).toBeChecked();
+    await expect(
+      popup.getByRole("switch", { name: "Font size", exact: true }),
+    ).not.toBeChecked();
+    await expect(popup.locator("footer")).toBeInViewport({ ratio: 1 });
+    await popup.screenshot({ path: info.outputPath("appearance-dark.png") });
+    await choose("System");
+    await scheme("light");
+    await popup.emulateMedia({ colorScheme: "dark" });
+    await scheme("dark");
+    await choose("Light");
+    await scheme("light");
+    await expect(popup.locator(".notice")).toHaveCount(0);
+    await popup.screenshot({ path: info.outputPath("appearance-light.png") });
+  } finally {
+    await app.context.close();
+  }
+});
+test("failed appearance and switch saves restore the previous display and stored preferences", async ({}, info) => {
+  const app = await launch(info);
+  try {
+    const popup = await app.openPopup();
+    await popup.emulateMedia({ colorScheme: "light" });
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await popup.getByRole("button", { name: "Settings", exact: true }).click();
+    const before = await popup.evaluate(async () => {
+      const saved = await chrome.storage.local.get("cssGetterOptions");
+      chrome.storage.local.set = async () => {
+        throw new Error("Synthetic storage failure");
+      };
+      return saved.cssGetterOptions;
+    });
+    await popup
+      .locator(".appearance-options label")
+      .filter({ hasText: "Dark" })
+      .click();
+    await expect(popup.locator(".notice").last()).toHaveText(
+      "Preference was not saved. Please try again.",
+    );
+    await expect(
+      popup.getByRole("radio", { name: "System", exact: true }),
+    ).toBeChecked();
+    await expect(popup.locator("html")).toHaveCSS("color-scheme", "light");
+    await expect(popup.locator(".window")).toHaveCSS(
+      "background-color",
+      "rgb(244, 247, 252)",
+    );
+    await popup.getByRole("switch", { name: "Font size", exact: true }).click();
+    await expect(
+      popup.getByRole("switch", { name: "Font size", exact: true }),
+    ).toBeChecked();
+    await expect(
+      popup.getByRole("switch", { name: "Font size", exact: true }),
+    ).toBeEnabled();
+    expect(
+      await popup.evaluate(
+        async () =>
+          (await chrome.storage.local.get("cssGetterOptions")).cssGetterOptions,
+      ),
+    ).toEqual(before);
   } finally {
     await app.context.close();
   }

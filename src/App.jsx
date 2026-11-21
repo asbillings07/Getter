@@ -194,6 +194,10 @@ function App() {
     setNotices((current) => current.filter((notice) => notice.id !== id));
   }, []);
   useEffect(() => {
+    document.documentElement.dataset.appearance =
+      options?.appearance || "system";
+  }, [options?.appearance]);
+  useEffect(() => {
     let live = true,
       expired = false;
     const session = new ScanSession(api, (value) => {
@@ -256,9 +260,8 @@ function App() {
       downloads.dispose();
     };
   }, [addNotice]);
-  async function saveOption(group, key, value) {
+  async function saveOptions(next) {
     const previous = options;
-    const next = { ...options, [group]: { ...options[group], [key]: value } };
     setOptions(next);
     setSaving(true);
     try {
@@ -386,7 +389,22 @@ function App() {
         </button>
       </header>
       <div className="context">
-        <span title={scan.host}>{scan.host || "Your current page"}</span>
+        <span className="site-identity" title={scan.host}>
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <ellipse cx="12" cy="12" rx="4" ry="9" />
+            <path d="M3 12h18M5 6.5h14M5 17.5h14" />
+          </svg>
+          <span>{scan.host || "Your current page"}</span>
+        </span>
         <button
           className="text-button"
           disabled={!options || scan.status === "loading" || exporting}
@@ -455,29 +473,64 @@ function App() {
           <>
             <h1>Display preferences</h1>
             {options ? (
-              <div className="preferences">
-                {Object.entries(labels).map(([key, label]) => {
-                  const group =
-                    key in options.fonts
-                      ? "fonts"
-                      : key in options.colors
-                        ? "colors"
-                        : "images";
-                  return (
-                    <label className="setting" key={key}>
-                      <input
-                        type="checkbox"
-                        checked={options[group][key]}
-                        disabled={saving}
-                        onChange={(event) =>
-                          saveOption(group, key, event.target.checked)
-                        }
-                      />
-                      {label}
-                    </label>
-                  );
-                })}
-              </div>
+              <>
+                <section className="appearance">
+                  <span id="appearance-label">Appearance</span>
+                  <div
+                    className="appearance-options"
+                    role="radiogroup"
+                    aria-labelledby="appearance-label"
+                  >
+                    {["system", "light", "dark"].map((appearance) => (
+                      <label key={appearance}>
+                        <input
+                          type="radio"
+                          name="appearance"
+                          value={appearance}
+                          checked={options.appearance === appearance}
+                          disabled={saving}
+                          onChange={() =>
+                            saveOptions({ ...options, appearance })
+                          }
+                        />
+                        <span>
+                          {appearance[0].toUpperCase() + appearance.slice(1)}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </section>
+                <div className="preferences">
+                  {Object.entries(labels).map(([key, label]) => {
+                    const group =
+                      key in options.fonts
+                        ? "fonts"
+                        : key in options.colors
+                          ? "colors"
+                          : "images";
+                    return (
+                      <label className="setting" key={key}>
+                        <input
+                          type="checkbox"
+                          role="switch"
+                          checked={options[group][key]}
+                          disabled={saving}
+                          onChange={(event) =>
+                            saveOptions({
+                              ...options,
+                              [group]: {
+                                ...options[group],
+                                [key]: event.target.checked,
+                              },
+                            })
+                          }
+                        />
+                        {label}
+                      </label>
+                    );
+                  })}
+                </div>
+              </>
             ) : (
               <p>Preferences are unavailable. Close and reopen Getter.</p>
             )}
