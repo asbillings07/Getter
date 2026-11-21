@@ -752,11 +752,47 @@ test("appearance follows System, overrides either system scheme, and persists wi
     await scheme("dark");
     await popup.emulateMedia({ colorScheme: "light" });
     await scheme("light");
-    // Native radios support keyboard navigation as well as clicking the segments.
+    // Slow real writes must not blur controls or allow overlapping saves.
+    await popup.evaluate(() => {
+      const save = chrome.storage.local.set.bind(chrome.storage.local);
+      window.preferenceWrites = 0;
+      window.holdPreferenceSaves = true;
+      chrome.storage.local.set = async (values) => {
+        window.preferenceWrites++;
+        if (window.holdPreferenceSaves) {
+          await new Promise((resolve) => {
+            window.releasePreferenceSave = () => {
+              window.holdPreferenceSaves = false;
+              resolve();
+            };
+          });
+        } else {
+          await new Promise((resolve) => setTimeout(resolve, 250));
+        }
+        return save(values);
+      };
+    });
     await appearance("System").focus();
-    await appearance("System").press("ArrowRight");
+    await popup.keyboard.press("ArrowRight");
+    await expect(appearance("Light")).toBeChecked();
+    await expect(appearance("Light")).toBeDisabled();
+    // DOM activation deliberately bypasses Playwright's aria-disabled guard.
+    await popup.evaluate(() =>
+      document.querySelector('input[value="dark"]').click(),
+    );
+    await expect(appearance("Light")).toBeChecked();
+    await popup.evaluate(() => window.releasePreferenceSave());
+    await expect(appearance("Light")).toBeEnabled();
+    expect(await popup.evaluate(() => window.preferenceWrites)).toBe(1);
+    await expect(appearance("Light")).toBeFocused();
+    await popup.keyboard.press("ArrowRight");
+    await expect(appearance("Dark")).toBeChecked();
+    await expect(appearance("Dark")).toBeEnabled();
+    await expect(appearance("Dark")).toBeFocused();
+    await popup.keyboard.press("ArrowLeft");
     await expect(appearance("Light")).toBeChecked();
     await expect(appearance("Light")).toBeEnabled();
+    await expect(appearance("Light")).toBeFocused();
     await popup.emulateMedia({ colorScheme: "dark" });
     await scheme("light");
     await choose("Dark");
@@ -766,10 +802,18 @@ test("appearance follows System, overrides either system scheme, and persists wi
       name: "Font size",
       exact: true,
     });
+    await popup.evaluate(() => {
+      window.holdPreferenceSaves = true;
+    });
     await fontSize.focus();
     await fontSize.press("Space");
     await expect(fontSize).not.toBeChecked();
+    await expect(fontSize).toBeDisabled();
+    await fontSize.evaluate((input) => input.click());
+    await expect(fontSize).not.toBeChecked();
+    await popup.evaluate(() => window.releasePreferenceSave());
     await expect(fontSize).toBeEnabled();
+    await expect(fontSize).toBeFocused();
     await expect
       .poll(() =>
         popup.evaluate(
@@ -802,6 +846,49 @@ test("appearance follows System, overrides either system scheme, and persists wi
     await scheme("light");
     await expect(popup.locator(".notice")).toHaveCount(0);
     await popup.screenshot({ path: info.outputPath("appearance-light.png") });
+  } finally {
+    await app.context.close();
+  }
+});
+test("high contrast keeps switch states and the selected appearance visible", async ({}, info) => {
+  const app = await launch(info);
+  try {
+    const popup = await app.openPopup();
+    await popup.setViewportSize({ width: 720, height: 600 });
+    await popup.emulateMedia({ forcedColors: "active" });
+    await expect(
+      popup.getByRole("heading", { name: "Page palette", exact: true }),
+    ).toBeVisible();
+    await popup.getByRole("button", { name: "Settings", exact: true }).click();
+    for (const [name, checked] of [
+      ["Font size", true],
+      ["All font styles", false],
+    ]) {
+      const control = popup.getByRole("switch", { name, exact: true });
+      await expect(control).toBeChecked({ checked });
+      const colors = await control.evaluate((input) => ({
+        track: getComputedStyle(input).backgroundColor,
+        thumb: getComputedStyle(input, "::before").backgroundColor,
+        shadow: getComputedStyle(input, "::before").boxShadow,
+      }));
+      expect(colors.thumb).not.toBe(colors.track);
+      expect(colors.shadow).toBe("none");
+    }
+    const selected = popup.locator(".appearance-options input:checked + span");
+    const colors = await selected.evaluate((segment) => ({
+      text: getComputedStyle(segment).color,
+      background: getComputedStyle(segment).backgroundColor,
+      other: getComputedStyle(
+        document.querySelector(
+          ".appearance-options input:not(:checked) + span",
+        ),
+      ).backgroundColor,
+    }));
+    expect(colors.text).not.toBe(colors.background);
+    expect(colors.background).not.toBe(colors.other);
+    await popup.screenshot({
+      path: info.outputPath("settings-high-contrast.png"),
+    });
   } finally {
     await app.context.close();
   }

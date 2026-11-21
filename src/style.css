@@ -410,8 +410,8 @@ dd {
   outline: 3px solid var(--accent);
   outline-offset: 3px;
 }
-.appearance-options input:disabled + span,
-.setting input:disabled {
+.appearance-options input[aria-disabled="true"] + span,
+.setting input[aria-disabled="true"] {
   opacity: 0.55;
   cursor: default;
 }
@@ -462,6 +462,29 @@ dd {
 .setting input:checked::before {
   transform: translateX(16px);
   background: var(--switch-thumb);
+}
+@media (forced-colors: active) {
+  .setting input {
+    forced-color-adjust: none;
+    background: Canvas;
+    border-color: ButtonText;
+  }
+  .setting input::before {
+    background: ButtonText;
+    box-shadow: none;
+  }
+  .setting input:checked {
+    background: Highlight;
+    border-color: Highlight;
+  }
+  .setting input:checked::before {
+    background: HighlightText;
+  }
+  .appearance-options input:checked + span {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
 }
 .image-actions input {
   width: 17px;

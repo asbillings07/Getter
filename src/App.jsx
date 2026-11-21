@@ -261,6 +261,7 @@ function App() {
     };
   }, [addNotice]);
   async function saveOptions(next) {
+    if (saving) return;
     const previous = options;
     setOptions(next);
     setSaving(true);
@@ -488,7 +489,7 @@ function App() {
                           name="appearance"
                           value={appearance}
                           checked={options.appearance === appearance}
-                          disabled={saving}
+                          aria-disabled={saving}
                           onChange={() =>
                             saveOptions({ ...options, appearance })
                           }
@@ -514,7 +515,7 @@ function App() {
                           type="checkbox"
                           role="switch"
                           checked={options[group][key]}
-                          disabled={saving}
+                          aria-disabled={saving}
                           onChange={(event) =>
                             saveOptions({
                               ...options,
