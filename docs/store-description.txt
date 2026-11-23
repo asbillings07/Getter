@@ -4,7 +4,7 @@ QUICK POPUP OR ROOMY SIDE PANEL
 Use the popup for quick copying or keep Getter beside the page in a side panel. Choose your preferred view in Settings, or switch views once without changing that preference. Inspect always opens in the side panel.
 
 COLORS, FONTS AND IMAGES
-Explore the page palette and copy color values. Review font families and typography details. See image addresses and dimensions, enable previews, request file sizes, and download individual images or prepare an image ZIP. Review included and unavailable image counts before saving.
+Explore the page palette and copy color values. Review font families and typography details. Color and font cards show their share of detected uses, with most-used or least-used sorting. The info icon explains the percentages and scan limits; color usage measures occurrences rather than screen area. See image addresses and dimensions, enable previews, request file sizes, and download individual images or prepare an image ZIP. Review included and unavailable image counts before saving.
 
 VISIBLE TEXT EXTRACTION
 Read text from the page, its main content or your current selection. Find matching text, copy a block, copy the current text source, or save it as a .txt file. Text follows document reading order; CSS visual ordering may differ.

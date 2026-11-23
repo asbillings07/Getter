@@ -2,7 +2,7 @@
 
 **Created by Aptelum Labs.** Explore a webpage's colors, fonts, images, text and element styles.
 
-Getter is a Chrome Manifest V3 extension. Version **3.0.0** implements the approved Text, expanded Inspect, and popup/side panel designs. The owner accepted the Chrome test build; the v3.0 release adds version and listing metadata without changing that accepted UI. Store submission and publication are separate steps. Chrome 141 or later is required for switching back from the side panel. See the [privacy notice](PRIVACY.md) and [architecture and owner QA](docs/refresh.md). See the updated [store submission preparation](docs/store-submission.md) for v3.0 listing copy, screenshots, permissions and reviewer steps.
+Getter is a Chrome Manifest V3 extension. Version **3.1.1** adds usage percentages and most/least-used sorting to the existing color and font cards, with top-aligned color blocks when labels wrap. The owner accepted the corrected Chrome test build and authorized merge after independent review and passing checks. Release metadata preserves that accepted behavior. Store submission and publication are separate steps. Chrome 141 or later is required for switching back from the side panel. See the [privacy notice](PRIVACY.md), [architecture and owner QA](docs/refresh.md), and [store submission preparation](docs/store-submission.md).
 
 ## Build and verify
 
@@ -22,6 +22,7 @@ The unpacked extension is in `dist/`. `npm run build:dev` produces an unminified
 Open Getter from the toolbar on a regular webpage. In Settings, choose **Open Getter in → Popup / Side panel**. The button next to Settings switches views once without changing that preference; verified results and the current tool follow the switch. Inspect always opens in the side panel. Returning to the popup restores your last non-Inspect tool.
 
 - **Colors / Fonts / Images:** copy values, read typography, and preview or download images. **Load previews by default** is off initially; enabling it saves that preference.
+- **Usage:** color and font cards show their share of detected uses. Select **Most used first / Least used first** to change the order. The info icon explains percentages and scan limits. Font percentages include styles hidden by the summary display setting.
 - **Text:** read Page, Main content, or Selection; find and copy individual blocks or copy/save the complete current source as `.txt`. Search filters the displayed blocks; full-text actions still include the entire extracted source. Select text on the page before opening the popup, or use the side panel and Extract selection.
 - **Inspect:** click an element to see Styles, Layout, Effects, and Element details. Selection stays active until paused or Escape is pressed. Pause lets you use the page normally while keeping the selected values; Resume selecting picks another element. Search and Show all properties apply to the current section. Copy CSS opens a preview; DOM attributes are copied separately.
 

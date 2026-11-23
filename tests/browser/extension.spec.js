@@ -41,6 +41,28 @@ test.beforeAll(async () => {
       res.end('<p style="color:rgb(10,20,30)">Frame text</p>');
       return;
     }
+    if (req.url === "/usage") {
+      res.setHeader("Content-Type", "text/html");
+      res.end(`<!doctype html><html><head><title>Usage fixture</title><style>
+        body{color:#17253b;background:#fff;font:16px Arial}
+        p{color:#187c70}p.alternate{color:#2059be;font-family:Georgia}
+        h2{font-family:Georgia}
+        </style></head><body>${"<p>Frequent style</p>".repeat(6)}${'<p class="alternate">Alternate style</p>'.repeat(2)}<h2>Heading</h2></body></html>`);
+      return;
+    }
+    if (req.url === "/mixed-colors") {
+      res.setHeader("Content-Type", "text/html");
+      res.end(`<!doctype html><html><head><title>Mixed color labels</title></head><body style="color:#000;font:16px Arial">
+        ${'<p style="color:oklch(0.717 0.1648 250.794)">Blue</p>'.repeat(8)}
+        ${'<p style="color:#000">Black</p>'.repeat(6)}
+        ${'<p style="color:#7d7d7d">Gray</p>'.repeat(6)}
+        ${'<p style="color:oklch(0.6936 0.2223 3.91)">Pink</p>'.repeat(5)}
+        ${'<p style="color:oklch(0.731 0.2158 148.29)">Green</p>'.repeat(4)}
+        ${'<p style="color:#1f1f1f">Dark</p>'.repeat(3)}
+        ${'<p style="color:oklch(0.6987 0.2037 309.51)">Purple</p>'.repeat(2)}
+        </body></html>`);
+      return;
+    }
     if (req.url === "/workbench") {
       res.setHeader("Content-Type", "text/html");
       res.end(`<!doctype html><html><head><title>Getter workspace fixture</title><style>
@@ -1580,6 +1602,9 @@ test("native popup and side panel transfer Text state and keep Inspect in the pa
     await expect
       .poll(async () => JSON.stringify(await read()))
       .toContain("Page palette");
+    await click("popup", ".sort-button");
+    await click("popup", ".tabs button:nth-child(2)");
+    await click("popup", ".sort-button");
     await click("popup", ".tabs button:nth-child(4)");
     await expect
       .poll(async () => JSON.stringify(await read()))
@@ -1604,6 +1629,21 @@ test("native popup and side panel transfer Text state and keep Inspect in the pa
           }),
         ]),
       );
+    await click("panel", ".tabs button:nth-child(1)");
+    await expect
+      .poll(
+        async () =>
+          (await read()).find((v) => v.path === "/sidepanel.html")?.text,
+      )
+      .toContain("Least used first");
+    await click("panel", ".tabs button:nth-child(2)");
+    await expect
+      .poll(
+        async () =>
+          (await read()).find((v) => v.path === "/sidepanel.html")?.text,
+      )
+      .toContain("Least used first");
+    await click("panel", ".tabs button:nth-child(4)");
     await click("panel", ".mode-button");
     await expect
       .poll(async () => await read())
@@ -1797,3 +1837,212 @@ test("Text excludes hidden embedded content from results, clipboard and saved te
     await app.context.close();
   }
 });
+
+for (const mode of ["popup", "panel"]) {
+  test(`${mode} keeps the existing cards with usage percentages, sorting and a consistent font total`, async ({}, info) => {
+    const app = await launch(info);
+    try {
+      await app.page.goto(`${origin}/usage`);
+      const view = await (mode === "panel" ? app.openPanel() : app.openPopup());
+      await view.setViewportSize({
+        width: mode === "panel" ? 400 : 720,
+        height: mode === "panel" ? 820 : 600,
+      });
+      await expect(view.locator(".swatch")).toHaveCount(4);
+      const counts = view.locator(".swatch .usage-frequency");
+      await expect(counts).toHaveText([
+        "54.5% of color uses",
+        "18.2% of color uses",
+        "18.2% of color uses",
+        "9.1% of color uses",
+      ]);
+      const columns = await view
+        .locator(".swatches")
+        .evaluate(
+          (el) => getComputedStyle(el).gridTemplateColumns.split(" ").length,
+        );
+      expect(columns).toBe(mode === "panel" ? 2 : 4);
+      await view.evaluate(() => {
+        navigator.clipboard.writeText = async (value) => {
+          window.copiedColor = value;
+        };
+      });
+      await view
+        .getByRole("button", { name: "Copy #187C70", exact: true })
+        .click();
+      await expect
+        .poll(() => view.evaluate(() => window.copiedColor))
+        .toBe("#187C70");
+      const sort = view.getByRole("button", {
+        name: "Most used first",
+        exact: true,
+      });
+      await sort.focus();
+      await sort.press("Enter");
+      await expect(
+        view.getByRole("button", { name: "Least used first", exact: true }),
+      ).toBeFocused();
+      await expect(counts).toHaveText([
+        "9.1% of color uses",
+        "18.2% of color uses",
+        "18.2% of color uses",
+        "54.5% of color uses",
+      ]);
+      await view.getByRole("button", { name: "Fonts", exact: true }).click();
+      await expect(view.locator(".font")).toHaveCount(3);
+      await expect(view.locator(".font .usage-frequency")).toHaveText([
+        " · 60.0% of font uses",
+        " · 10.0% of font uses",
+        " · 10.0% of font uses",
+      ]);
+      await expect(view.locator(".font").first()).toContainText("Arial");
+      await expect(
+        view.locator(".font").first().locator("dl > div"),
+      ).toHaveCount(5);
+      await view
+        .getByRole("button", { name: "Most used first", exact: true })
+        .click();
+      await expect(view.locator(".font .usage-frequency")).toHaveText([
+        " · 10.0% of font uses",
+        " · 10.0% of font uses",
+        " · 60.0% of font uses",
+      ]);
+      await view.getByRole("button", { name: "Settings", exact: true }).click();
+      await view
+        .getByRole("switch", { name: "All font styles", exact: true })
+        .check();
+      if (mode === "panel")
+        await view
+          .locator(".appearance-options label")
+          .filter({ hasText: "Dark" })
+          .click();
+      await view.getByRole("button", { name: "Settings", exact: true }).click();
+      await expect(view.locator(".font")).toHaveCount(4);
+      await expect(view.locator(".font .usage-frequency")).toHaveText([
+        " · 10.0% of font uses",
+        " · 10.0% of font uses",
+        " · 20.0% of font uses",
+        " · 60.0% of font uses",
+      ]);
+      await view
+        .getByRole("button", { name: "Least used first", exact: true })
+        .click();
+      await view.screenshot({
+        path: info.outputPath(`${mode}-font-usage.png`),
+      });
+      await view.getByRole("button", { name: "Colors", exact: true }).click();
+      await expect(
+        view.getByRole("button", { name: "Least used first", exact: true }),
+      ).toBeVisible();
+      await view
+        .getByRole("button", { name: "Least used first", exact: true })
+        .click();
+      await view.screenshot({
+        path: info.outputPath(`${mode}-color-usage.png`),
+      });
+      await expect(view.locator(".usage-frequency").first()).toContainText(
+        "54.5%",
+      );
+      await view
+        .getByRole("button", { name: "About usage percentages", exact: true })
+        .click();
+      await expect(view.getByText(/not screen area/)).toBeVisible();
+      expect(
+        await view.evaluate(
+          () => document.documentElement.scrollWidth > innerWidth,
+        ),
+      ).toBe(false);
+    } finally {
+      await app.context.close();
+    }
+  });
+}
+
+for (const mode of ["popup", "panel"]) {
+  test(`${mode} aligns short and wrapped color cards at the top in both appearances`, async ({}, info) => {
+    const app = await launch(info);
+    try {
+      await app.page.goto(`${origin}/mixed-colors`);
+      const view = await (mode === "panel" ? app.openPanel() : app.openPopup());
+      await view.setViewportSize({
+        width: mode === "panel" ? 400 : 720,
+        height: mode === "panel" ? 820 : 600,
+      });
+      await expect(view.locator(".swatch")).toHaveCount(7);
+      for (const appearance of ["Light", "Dark"]) {
+        await view
+          .getByRole("button", { name: "Settings", exact: true })
+          .click();
+        await view
+          .locator(".appearance-options label")
+          .filter({ hasText: appearance })
+          .click();
+        await view
+          .getByRole("button", { name: "Settings", exact: true })
+          .click();
+        await expect(view.locator(".notice")).toHaveCount(0);
+        await view.screenshot({
+          path: info.outputPath(
+            `${mode}-${appearance.toLowerCase()}-mixed-colors.png`,
+          ),
+        });
+        const cards = await view.locator(".swatch").evaluateAll((cards) =>
+          cards.map((card) => {
+            const swatch = card.querySelector(".color"),
+              label = card.querySelector(".color-label");
+            const c = card.getBoundingClientRect(),
+              s = swatch.getBoundingClientRect(),
+              l = label.getBoundingClientRect();
+            return {
+              row: c.top,
+              gap: s.top - c.top,
+              height: s.height,
+              widthGap: c.width - s.width,
+              labelGap: l.top - s.bottom,
+              labelHeight: l.height,
+              overflow: card.scrollWidth > card.clientWidth,
+            };
+          }),
+        );
+        // Long and short labels must share a row to reproduce the centering bug.
+        const firstRow = cards.filter((c) => c.row === cards[0].row);
+        expect(
+          new Set(firstRow.map((c) => c.labelHeight)).size,
+        ).toBeGreaterThan(1);
+        for (const card of cards) {
+          expect(card.gap).toBeCloseTo(1, 1);
+          expect(card.height).toBeCloseTo(65, 1);
+          expect(card.widthGap).toBeCloseTo(2, 1);
+          expect(card.labelGap).toBeCloseTo(0, 1);
+          expect(card.overflow).toBe(false);
+        }
+      }
+      await view
+        .getByRole("button", { name: "Most used first", exact: true })
+        .click();
+      const gaps = await view
+        .locator(".swatch")
+        .evaluateAll((cards) =>
+          cards.map(
+            (card) =>
+              card.querySelector(".color").getBoundingClientRect().top -
+              card.getBoundingClientRect().top,
+          ),
+        );
+      expect(gaps.every((gap) => Math.abs(gap - 1) < 0.1)).toBe(true);
+      await view.evaluate(() => {
+        navigator.clipboard.writeText = async (value) => {
+          window.copiedMixedColor = value;
+        };
+      });
+      const modern = view.locator('.swatch[aria-label^="Copy oklch("]').first();
+      const expected = (await modern.getAttribute("aria-label")).slice(5);
+      await modern.click();
+      await expect
+        .poll(() => view.evaluate(() => window.copiedMixedColor))
+        .toBe(expected);
+    } finally {
+      await app.context.close();
+    }
+  });
+}

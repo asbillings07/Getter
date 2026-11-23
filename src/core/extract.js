@@ -1,3 +1,5 @@
+import { sortByUsage, totalUses } from "./usage.js";
+
 // This function is serialized by Chrome. Keep it self-contained and read-only.
 export function extractPage({
   maxNodes = 8000,
@@ -8,6 +10,7 @@ export function extractPage({
   const colors = new Map(),
     fonts = new Map(),
     images = new Map();
+  const usageTotals = { colors: 0, fonts: 0 };
   const fontTags = new Set([
     "h1",
     "h2",
@@ -39,6 +42,7 @@ export function extractPage({
       /^rgba\(.*[, /]0\s*\)$/.test(value)
     )
       return;
+    usageTotals.colors++;
     if (!colors.has(value)) {
       if (colors.size >= maxItems) {
         limited = true;
@@ -67,6 +71,7 @@ export function extractPage({
       addColor(style.color, "Text");
       addColor(style.backgroundColor, "Background");
       if (fontTags.has(node.localName)) {
+        usageTotals.fonts++;
         const item = {
           tag: node.localName,
           fontFamily: style.fontFamily,
@@ -100,6 +105,7 @@ export function extractPage({
     colors: [...colors.values()],
     fonts: [...fonts.values()],
     images: [...images.values()],
+    usageTotals,
     limited,
     visited,
     frames,
@@ -128,6 +134,7 @@ export function aggregate(injections) {
   const colors = new Map(),
     fonts = new Map(),
     images = new Map();
+  const usageTotals = { colors: 0, fonts: 0 };
   let limited = false,
     visited = 0,
     frameElements = 0;
@@ -142,6 +149,9 @@ export function aggregate(injections) {
     limited ||= result.limited;
     visited += result.visited;
     frameElements += result.frames;
+    for (const category of ["colors", "fonts"])
+      usageTotals[category] +=
+        result.usageTotals?.[category] ?? totalUses(result[category]);
     for (const c of result.colors) {
       const previous = colors.get(c.value);
       if (previous) {
@@ -161,11 +171,10 @@ export function aggregate(injections) {
   // Enforce an aggregate bound across frames, not only a per-document limit.
   limited ||= colors.size > 500 || fonts.size > 500 || images.size > 500;
   return {
-    colors: [...colors.values()]
-      .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value))
-      .slice(0, 500),
-    fonts: [...fonts.values()].slice(0, 500),
+    colors: sortByUsage([...colors.values()]).slice(0, 500),
+    fonts: sortByUsage([...fonts.values()]).slice(0, 500),
     images: [...images.values()].slice(0, 500),
+    usageTotals,
     limited,
     visited,
     frames: injections.length,
