@@ -1,17 +1,13 @@
-# Unreleased website-access update
+# Getter 3.1.2 submission preparation
 
-The current branch adds optional per-site and all-website access. Its 3.1.1 manifest is for unpacked testing only; choose a higher version and obtain current review, Chrome acceptance and release authorization before building a store update. PR #18’s release authorization covers only the prior usage/alignment release. The historical 3.1.1 preparation details below do not authorize this new candidate.
-
-## Prior Getter 3.1.1 submission preparation
-
-This package follows the owner's Chrome acceptance of the usage-percentage cards and color-alignment correction, with explicit authorization to complete independent review, merge passing PR #18 and build the Chrome Web Store ZIP. The owner selected **3.1.1** for the frequency feature and alignment patch. Uploading or submitting the store item is a separate action; preparing this package does not change the dashboard or establish publication.
+The owner approved the website-access test build at `77c686637dcbf93789538a5a4aa5715661266f2d` and requested a Chrome Web Store ZIP at **3.1.2**. It fixes rescanning a different site in the side panel, adds a global-access switch in Settings, and links directly to that switch from access-needed and access-declined messages. The release delta updates only version/documentation metadata. Package preparation is authorized; merge, upload, submission and publication remain separate actions.
 
 ## Item and release
 
 - Existing item: [Getter](https://chromewebstore.google.com/detail/getter/nkgabfmcijbajgobbeloaobhbhpacnim), ID `nkgabfmcijbajgobbeloaobhbhpacnim`. Update this item rather than creating another listing.
-- The public listing checked November 23, 2026 reports **3.0.0**, updated November 22, 2026. That public page does not establish the highest uploaded draft or review state. Inspect the authenticated dashboard before uploading; do not cancel an existing review automatically.
-- Release version: **3.1.1**, as requested by the owner and consistently recorded in the manifest, package and lockfile. This is higher than the currently published version, as required for a store update.
-- Owner-accepted behavior: `8330ef218095da877f9a9f0730a252339bae6309`. This includes usage percentages, most/least-used sorting and top-aligned color blocks beside wrapped labels. The release delta updates only version/documentation metadata. Compare the production build with the accepted test package to confirm that the manifest version is the only changed shipped content. Record the final independent review, CI and merge SHA in PR #18 and the release verification notes.
+- The last recorded public listing check on November 23, 2026 reported **3.0.0**, updated November 22, 2026. That historical public page does not establish the current highest uploaded draft or review state. Inspect the authenticated dashboard before uploading; do not cancel an existing review automatically.
+- Release version: **3.1.2**, as requested by the owner and consistently recorded in the manifest, package and lockfile. No dashboard upload is part of package preparation.
+- Owner-accepted behavior: `77c686637dcbf93789538a5a4aa5715661266f2d`. The release delta updates only version/documentation metadata. Compare the production build with `Getter-Website-Access-77c6866-Chrome-test.zip` to confirm that the manifest version is the only changed shipped content. Record final CI and package evidence in PR #19; independent review and merge status must remain accurate rather than inferred from packaging approval.
 - Support: **support@aptelum.com**. No support email is sent as part of preparation.
 - Privacy notice: [PRIVACY.md](https://github.com/asbillings07/Getter/blob/main/PRIVACY.md). Verify the merged privacy notice is publicly accessible before submission.
 
@@ -37,7 +33,7 @@ Recommended order:
 2. **Text / side panel** — the source selector, copy/save actions and extracted text.
 3. **Inspect / Layout** — compact selected-element header, dimensions, box model and layout values.
 4. **Inspect / Element** — attributes and a readable long value, in dark appearance; Styles and Effects remain visible section choices.
-5. **Settings** — Popup / Side panel default, appearance and the preview/display toggles.
+5. **Settings** — Popup / Side panel default, appearance, Website access and the preview/display toggles.
 
 Use the existing approved Getter icon and exact Aptelum attribution asset. Screenshot assets are separate from the extension ZIP. Do not substitute design mocks for screenshots of the accepted build. Store submission accepts a maximum of five screenshots; optional promotional assets are a separate category.
 
@@ -52,7 +48,7 @@ Use the existing approved Getter icon and exact Aptelum attribution asset. Scree
 | webNavigation | Identify the current page, enumerate its frames, pin document identities and report omitted frames. No background navigation listener. |
 | sidePanel     | Offer a persistent workspace beside the webpage and host element-level Inspect.                                                        |
 
-The website-access candidate has no required host grants, web-accessible resources or remote executable code. It declares optional `http://*/*` and `https://*/*` so Scan again can request the current site and the user can separately choose all-website access in Getter Settings. Requests use Chrome’s consent flow; access can be revoked and requested again. Relative to 3.1.1, these optional patterns are the only added permissions. No provider keys or credentials are required.
+Version 3.1.2 has no required host grants, web-accessible resources or remote executable code. It declares optional `http://*/*` and `https://*/*` so Scan again can request the current site and the user can separately choose all-website access in Getter Settings. Requests use Chrome’s consent flow; access can be revoked and requested again. Relative to 3.1.1, these optional patterns are the only added permissions. No provider keys or credentials are required.
 
 The public listing currently discloses Website content and Web history. Getter handles selected-page/frame addresses locally to identify the active document; this does not mean it collects a background browsing history. Review these declarations against the merged privacy notice and the dashboard's current definitions. Website content now also includes extracted text and selected element attributes/computed styles. Preferences are local; view transfers use browser-session memory. Chrome can retain a hidden side panel's in-memory results until navigation, rescan or view release. Hiding the panel pauses selection.
 
@@ -69,7 +65,7 @@ No account, payment or credentials are needed. Requires Chrome 141 or newer.
 3. Choose Inspect. It opens in the side panel. Click several elements, then pause selection to interact normally with the page; resume to select again.
 4. Explore Styles, Layout, Effects and Element. Search within a section, show additional properties, copy a value and preview/copy CSS. Missing attributes are labeled Not set. The compact header shows the selected element name.
 5. In Settings, change the preferred workspace and appearance. Reopen Getter to check persistence. Use the button beside Settings to switch once without changing the saved default.
-6. Reload the page or change tabs. Old results clear. On an unapproved site, Scan again asks for that site and continues after approval. Denial leaves it unread. In Getter Settings, grant all-website access, revoke it and request it again; also verify the switch updates after Chrome changes access externally. Restricted pages show an explanation and never request host access.
+6. Reload the page or change tabs. Old results clear. On an unapproved site, Scan again asks for that site and continues after approval. Denial leaves it unread. Use **Enable for all sites in Settings →** to open Settings at the all-websites switch; following the link itself does not request access. Grant all-website access, revoke it and request it again; also verify the switch updates after Chrome changes access externally. Restricted pages show an explanation and never request host access.
 
 Frames, closed components and certain resources are inaccessible. Scans and exports are bounded and report limits. Native Save As may close a popup; Chrome Downloads supplies the final outcome. See [architecture and QA](refresh.md#verification-and-remaining-owner-qa) for the full scope and test limitations.
 

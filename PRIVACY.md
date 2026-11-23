@@ -1,6 +1,6 @@
 # Getter privacy notice
 
-Applies to the unreleased website-access update based on Getter 3.1.1. This document does not establish store publication.
+Applies to Getter 3.1.2. This document does not establish store publication.
 
 Getter is created by Aptelum Labs. Contact [support@aptelum.com](mailto:support@aptelum.com) for support or privacy questions.
 
