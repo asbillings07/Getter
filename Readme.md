@@ -2,7 +2,7 @@
 
 **Created by Aptelum Labs.** Explore a webpage's colors, fonts, images, text and element styles.
 
-Getter is a Chrome Manifest V3 extension. Version **3.0.0** implements the approved Text, expanded Inspect, and popup/side panel designs. The owner accepted the Chrome test build; the v3.0 release adds version and listing metadata without changing that accepted UI. Store submission and publication are separate steps. Chrome 141 or later is required for switching back from the side panel. See the [privacy notice](PRIVACY.md) and [architecture and owner QA](docs/refresh.md). See the updated [store submission preparation](docs/store-submission.md) for v3.0 listing copy, screenshots, permissions and reviewer steps.
+Getter is a Chrome Manifest V3 extension. Version **3.1.1** adds usage percentages and most/least-used sorting to the existing color and font cards, with top-aligned color blocks when labels wrap. The owner accepted the corrected Chrome test build and authorized merge after independent review and passing checks. Release metadata preserves that accepted behavior. Store submission and publication are separate steps. Chrome 141 or later is required for switching back from the side panel. See the [privacy notice](PRIVACY.md), [architecture and owner QA](docs/refresh.md), and [store submission preparation](docs/store-submission.md).
 
 ## Build and verify
 

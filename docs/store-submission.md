@@ -1,15 +1,15 @@
-# Getter 3.0.0 submission preparation
+# Getter 3.1.1 submission preparation
 
-This package follows the owner's acceptance of the compact Inspect Chrome build and explicit authorization to finish review, merge passing changes, prepare a store ZIP, and update screenshots and description. Uploading or submitting the store item is a separate action; preparing these materials does not change the dashboard or establish publication.
+This package follows the owner's Chrome acceptance of the usage-percentage cards and color-alignment correction, with explicit authorization to complete independent review, merge passing PR #18 and build the Chrome Web Store ZIP. The owner selected **3.1.1** for the frequency feature and alignment patch. Uploading or submitting the store item is a separate action; preparing this package does not change the dashboard or establish publication.
 
 ## Item and release
 
 - Existing item: [Getter](https://chromewebstore.google.com/detail/getter/nkgabfmcijbajgobbeloaobhbhpacnim), ID `nkgabfmcijbajgobbeloaobhbhpacnim`. Update this item rather than creating another listing.
-- The public listing retrieved November 21, 2026 reports 2.1.0. That public page does not establish the highest uploaded draft or review state. Inspect the authenticated dashboard before uploading, especially if an earlier submission is still in review.
-- Release version: **3.0.0**, consistently recorded in the manifest, package and lockfile. The test-build version name is removed.
-- Owner-accepted UI: `2ba1a0a955f25e421ec80ee660ac3146919ccc8f`. The v3.0 preparation updates version/description metadata and documentation, and corrects four independently reviewed edge cases in Text, preference synchronization and picker interception. It preserves the accepted layout and intended normal interactions; regression checks cover the corrections. Record the final candidate, independent review, CI and merge SHA in the PR and release verification notes.
+- The public listing checked November 23, 2026 reports **3.0.0**, updated November 22, 2026. That public page does not establish the highest uploaded draft or review state. Inspect the authenticated dashboard before uploading; do not cancel an existing review automatically.
+- Release version: **3.1.1**, as requested by the owner and consistently recorded in the manifest, package and lockfile. This is higher than the currently published version, as required for a store update.
+- Owner-accepted behavior: `8330ef218095da877f9a9f0730a252339bae6309`. This includes usage percentages, most/least-used sorting and top-aligned color blocks beside wrapped labels. The release delta updates only version/documentation metadata. Compare the production build with the accepted test package to confirm that the manifest version is the only changed shipped content. Record the final independent review, CI and merge SHA in PR #18 and the release verification notes.
 - Support: **support@aptelum.com**. No support email is sent as part of preparation.
-- Privacy notice: [PRIVACY.md](https://github.com/asbillings07/Getter/blob/main/PRIVACY.md). Verify the merged v3.0 notice is publicly accessible before submission.
+- Privacy notice: [PRIVACY.md](https://github.com/asbillings07/Getter/blob/main/PRIVACY.md). Verify the merged privacy notice is publicly accessible before submission.
 
 ## Listing fields
 
@@ -29,7 +29,7 @@ Prepare five **1280 × 800** PNG screenshots using the actual merged extension U
 
 Recommended order:
 
-1. **Colors / popup** — quick access to the page palette, with Fonts and Images available alongside it.
+1. **Colors / popup** — the existing palette cards with usage percentages and the Most used first / Least used first control; Fonts and Images remain available alongside it.
 2. **Text / side panel** — the source selector, copy/save actions and extracted text.
 3. **Inspect / Layout** — compact selected-element header, dimensions, box model and layout values.
 4. **Inspect / Element** — attributes and a readable long value, in dark appearance; Styles and Effects remain visible section choices.
@@ -39,7 +39,7 @@ Use the existing approved Getter icon and exact Aptelum attribution asset. Scree
 
 ## Permissions and data disclosures
 
-| Permission    | Purpose in v3.0                                                                                                                        |
+| Permission    | Purpose in Getter                                                                                                                      |
 | ------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | activeTab     | Temporary access to the selected page when Getter is invoked from its toolbar action.                                                  |
 | scripting     | Run bounded extraction and the on-demand element picker in the permitted document; verify document identity before using results.      |
@@ -60,7 +60,7 @@ Dashboard limited-use, trader and account certifications must remain truthful ow
 
 No account, payment or credentials are needed. Requires Chrome 141 or newer.
 
-1. Open an ordinary webpage and invoke Getter from the toolbar. Explore Colors, Fonts and Images; copy a color and optionally request an image preview or download.
+1. Open an ordinary webpage and invoke Getter from the toolbar. Explore Colors and Fonts, check the usage percentages, and toggle Most used first / Least used first. Use the info icon to read the measurement limits. Confirm that short HEX and wrapped OKLCH color blocks align at the top. Copy a color, then explore Images and optionally request a preview or download.
 2. Open Text and compare Page, Main content and Selection. Find text, copy a block, copy the source and save a .txt file. Select text before opening the popup, or use the side panel and Extract selection.
 3. Choose Inspect. It opens in the side panel. Click several elements, then pause selection to interact normally with the page; resume to select again.
 4. Explore Styles, Layout, Effects and Element. Search within a section, show additional properties, copy a value and preview/copy CSS. Missing attributes are labeled Not set. The compact header shows the selected element name.
@@ -71,7 +71,7 @@ Frames, closed components and certain resources are inaccessible. Scans and expo
 
 ## Release and submission gates
 
-Before merge, record the exact immutable candidate, passing required `Getter checks`, resolved review threads, independent review and the owner's Chrome acceptance/merge authorization. Metadata-only v3.0 changes preserve the accepted UI; any material behavior change requires assessing renewed owner QA.
+Before merge, record the exact immutable candidate, passing required `Getter checks`, resolved review threads, independent review and the owner's Chrome acceptance/merge authorization. Release metadata changes preserve the accepted UI; any material behavior change requires assessing renewed owner QA.
 
 Before uploading, verify that the ZIP was built from merged source, contains production files at its root, matches its recorded checksum, and contains no tests, test-only grants or capture pages. Verify screenshot dimensions/content, listing copy and the public privacy/source links. Inspect the existing dashboard draft/review state and highest uploaded version before changing it. Do not cancel a pending review or alter distribution automatically.
 
@@ -81,7 +81,9 @@ Submission and publication require the applicable owner instruction for the conc
 
 GitHub's effective rules for `main` were read on November 21, 2026: pull requests, resolved review discussions and an up-to-date passing `Getter checks` result are required; branch deletion and force pushes are blocked. Formal approving review count is zero, consistent with the single-account setup. Independent source review and the owner's final human-QA merge decision remain recorded gates. Do not bypass these protections.
 
-## Official references checked November 21, 2026
+## Official references
+
+The public listing and update-version requirements were rechecked November 23, 2026. Other references below were checked November 21, 2026.
 
 - [Store images](https://developer.chrome.com/docs/webstore/images): 1280 × 800 or 640 × 400 screenshots; maximum five; demonstrate the actual experience.
 - [Listing fields](https://developer.chrome.com/docs/webstore/cws-dashboard-listing): detailed description, screenshots and related links.
