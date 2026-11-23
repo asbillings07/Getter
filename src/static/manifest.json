@@ -1,6 +1,6 @@
 {
   "name": "Getter",
-  "version": "3.1.1",
+  "version": "3.1.2",
   "description": "Explore colors, fonts, images, text and element styles in a popup or side panel. Created by Aptelum Labs.",
   "permissions": [
     "activeTab",
@@ -10,6 +10,7 @@
     "webNavigation",
     "sidePanel"
   ],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
   "background": {
     "service_worker": "background.js"
   },

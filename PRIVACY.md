@@ -1,16 +1,24 @@
 # Getter privacy notice
 
-Applies to Getter 3.1.1. This document does not establish store publication.
+Applies to Getter 3.1.2. This document does not establish store publication.
 
 Getter is created by Aptelum Labs. Contact [support@aptelum.com](mailto:support@aptelum.com) for support or privacy questions.
 
 ## What Getter reads and why
 
-When you open Getter from the toolbar, it reads the selected page and permitted frames to show colors, font styles, image information and visible text. Inspect reads computed styles, element attributes, text, links, image addresses and dimensions for the element you select. Page/frame addresses identify the right document and its hostname. Getter does not extract form values or passwords as a feature and does not collect browsing history in the background. Text and attributes can contain private information, including signed resource addresses: choose which pages and elements you inspect and which values you copy or save.
+When you open Getter or choose Scan again on a page Chrome permits, it reads the selected page and permitted frames to show colors, font styles, image information and visible text. Inspect reads computed styles, element attributes, text, links, image addresses and dimensions for the element you select. Page/frame addresses identify the right document and its hostname. Getter does not extract form values or passwords as a feature and does not collect browsing history in the background. Text and attributes can contain private information, including signed resource addresses: choose which pages and elements you inspect and which values you copy or save.
 
 Results stay in the open popup or side panel. Switching views temporarily transfers results through Chrome's in-memory session storage. Transfers can be reused for up to 30 seconds and are removed when consumed; an unused transfer is cleaned up by the worker or when the browser session ends. Getter does not save inspected-page history to disk or send results to Aptelum Labs or analytics services. Closing a popup discards its results and unsaved ZIP preparation, except for a pending view transfer. Chrome can retain a hidden side panel and its in-memory results; these remain local until cleared by navigation, a new scan, or Chrome releasing the view. Hiding the panel pauses element selection. Navigating clears old results. A side panel can remain open while you change tabs and attempts to read the newly selected page only where Chrome permits access.
 
 Preferences, including appearance, default workspace and automatic previews, are saved locally, not synchronized by Getter. Updates remove only identified legacy Getter cache keys while preserving preferences and unknown preference fields. The Inspect picker uses a temporary page overlay and removes its event handlers and overlay when selection pauses, Inspect closes, or the page changes; it does not rewrite the inspected elements.
+
+## Website access you control
+
+Getter initially uses temporary access from its toolbar action. For an unapproved regular website, choosing Scan again can ask Chrome for access to that site. Optional host patterns cover HTTP and HTTPS, but declaring them does not grant access. Getter requests a specific site only from an explicit scan action; it does not display a permission prompt just because you navigate.
+
+**Settings → Website access → Allow on all websites** requests access to regular HTTP/HTTPS websites. The switch is off until Chrome grants that access. Turning it off removes the broad grant and returns to per-site requests; Chrome also removes narrower site grants covered by that removal. Turning it on again requests access again, although Chrome may remember a previous approval and not repeat its prompt. The control reads Chrome’s permissions rather than a saved preference and updates when permissions change. Specific sites can also be removed in Chrome’s extension settings. Chrome settings, the Web Store and local files remain unsupported.
+
+Page scans and selected-element inspection remain local and bounded. A visible or retained side panel can attempt a scan when the active tab changes or access is granted; optional access does not add a browsing log or a background content collection service. Revoking access clears current results and stops Inspect. Any separate temporary toolbar grant Chrome still holds is governed by Chrome.
 
 ## Requests and actions you choose
 

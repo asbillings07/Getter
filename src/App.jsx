@@ -5,6 +5,7 @@ import { migrateStorage, preferences } from "./core/preferences.js";
 import TextView from "./components/TextView.jsx";
 import InspectView from "./components/InspectView.jsx";
 import Info from "./components/Info.jsx";
+import WebsiteAccess from "./components/WebsiteAccess.jsx";
 import { initialWorkspace, takeWorkspace } from "./core/workspace.js";
 import { colorLabel } from "./core/extract.js";
 import {
@@ -194,6 +195,7 @@ function App() {
     [lastTool, setLastTool] = useState("colors"),
     [switching, setSwitching] = useState(false);
   const [view, setView] = useState("colors"),
+    [focusWebsiteAccess, setFocusWebsiteAccess] = useState(false),
     [scan, setScan] = useState(empty),
     [options, setOptions] = useState(null),
     [notices, setNotices] = useState([]),
@@ -407,6 +409,11 @@ function App() {
       setPreviews(options?.images.loadPreviews || false);
     setView(next);
   }
+  function openSettings(focusAccess = false) {
+    returnView.current = view;
+    setFocusWebsiteAccess(focusAccess);
+    setView("settings");
+  }
   function updateFeature(name, value) {
     setFeatures((current) => ({ ...current, [name]: value }));
   }
@@ -550,10 +557,7 @@ function App() {
             className="settings-button"
             onClick={() => {
               if (view === "settings") chooseView(returnView.current);
-              else {
-                returnView.current = view;
-                setView("settings");
-              }
+              else openSettings();
             }}
             aria-pressed={view === "settings"}
           >
@@ -581,8 +585,12 @@ function App() {
         </span>
         <button
           className="text-button"
-          disabled={!options || scan.status === "loading" || exporting}
-          onClick={() => scanner.current.scan()}
+          disabled={
+            !options ||
+            ["loading", "permission"].includes(scan.status) ||
+            exporting
+          }
+          onClick={() => scanner.current.scan({ requestAccess: true })}
         >
           <Icon name="refresh" /> Scan again
         </button>
@@ -724,6 +732,7 @@ function App() {
                     ))}
                   </div>
                 </section>
+                <WebsiteAccess api={api} focusOnOpen={focusWebsiteAccess} />
                 <div className="preferences">
                   {Object.entries(labels).map(([key, label]) => {
                     const group =
@@ -785,10 +794,36 @@ function App() {
                   blocked: "This page cannot be inspected",
                   stale: "Scan again when ready",
                   error: "Unable to scan",
+                  access: "Ready to scan this site",
+                  permission: "Waiting for site access",
+                  denied: "Site access wasn’t allowed",
                 }[scan.status]
               }
             </h1>
             <p>{scan.message}</p>
+            {["access", "denied"].includes(scan.status) && (
+              <>
+                <a
+                  className="access-settings-link"
+                  href="#website-access"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    openSettings(true);
+                  }}
+                >
+                  Enable for all sites in Settings{" "}
+                  <span aria-hidden="true">→</span>
+                </a>
+                <div className="site-access-info">
+                  <Info label="About site access">
+                    Only this site is requested. Chrome remembers your choice;
+                    you can remove access in Chrome’s extension settings. To
+                    allow all websites, use Website access in Getter Settings.
+                  </Info>
+                  <span>About site access</span>
+                </div>
+              </>
+            )}
             {scan.status === "loading" && options && (
               <button
                 className="secondary"

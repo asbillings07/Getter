@@ -1,18 +1,6 @@
 import { extractPage, aggregate } from "./extract.js";
-export function supportedPage(url) {
-  try {
-    const u = new URL(url);
-    return (
-      ["http:", "https:"].includes(u.protocol) &&
-      u.hostname !== "chromewebstore.google.com" &&
-      !(
-        u.hostname === "chrome.google.com" && u.pathname.startsWith("/webstore")
-      )
-    );
-  } catch {
-    return false;
-  }
-}
+import { activePage, siteOrigin, supportedPage } from "./access.js";
+export { supportedPage } from "./access.js";
 export class ScanSession {
   constructor(api, onState, { followTabs = false } = {}) {
     this.followTabs = followTabs;
@@ -27,6 +15,8 @@ export class ScanSession {
     this.updated = (id, change) => {
       if (id === this.tabId && (change.status === "loading" || change.url))
         this.invalidate("The page changed. Scan again for current results.");
+      if (id === this.tabId && change.status === "complete")
+        this.refreshTarget();
     };
     this.activated = ({ windowId } = {}) => {
       if (this.windowId && windowId && this.windowId !== windowId) return;
@@ -37,13 +27,68 @@ export class ScanSession {
     };
     this.api.tabs.onUpdated.addListener(this.updated);
     this.api.tabs.onActivated.addListener(this.activated);
+    this.added = () => {
+      // The requesting scan owns its continuation after Chrome's prompt.
+      if (!this.requestingAccess) this.scan();
+    };
+    this.removed = () => {
+      this.invalidate(
+        "Website access changed. Scan again for current results.",
+      );
+      this.refreshTarget();
+    };
+    this.api.permissions?.onAdded.addListener(this.added);
+    this.api.permissions?.onRemoved.addListener(this.removed);
   }
   invalidate(message) {
     ++this.sequence;
     clearTimeout(this.timer);
     if (!this.disposed) this.onState({ status: "stale", message, data: null });
   }
-  async scan() {
+  pageState(tab, status = "access", message) {
+    return {
+      status,
+      message:
+        message ||
+        "Use Scan again to read this page. Chrome may ask for access to this site.",
+      data: null,
+      host:
+        tab?.url && supportedPage(tab.url)
+          ? new URL(tab.url).hostname
+          : undefined,
+      tabId: tab?.id,
+      windowId: tab?.windowId,
+      url: tab?.url,
+    };
+  }
+  async refreshTarget() {
+    const run = ++this.sequence;
+    clearTimeout(this.timer);
+    try {
+      const tab = await activePage(this.api, this.windowId);
+      if (this.disposed || run !== this.sequence) return;
+      this.tabId = tab?.id;
+      this.windowId = tab?.windowId;
+      if (tab?.url && supportedPage(tab.url)) {
+        this.onState(
+          this.pageState(
+            tab,
+            tab.accessible ? "stale" : "access",
+            tab.accessible
+              ? "The page changed. Scan again for current results."
+              : undefined,
+          ),
+        );
+      } else {
+        // Reuse normal restricted/unknown-page handling without requesting access.
+        this.scan();
+      }
+    } catch {
+      if (!this.disposed && run === this.sequence)
+        this.invalidate("The page changed. Scan again for current results.");
+    }
+  }
+  async scan({ requestAccess = false } = {}) {
     const run = ++this.sequence;
     clearTimeout(this.timer);
     const current = () => !this.disposed && run === this.sequence;
@@ -59,14 +104,12 @@ export class ScanSession {
         );
     }, 5000);
     try {
-      const [tab] = await this.api.tabs.query({
-        active: true,
-        currentWindow: true,
-      });
+      let tab = await activePage(this.api, this.windowId);
       if (!current()) return;
       this.tabId = tab?.id;
       this.windowId = tab?.windowId;
-      if (!tab || !supportedPage(tab.url)) {
+      if (!tab?.url) throw new Error("Current page unavailable");
+      if (!supportedPage(tab.url)) {
         clearTimeout(this.timer);
         this.onState({
           status: "blocked",
@@ -76,8 +119,65 @@ export class ScanSession {
         });
         return;
       }
+      if (!tab.accessible) {
+        clearTimeout(this.timer);
+        if (!requestAccess) {
+          this.onState(this.pageState(tab));
+          return;
+        }
+        this.onState(
+          this.pageState(
+            tab,
+            "permission",
+            "Allow access in Chrome to start the scan.",
+          ),
+        );
+        this.requestingAccess = true;
+        let granted;
+        try {
+          granted = await this.api.permissions.request({
+            origins: [siteOrigin(tab.url)],
+          });
+        } finally {
+          this.requestingAccess = false;
+        }
+        if (!current()) return;
+        if (!granted) {
+          this.onState(
+            this.pageState(
+              tab,
+              "denied",
+              "Getter hasn’t read this page. Use Scan again to try again.",
+            ),
+          );
+          return;
+        }
+        const now = await activePage(this.api, this.windowId);
+        if (!current()) return;
+        if (
+          !now ||
+          now.id !== tab.id ||
+          now.url !== tab.url ||
+          (tab.documentId && now.documentId !== tab.documentId)
+        ) {
+          this.invalidate("The page changed. Scan again for current results.");
+          return;
+        }
+        // Navigation events also invalidate this run, including same-URL reloads.
+        tab = now;
+        this.onState(this.pageState(tab, "loading", "Reading this page…"));
+        this.timer = setTimeout(() => {
+          if (current())
+            this.invalidate(
+              "The scan timed out. Try a smaller page or scan again.",
+            );
+        }, 5000);
+      }
       const results = await this.api.scripting.executeScript({
-        target: { tabId: tab.id },
+        target: {
+          tabId: tab.id,
+          ...(tab.documentId ? { documentIds: [tab.documentId] } : {}),
+        },
         func: extractPage,
         args: [{ maxNodes: 4000, maxMs: 100, maxItems: 500 }],
       });
@@ -187,5 +287,7 @@ export class ScanSession {
     clearTimeout(this.timer);
     this.api.tabs.onUpdated.removeListener(this.updated);
     this.api.tabs.onActivated.removeListener(this.activated);
+    this.api.permissions?.onAdded.removeListener(this.added);
+    this.api.permissions?.onRemoved.removeListener(this.removed);
   }
 }
