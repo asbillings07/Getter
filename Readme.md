@@ -4,6 +4,12 @@
 
 Getter is a Chrome Manifest V3 extension. Version **3.1.1** adds usage percentages and most/least-used sorting to the existing color and font cards, with top-aligned color blocks when labels wrap. The owner accepted the corrected Chrome test build and authorized merge after independent review and passing checks. Release metadata preserves that accepted behavior. Store submission and publication are separate steps. Chrome 141 or later is required for switching back from the side panel. See the [privacy notice](PRIVACY.md), [architecture and owner QA](docs/refresh.md), and [store submission preparation](docs/store-submission.md).
 
+## Website access update (unreleased)
+
+This branch adds **Settings → Website access → Allow on all websites** and fixes rescanning a new site in the side panel. The switch reflects Chrome’s actual permissions: it is off initially, turns on only after access is granted, and can revoke or request access again. With it off, **Scan again** can ask for just the current site and continue after approval. Chrome may remember a previous approval when access is requested again. No prompt appears solely because you navigate. Browser settings and the Web Store remain restricted.
+
+The candidate retains version 3.1.1 for unpacked Chrome testing. The prior 3.1.1 release approval does not cover this change; a new reviewed, owner-accepted candidate and a higher release version are required before a store update.
+
 ## Build and verify
 
 Use Node 24.18.1 (`.nvmrc`):
@@ -26,7 +32,7 @@ Open Getter from the toolbar on a regular webpage. In Settings, choose **Open Ge
 - **Text:** read Page, Main content, or Selection; find and copy individual blocks or copy/save the complete current source as `.txt`. Search filters the displayed blocks; full-text actions still include the entire extracted source. Select text on the page before opening the popup, or use the side panel and Extract selection.
 - **Inspect:** click an element to see Styles, Layout, Effects, and Element details. Selection stays active until paused or Escape is pressed. Pause lets you use the page normally while keeping the selected values; Resume selecting picks another element. Search and Show all properties apply to the current section. Copy CSS opens a preview; DOM attributes are copied separately.
 
-Results are local to the open workspace. A brief transfer through browser-session memory preserves them when switching views. Navigation clears old results; Scan again reads the new document. The side panel follows tab changes, but a new site may require opening Getter from its toolbar icon to grant access. Display preferences are stored locally.
+Results are local to the open workspace. A brief transfer through browser-session memory preserves them when switching views. Navigation clears old results; Scan again reads the new document. The side panel follows tab changes. On a new unapproved site, Scan again requests access for that site and reads it after approval; opening the popup is not required. Optional all-website access is controlled in Getter Settings. Display preferences are stored locally.
 
 Scans are bounded and report omitted frames or truncated results. Previews contact image hosts when enabled, including by the saved default. File-size reads and ZIP export require an explicit request. Image requests require HTTPS. File-size reads and downloads omit credentials/referrers, reject redirects, and respect host access and size limits. Inaccessible images are reported; partial ZIP counts are shown. Keep Getter open while the ZIP is prepared. Review the included/skipped counts, then choose Save ZIP. The native save dialog may close Getter; use browser Downloads to check the final result. See [architecture, limits and owner QA](docs/refresh.md).
 

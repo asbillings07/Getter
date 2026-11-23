@@ -173,15 +173,18 @@ test("restricted URL handling is based on parsed origins, not substrings", () =>
 test("scan rejects late results after same-URL navigation and removes listeners on close", async () => {
   const api = fakeBrowser(),
     states = [];
-  let resolve;
-  api.scripting.executeScript = () =>
-    new Promise((r) => {
+  let resolve, begin;
+  const started = new Promise((r) => (begin = r));
+  api.scripting.executeScript = () => {
+    begin();
+    return new Promise((r) => {
       resolve = r;
     });
+  };
   const s = new ScanSession(api, (state) => states.push(state));
   s.start();
   const work = s.scan();
-  await Promise.resolve();
+  await started;
   api.tabs.onUpdated.fire(7, { status: "loading" });
   resolve([{ frameId: 0, documentId: "old", result: payload() }]);
   await work;

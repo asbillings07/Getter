@@ -91,6 +91,9 @@ async function launch(
     staleImageRace = false,
     nativePopup = false,
     popupScreen = "1600x1200",
+    fixtureHostGrants = true,
+    permissionFixture = false,
+    denyPermissionRequests = false,
   } = {},
 ) {
   const extension = testInfo.outputPath("extension");
@@ -101,7 +104,8 @@ async function launch(
   );
   // Test-only grants let an inactive popup exercise real injection against owned fixtures.
   // The shipping manifest is checked separately and has NO host permissions.
-  manifest.host_permissions = ["http://127.0.0.1/*", "http://localhost/*"];
+  if (fixtureHostGrants)
+    manifest.host_permissions = ["http://127.0.0.1/*", "http://localhost/*"];
   await writeFile(
     path.join(extension, "manifest.json"),
     JSON.stringify(manifest),
@@ -124,6 +128,77 @@ async function launch(
       ],
     },
   );
+  if (permissionFixture || denyPermissionRequests) {
+    await context.addInitScript(
+      ({ permissionFixture }) => {
+        if (!globalThis.chrome?.permissions) return;
+        const state = {
+          allowed: false,
+          decision: "deny",
+          requests: [],
+          removals: [],
+          deferred: null,
+        };
+        window.websiteAccessFixture = state;
+        if (!permissionFixture) {
+          // Leave real host permission enforcement intact; only decline the prompt.
+          chrome.permissions.request = async (request) => {
+            state.requests.push(request);
+            return false;
+          };
+          return;
+        }
+        // UI-only permission responses over already-granted owned fixture hosts.
+        // Native Chrome permission-boundary verification is recorded separately.
+        const listeners = { added: new Set(), removed: new Set() };
+        chrome.permissions.onAdded.addListener = (fn) =>
+          listeners.added.add(fn);
+        chrome.permissions.onAdded.removeListener = (fn) =>
+          listeners.added.delete(fn);
+        chrome.permissions.onRemoved.addListener = (fn) =>
+          listeners.removed.add(fn);
+        chrome.permissions.onRemoved.removeListener = (fn) =>
+          listeners.removed.delete(fn);
+        state.external = (allowed) => {
+          state.allowed = allowed;
+          for (const listener of listeners[allowed ? "added" : "removed"])
+            listener({ origins: ["http://*/*", "https://*/*"] });
+        };
+        chrome.permissions.contains = async () => {
+          if (state.deferContains && --state.deferContains === 0) {
+            const allowed = state.allowed;
+            return new Promise((resolve) => {
+              state.releaseRead = () => resolve(allowed);
+            });
+          }
+          return state.allowed;
+        };
+        chrome.permissions.request = async (request) => {
+          state.requests.push(request);
+          if (state.decision === "error")
+            throw Error("Synthetic permission failure");
+          if (state.decision === "defer")
+            return new Promise((resolve) => {
+              state.deferred = (allowed) => {
+                state.external(allowed);
+                resolve(allowed);
+              };
+            });
+          if (state.decision === "allow") {
+            state.external(true);
+            return true;
+          }
+          return false;
+        };
+        chrome.permissions.remove = async (request) => {
+          state.removals.push(request);
+          state.external(false);
+          return true;
+        };
+      },
+      { permissionFixture },
+    );
+  }
   // HTTPS fixture routes exercise browser URL/CSP/redirect behavior without
   // depending on a public host. Fulfilment is synthetic, not a TLS-server test.
   await context.route(`${imageOrigin}/**`, async (route) => {
@@ -205,7 +280,159 @@ async function launch(
     openPanel: () => openPopup("sidepanel.html"),
   };
 }
-test("toolbar popup sizes itself without a test-supplied viewport", async ({}, info) => {
+test("ungranted side-panel sites are identified without automatic permission requests", async ({}, info) => {
+  const app = await launch(info, {
+    fixtureHostGrants: false,
+    denyPermissionRequests: true,
+  });
+  try {
+    const panel = await app.openPanel();
+    await panel.setViewportSize({ width: 400, height: 820 });
+    await expect(
+      panel.getByRole("heading", { name: "Ready to scan this site" }),
+    ).toBeVisible();
+    await expect(panel.locator(".site-identity")).toContainText("127.0.0.1");
+    expect(await panel.evaluate(() => websiteAccessFixture.requests)).toEqual(
+      [],
+    );
+    await app.page.goto(origin.replace("127.0.0.1", "localhost"));
+    await expect(
+      panel.getByRole("heading", { name: "Ready to scan this site" }),
+    ).toBeVisible();
+    await expect(panel.locator(".site-identity")).toContainText("localhost");
+    expect(await panel.evaluate(() => websiteAccessFixture.requests)).toEqual(
+      [],
+    );
+    await panel.getByRole("button", { name: /Scan again/ }).click();
+    await expect(
+      panel.getByRole("heading", { name: "Site access wasn’t allowed" }),
+    ).toBeVisible();
+    expect(await panel.evaluate(() => websiteAccessFixture.requests)).toEqual([
+      { origins: ["http://localhost/*"] },
+    ]);
+    await expect(panel.locator(".swatch")).toHaveCount(0);
+    await app.page.goto("chrome://settings");
+    await panel.getByRole("button", { name: /Scan again/ }).click();
+    await expect(
+      panel.getByRole("heading", { name: "This page cannot be inspected" }),
+    ).toBeVisible();
+    expect(
+      await panel.evaluate(() => websiteAccessFixture.requests.length),
+    ).toBe(1);
+    await panel.screenshot({
+      path: info.outputPath("restricted-without-host-access.png"),
+    });
+  } finally {
+    await app.context.close();
+  }
+});
+
+for (const mode of ["popup", "panel"]) {
+  test(`${mode} website access requires confirmation and supports revoke, regrant and external changes`, async ({}, info) => {
+    const app = await launch(info, { permissionFixture: true });
+    try {
+      const view = await (mode === "panel" ? app.openPanel() : app.openPopup());
+      await view.setViewportSize({
+        width: mode === "panel" ? 400 : 720,
+        height: mode === "panel" ? 820 : 600,
+      });
+      await view.getByRole("button", { name: "Settings", exact: true }).click();
+      const toggle = view.getByRole("switch", {
+        name: "Allow on all websites",
+        exact: true,
+      });
+      await expect(toggle).toBeEnabled();
+      await expect(toggle).not.toBeChecked();
+      await toggle.click();
+      await expect(
+        view.getByText("Access wasn’t allowed. This setting is still off."),
+      ).toBeVisible();
+      await expect(toggle).not.toBeChecked();
+      await view.evaluate(() => (websiteAccessFixture.decision = "defer"));
+      await toggle.click();
+      await expect(toggle).toBeDisabled();
+      await expect(toggle).not.toBeChecked();
+      await view.evaluate(() => websiteAccessFixture.deferred(true));
+      await expect(toggle).toBeChecked();
+      await expect(toggle).toBeEnabled();
+      expect(await view.evaluate(() => websiteAccessFixture.requests)).toEqual([
+        { origins: ["http://*/*", "https://*/*"] },
+        { origins: ["http://*/*", "https://*/*"] },
+      ]);
+      await toggle.click();
+      await expect(toggle).not.toBeChecked();
+      await expect(
+        view.getByText(
+          "All-website access removed. Per-site requests are available.",
+        ),
+      ).toBeVisible();
+      expect(await view.evaluate(() => websiteAccessFixture.removals)).toEqual([
+        { origins: ["http://*/*", "https://*/*"] },
+      ]);
+      await view.evaluate(() => (websiteAccessFixture.decision = "allow"));
+      await toggle.click();
+      await expect(toggle).toBeChecked();
+      await view.evaluate(() => websiteAccessFixture.external(false));
+      await expect(toggle).not.toBeChecked();
+      await view.evaluate(() => websiteAccessFixture.external(true));
+      await expect(toggle).toBeChecked();
+      await view.getByRole("button", { name: "Colors", exact: true }).click();
+      await view.getByRole("button", { name: "Settings", exact: true }).click();
+      await expect(toggle).toBeChecked();
+      for (const appearance of ["light", "dark"]) {
+        await view.emulateMedia({ colorScheme: appearance });
+        await view.screenshot({
+          path: info.outputPath(`website-access-${mode}-${appearance}.png`),
+        });
+        await view
+          .getByRole("button", { name: "About website access", exact: true })
+          .click();
+        const tip = view
+          .getByRole("tooltip")
+          .filter({ hasText: "Chrome asks for access" });
+        await expect(tip).toBeInViewport({ ratio: 1 });
+        await view
+          .getByRole("button", { name: "About website access", exact: true })
+          .press("Escape");
+      }
+      // A newer Chrome change must win over an older permission read, including
+      // the message displayed after a pending removal finishes.
+      await view.evaluate(() => {
+        websiteAccessFixture.deferContains = 2;
+      });
+      await toggle.click();
+      await expect
+        .poll(() =>
+          view.evaluate(() => typeof websiteAccessFixture.releaseRead),
+        )
+        .toBe("function");
+      await view.evaluate(() => websiteAccessFixture.external(true));
+      await expect(toggle).toBeChecked();
+      await view.evaluate(() => websiteAccessFixture.releaseRead());
+      await expect(toggle).toBeEnabled();
+      await expect(toggle).toBeChecked();
+      await expect(
+        view.getByText(
+          "All-website access removed. Per-site requests are available.",
+        ),
+      ).toHaveCount(0);
+      await view.evaluate(() => {
+        websiteAccessFixture.external(false);
+        websiteAccessFixture.decision = "error";
+      });
+      await toggle.click();
+      await expect(
+        view.getByText("Chrome could not change website access. Try again."),
+      ).toBeVisible();
+      await expect(toggle).not.toBeChecked();
+      await expect(toggle).toBeEnabled();
+    } finally {
+      await app.context.close();
+    }
+  });
+}
+
+test("toolbar popup sizes itself and keeps all settings reachable without a test-supplied viewport", async ({}, info) => {
   const app = await launch(info, { nativePopup: true });
   try {
     // This inactive tab only observes the separate toolbar view. It does not size it.
@@ -256,15 +483,16 @@ test("toolbar popup sizes itself without a test-supplied viewport", async ({}, i
           const doc = chrome.extension.getViews({ type: "popup" })[0].document;
           const main = doc.querySelector("main").getBoundingClientRect();
           return [...doc.querySelectorAll(".setting")].filter((el) => {
+            el.scrollIntoView({ block: "nearest" });
             const rect = el.getBoundingClientRect();
-            return rect.top >= main.top && rect.bottom <= main.bottom;
+            return rect.top >= main.top - 1 && rect.bottom <= main.bottom + 1;
           }).length;
         }),
       )
-      .toBe(11);
+      .toBe(12);
     await writeFile(
       info.outputPath("toolbar-sizing.json"),
-      JSON.stringify({ palette, visiblePreferences: 11 }, null, 2),
+      JSON.stringify({ palette, reachableSettings: 12 }, null, 2),
     );
   } finally {
     await app.context.close();
@@ -451,13 +679,14 @@ for (const popupScreen of ["1600x1200", "800x600"]) {
         .poll(() =>
           control.evaluate(() => {
             const popup = chrome.extension.getViews({ type: "popup" })[0];
-            return popup.document.querySelectorAll(".setting").length;
+            return popup.document.querySelectorAll(".preferences .setting")
+              .length;
           }),
         )
         .toBe(11);
       await control.evaluate(() => {
         const popup = chrome.extension.getViews({ type: "popup" })[0];
-        popup.document.querySelector(".setting input").click();
+        popup.document.querySelector(".preferences .setting input").click();
       });
       await expect.poll(readNotice).toMatchObject({
         text: "Preference saved.",
@@ -694,7 +923,7 @@ test("images load only on request; ZIP has a real download outcome", async ({}, 
     await app.context.close();
   }
 });
-test("roomier popup keeps labeled Settings and preferences visible in both appearances", async ({}, info) => {
+test("popup keeps labeled Settings and all preferences reachable in both appearances", async ({}, info) => {
   const app = await launch(info);
   try {
     const popup = await app.openPopup();
@@ -716,22 +945,26 @@ test("roomier popup keeps labeled Settings and preferences visible in both appea
       );
       await settings.click();
       await expect(settings).toHaveAttribute("aria-pressed", "true");
-      await expect(popup.getByRole("switch")).toHaveCount(11);
+      await expect(popup.getByRole("switch")).toHaveCount(12);
       await expect(
         popup.getByRole("radiogroup", { name: "Appearance" }),
       ).toBeInViewport({ ratio: 1 });
       const bounds = await popup.evaluate(() => {
         const main = document.querySelector("main").getBoundingClientRect();
-        const preferences = [...document.querySelectorAll(".setting")].map(
-          (el) => el.getBoundingClientRect(),
-        );
+        const preferences = [
+          ...document.querySelectorAll(".preferences .setting"),
+        ].map((el) => {
+          el.scrollIntoView({ block: "nearest" });
+          return el.getBoundingClientRect();
+        });
         return {
           width: document.body.getBoundingClientRect().width,
           height: document.querySelector(".window").getBoundingClientRect()
             .height,
           horizontalOverflow: document.documentElement.scrollWidth > innerWidth,
-          visiblePreferences: preferences.filter(
-            (rect) => rect.top >= main.top && rect.bottom <= main.bottom,
+          reachablePreferences: preferences.filter(
+            (rect) =>
+              rect.top >= main.top - 1 && rect.bottom <= main.bottom + 1,
           ).length,
           preferenceCount: preferences.length,
         };
@@ -740,7 +973,7 @@ test("roomier popup keeps labeled Settings and preferences visible in both appea
         width: 720,
         height: 600,
         horizontalOverflow: false,
-        visiblePreferences: 11,
+        reachablePreferences: 11,
         preferenceCount: 11,
       });
       await popup.getByLabel("Font size", { exact: true }).click();

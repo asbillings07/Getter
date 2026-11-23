@@ -19,7 +19,7 @@ assert.deepEqual(m.permissions, [
   "sidePanel",
 ]);
 assert.equal(m.host_permissions, undefined);
-assert.equal(m.optional_host_permissions, undefined);
+assert.deepEqual(m.optional_host_permissions, ["http://*/*", "https://*/*"]);
 assert.equal(m.web_accessible_resources, undefined);
 assert.equal(
   m.content_security_policy.extension_pages,
