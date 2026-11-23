@@ -50,6 +50,19 @@ test.beforeAll(async () => {
         </style></head><body>${"<p>Frequent style</p>".repeat(6)}${'<p class="alternate">Alternate style</p>'.repeat(2)}<h2>Heading</h2></body></html>`);
       return;
     }
+    if (req.url === "/mixed-colors") {
+      res.setHeader("Content-Type", "text/html");
+      res.end(`<!doctype html><html><head><title>Mixed color labels</title></head><body style="color:#000;font:16px Arial">
+        ${'<p style="color:oklch(0.717 0.1648 250.794)">Blue</p>'.repeat(8)}
+        ${'<p style="color:#000">Black</p>'.repeat(6)}
+        ${'<p style="color:#7d7d7d">Gray</p>'.repeat(6)}
+        ${'<p style="color:oklch(0.6936 0.2223 3.91)">Pink</p>'.repeat(5)}
+        ${'<p style="color:oklch(0.731 0.2158 148.29)">Green</p>'.repeat(4)}
+        ${'<p style="color:#1f1f1f">Dark</p>'.repeat(3)}
+        ${'<p style="color:oklch(0.6987 0.2037 309.51)">Purple</p>'.repeat(2)}
+        </body></html>`);
+      return;
+    }
     if (req.url === "/workbench") {
       res.setHeader("Content-Type", "text/html");
       res.end(`<!doctype html><html><head><title>Getter workspace fixture</title><style>
@@ -1939,6 +1952,95 @@ for (const mode of ["popup", "panel"]) {
           () => document.documentElement.scrollWidth > innerWidth,
         ),
       ).toBe(false);
+    } finally {
+      await app.context.close();
+    }
+  });
+}
+
+for (const mode of ["popup", "panel"]) {
+  test(`${mode} aligns short and wrapped color cards at the top in both appearances`, async ({}, info) => {
+    const app = await launch(info);
+    try {
+      await app.page.goto(`${origin}/mixed-colors`);
+      const view = await (mode === "panel" ? app.openPanel() : app.openPopup());
+      await view.setViewportSize({
+        width: mode === "panel" ? 400 : 720,
+        height: mode === "panel" ? 820 : 600,
+      });
+      await expect(view.locator(".swatch")).toHaveCount(7);
+      for (const appearance of ["Light", "Dark"]) {
+        await view
+          .getByRole("button", { name: "Settings", exact: true })
+          .click();
+        await view
+          .locator(".appearance-options label")
+          .filter({ hasText: appearance })
+          .click();
+        await view
+          .getByRole("button", { name: "Settings", exact: true })
+          .click();
+        await expect(view.locator(".notice")).toHaveCount(0);
+        await view.screenshot({
+          path: info.outputPath(
+            `${mode}-${appearance.toLowerCase()}-mixed-colors.png`,
+          ),
+        });
+        const cards = await view.locator(".swatch").evaluateAll((cards) =>
+          cards.map((card) => {
+            const swatch = card.querySelector(".color"),
+              label = card.querySelector(".color-label");
+            const c = card.getBoundingClientRect(),
+              s = swatch.getBoundingClientRect(),
+              l = label.getBoundingClientRect();
+            return {
+              row: c.top,
+              gap: s.top - c.top,
+              height: s.height,
+              widthGap: c.width - s.width,
+              labelGap: l.top - s.bottom,
+              labelHeight: l.height,
+              overflow: card.scrollWidth > card.clientWidth,
+            };
+          }),
+        );
+        // Long and short labels must share a row to reproduce the centering bug.
+        const firstRow = cards.filter((c) => c.row === cards[0].row);
+        expect(
+          new Set(firstRow.map((c) => c.labelHeight)).size,
+        ).toBeGreaterThan(1);
+        for (const card of cards) {
+          expect(card.gap).toBeCloseTo(1, 1);
+          expect(card.height).toBeCloseTo(65, 1);
+          expect(card.widthGap).toBeCloseTo(2, 1);
+          expect(card.labelGap).toBeCloseTo(0, 1);
+          expect(card.overflow).toBe(false);
+        }
+      }
+      await view
+        .getByRole("button", { name: "Most used first", exact: true })
+        .click();
+      const gaps = await view
+        .locator(".swatch")
+        .evaluateAll((cards) =>
+          cards.map(
+            (card) =>
+              card.querySelector(".color").getBoundingClientRect().top -
+              card.getBoundingClientRect().top,
+          ),
+        );
+      expect(gaps.every((gap) => Math.abs(gap - 1) < 0.1)).toBe(true);
+      await view.evaluate(() => {
+        navigator.clipboard.writeText = async (value) => {
+          window.copiedMixedColor = value;
+        };
+      });
+      const modern = view.locator('.swatch[aria-label^="Copy oklch("]').first();
+      const expected = (await modern.getAttribute("aria-label")).slice(5);
+      await modern.click();
+      await expect
+        .poll(() => view.evaluate(() => window.copiedMixedColor))
+        .toBe(expected);
     } finally {
       await app.context.close();
     }
