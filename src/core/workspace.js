@@ -1,4 +1,5 @@
 export const initialWorkspace = () => ({
+  usageSort: { colors: "most", fonts: "most" },
   text: { scope: "page", query: "", result: null },
   inspect: {
     section: "styles",

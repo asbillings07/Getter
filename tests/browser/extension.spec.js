@@ -41,6 +41,15 @@ test.beforeAll(async () => {
       res.end('<p style="color:rgb(10,20,30)">Frame text</p>');
       return;
     }
+    if (req.url === "/usage") {
+      res.setHeader("Content-Type", "text/html");
+      res.end(`<!doctype html><html><head><title>Usage fixture</title><style>
+        body{color:#17253b;background:#fff;font:16px Arial}
+        p{color:#187c70}p.alternate{color:#2059be;font-family:Georgia}
+        h2{font-family:Georgia}
+        </style></head><body>${"<p>Frequent style</p>".repeat(6)}${'<p class="alternate">Alternate style</p>'.repeat(2)}<h2>Heading</h2></body></html>`);
+      return;
+    }
     if (req.url === "/workbench") {
       res.setHeader("Content-Type", "text/html");
       res.end(`<!doctype html><html><head><title>Getter workspace fixture</title><style>
@@ -1580,6 +1589,9 @@ test("native popup and side panel transfer Text state and keep Inspect in the pa
     await expect
       .poll(async () => JSON.stringify(await read()))
       .toContain("Page palette");
+    await click("popup", ".sort-button");
+    await click("popup", ".tabs button:nth-child(2)");
+    await click("popup", ".sort-button");
     await click("popup", ".tabs button:nth-child(4)");
     await expect
       .poll(async () => JSON.stringify(await read()))
@@ -1604,6 +1616,21 @@ test("native popup and side panel transfer Text state and keep Inspect in the pa
           }),
         ]),
       );
+    await click("panel", ".tabs button:nth-child(1)");
+    await expect
+      .poll(
+        async () =>
+          (await read()).find((v) => v.path === "/sidepanel.html")?.text,
+      )
+      .toContain("Least used first");
+    await click("panel", ".tabs button:nth-child(2)");
+    await expect
+      .poll(
+        async () =>
+          (await read()).find((v) => v.path === "/sidepanel.html")?.text,
+      )
+      .toContain("Least used first");
+    await click("panel", ".tabs button:nth-child(4)");
     await click("panel", ".mode-button");
     await expect
       .poll(async () => await read())
@@ -1797,3 +1824,123 @@ test("Text excludes hidden embedded content from results, clipboard and saved te
     await app.context.close();
   }
 });
+
+for (const mode of ["popup", "panel"]) {
+  test(`${mode} keeps the existing cards with usage percentages, sorting and a consistent font total`, async ({}, info) => {
+    const app = await launch(info);
+    try {
+      await app.page.goto(`${origin}/usage`);
+      const view = await (mode === "panel" ? app.openPanel() : app.openPopup());
+      await view.setViewportSize({
+        width: mode === "panel" ? 400 : 720,
+        height: mode === "panel" ? 820 : 600,
+      });
+      await expect(view.locator(".swatch")).toHaveCount(4);
+      const counts = view.locator(".swatch .usage-frequency");
+      await expect(counts).toHaveText([
+        "54.5% of color uses",
+        "18.2% of color uses",
+        "18.2% of color uses",
+        "9.1% of color uses",
+      ]);
+      const columns = await view
+        .locator(".swatches")
+        .evaluate(
+          (el) => getComputedStyle(el).gridTemplateColumns.split(" ").length,
+        );
+      expect(columns).toBe(mode === "panel" ? 2 : 4);
+      await view.evaluate(() => {
+        navigator.clipboard.writeText = async (value) => {
+          window.copiedColor = value;
+        };
+      });
+      await view
+        .getByRole("button", { name: "Copy #187C70", exact: true })
+        .click();
+      await expect
+        .poll(() => view.evaluate(() => window.copiedColor))
+        .toBe("#187C70");
+      const sort = view.getByRole("button", {
+        name: "Most used first",
+        exact: true,
+      });
+      await sort.focus();
+      await sort.press("Enter");
+      await expect(
+        view.getByRole("button", { name: "Least used first", exact: true }),
+      ).toBeFocused();
+      await expect(counts).toHaveText([
+        "9.1% of color uses",
+        "18.2% of color uses",
+        "18.2% of color uses",
+        "54.5% of color uses",
+      ]);
+      await view.getByRole("button", { name: "Fonts", exact: true }).click();
+      await expect(view.locator(".font")).toHaveCount(3);
+      await expect(view.locator(".font .usage-frequency")).toHaveText([
+        " · 60.0% of font uses",
+        " · 10.0% of font uses",
+        " · 10.0% of font uses",
+      ]);
+      await expect(view.locator(".font").first()).toContainText("Arial");
+      await expect(
+        view.locator(".font").first().locator("dl > div"),
+      ).toHaveCount(5);
+      await view
+        .getByRole("button", { name: "Most used first", exact: true })
+        .click();
+      await expect(view.locator(".font .usage-frequency")).toHaveText([
+        " · 10.0% of font uses",
+        " · 10.0% of font uses",
+        " · 60.0% of font uses",
+      ]);
+      await view.getByRole("button", { name: "Settings", exact: true }).click();
+      await view
+        .getByRole("switch", { name: "All font styles", exact: true })
+        .check();
+      if (mode === "panel")
+        await view
+          .locator(".appearance-options label")
+          .filter({ hasText: "Dark" })
+          .click();
+      await view.getByRole("button", { name: "Settings", exact: true }).click();
+      await expect(view.locator(".font")).toHaveCount(4);
+      await expect(view.locator(".font .usage-frequency")).toHaveText([
+        " · 10.0% of font uses",
+        " · 10.0% of font uses",
+        " · 20.0% of font uses",
+        " · 60.0% of font uses",
+      ]);
+      await view
+        .getByRole("button", { name: "Least used first", exact: true })
+        .click();
+      await view.screenshot({
+        path: info.outputPath(`${mode}-font-usage.png`),
+      });
+      await view.getByRole("button", { name: "Colors", exact: true }).click();
+      await expect(
+        view.getByRole("button", { name: "Least used first", exact: true }),
+      ).toBeVisible();
+      await view
+        .getByRole("button", { name: "Least used first", exact: true })
+        .click();
+      await view.screenshot({
+        path: info.outputPath(`${mode}-color-usage.png`),
+      });
+      await expect(view.locator(".usage-frequency").first()).toContainText(
+        "54.5%",
+      );
+      await view
+        .getByRole("button", { name: "About usage percentages", exact: true })
+        .click();
+      await expect(view.getByText(/not screen area/)).toBeVisible();
+      expect(
+        await view.evaluate(
+          () => document.documentElement.scrollWidth > innerWidth,
+        ),
+      ).toBe(false);
+    } finally {
+      await app.context.close();
+    }
+  });
+}

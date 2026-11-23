@@ -8,6 +8,13 @@ import Info from "./components/Info.jsx";
 import { initialWorkspace, takeWorkspace } from "./core/workspace.js";
 import { colorLabel } from "./core/extract.js";
 import {
+  displayedFonts,
+  fontStyleKey,
+  sortByUsage,
+  totalUses,
+  usagePercentage,
+} from "./core/usage.js";
+import {
   collectImages,
   isSecureImageUrl,
   DownloadTracker,
@@ -505,12 +512,15 @@ function App() {
         : view === "fonts"
           ? data?.fonts
           : data?.images) || [];
-  const shownFonts = options?.fonts.detailed
-    ? data?.fonts
-    : (data?.fonts || []).filter(
-        (font, index, all) =>
-          all.findIndex((item) => item.tag === font.tag) === index,
-      );
+  const usageSort = features.usageSort || { colors: "most", fonts: "most" };
+  const shownColors = sortByUsage(data?.colors, usageSort.colors);
+  const shownFonts = displayedFonts(
+    data?.fonts,
+    options?.fonts.detailed,
+    usageSort.fonts,
+  );
+  const colorTotal = data?.usageTotals?.colors ?? totalUses(data?.colors);
+  const fontTotal = data?.usageTotals?.fonts ?? totalUses(data?.fonts);
   return (
     <div className="window">
       <header className="top">
@@ -802,8 +812,13 @@ function App() {
                   }
                 </h1>
                 {["colors", "fonts"].includes(view) && (
-                  <Info label="How to copy values">
+                  <Info label="About usage percentages">
                     Click a value to copy it.
+                    {view === "colors"
+                      ? " Each percentage is this color’s share of detected text and background color uses, not screen area. An inspected element can contribute one text color and one background color."
+                      : " Each percentage is this font style’s share of captured font-style uses. The total includes all captured styles, even when some cards are hidden. Uses reflect inspected elements, not text length."}{" "}
+                    Percentages are rounded. Partial scans cover only the
+                    content Getter could read.
                   </Info>
                 )}
               </div>
@@ -812,6 +827,25 @@ function App() {
                 {view === "fonts" ? "styles" : view}
               </span>
             </div>
+            {["colors", "fonts"].includes(view) && current.length > 0 && (
+              <div className="usage-order">
+                <button
+                  className="sort-button"
+                  title={`Sort ${usageSort[view] === "least" ? "most" : "least"} used first`}
+                  onClick={() =>
+                    updateFeature("usageSort", {
+                      ...usageSort,
+                      [view]: usageSort[view] === "least" ? "most" : "least",
+                    })
+                  }
+                >
+                  <span aria-hidden="true">
+                    {usageSort[view] === "least" ? "↑" : "↓"}
+                  </span>
+                  {usageSort[view] === "least" ? "Least" : "Most"} used first
+                </button>
+              </div>
+            )}
             {scan.message && (
               <p className="scan-note" role="status">
                 {scan.message}
@@ -828,7 +862,7 @@ function App() {
             ) : view === "colors" ? (
               <>
                 <div className="swatches">
-                  {current.map((color) => {
+                  {shownColors.map((color) => {
                     const value = options.colors.hex
                       ? colorLabel(color.value)
                       : color.value;
@@ -838,6 +872,7 @@ function App() {
                         className="swatch"
                         onClick={() => copy(value)}
                         aria-label={`Copy ${value}`}
+                        aria-description={`${usagePercentage(color.count, colorTotal)} of color uses`}
                       >
                         <span
                           className="color"
@@ -849,8 +884,10 @@ function App() {
                         />
                         <span className="color-label">
                           {value}
-                          <small>
-                            {color.kinds.join(" / ")} · {color.count}
+                          <small>{color.kinds.join(" / ")}</small>
+                          <small className="usage-frequency">
+                            {usagePercentage(color.count, colorTotal)} of color
+                            uses
                           </small>
                         </span>
                       </button>
@@ -860,13 +897,19 @@ function App() {
               </>
             ) : view === "fonts" ? (
               <div>
-                {shownFonts.map((font, index) => (
-                  <article className="font" key={index}>
+                {shownFonts.map((font) => (
+                  <article className="font" key={fontStyleKey(font)}>
                     <div className="font-summary">
                       <h2 style={{ fontFamily: font.fontFamily }}>
                         Design is in the details.
                       </h2>
-                      <p>{font.tag.toUpperCase()}</p>
+                      <p>
+                        {font.tag.toUpperCase()}
+                        <span className="usage-frequency">
+                          {" · "}
+                          {usagePercentage(font.count, fontTotal)} of font uses
+                        </span>
+                      </p>
                       {options.fonts.fontFamily && (
                         <a
                           href={`https://fonts.google.com/?query=${encodeURIComponent(font.fontFamily.split(",")[0].replaceAll('"', "").replaceAll("'", ""))}`}

@@ -224,6 +224,33 @@ h2 {
   color: var(--dim);
   white-space: nowrap;
 }
+.heading:has(+ .usage-order) {
+  margin-bottom: 4px;
+}
+.usage-order {
+  display: flex;
+  margin-bottom: 7px;
+}
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--accent);
+  font-size: 12px;
+  line-height: 18px;
+}
+.sort-button:hover {
+  background: var(--active);
+}
+.color-label .usage-frequency,
+.font p .usage-frequency {
+  color: var(--ink);
+  font-weight: 600;
+}
 .swatches {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
