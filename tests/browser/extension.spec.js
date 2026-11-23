@@ -328,6 +328,97 @@ test("ungranted side-panel sites are identified without automatic permission req
 });
 
 for (const mode of ["popup", "panel"]) {
+  test(`${mode} access settings link focuses the all-websites switch without requesting permission`, async ({}, info) => {
+    const app = await launch(info, {
+      fixtureHostGrants: false,
+      denyPermissionRequests: true,
+    });
+    try {
+      const view = await (mode === "panel" ? app.openPanel() : app.openPopup());
+      await view.setViewportSize({
+        width: mode === "panel" ? 400 : 720,
+        height: mode === "panel" ? 820 : 600,
+      });
+      await view.getByRole("button", { name: "Fonts", exact: true }).click();
+      const link = view.getByRole("link", {
+        name: "Enable for all sites in Settings",
+      });
+      const toggle = view.getByRole("switch", {
+        name: "Allow on all websites",
+        exact: true,
+      });
+      const settings = view.getByRole("button", {
+        name: "Settings",
+        exact: true,
+      });
+      for (const status of ["access", "denied"]) {
+        if (status === "denied") {
+          await view.getByRole("button", { name: /Scan again/ }).click();
+          await expect(
+            view.getByRole("heading", { name: "Site access wasn’t allowed" }),
+          ).toBeVisible();
+        }
+        const requestsBefore = await view.evaluate(
+          () => websiteAccessFixture.requests.length,
+        );
+        await expect(link).toBeInViewport({ ratio: 1 });
+        for (const appearance of ["light", "dark"]) {
+          await view.emulateMedia({ colorScheme: appearance });
+          await view.screenshot({
+            path: info.outputPath(
+              `access-link-${mode}-${status}-${appearance}.png`,
+            ),
+          });
+        }
+        if (status === "access") {
+          await link.focus();
+          await link.press("Enter");
+        } else await link.click();
+        await expect(
+          view.getByRole("heading", { name: "Settings", exact: true }),
+        ).toBeVisible();
+        await expect(toggle).toBeEnabled();
+        await expect(toggle).toBeFocused();
+        await expect(toggle).not.toBeChecked();
+        await expect(toggle).toBeInViewport({ ratio: 1 });
+        expect(
+          await view.evaluate(() => websiteAccessFixture.requests.length),
+        ).toBe(requestsBefore);
+        if (status === "access") {
+          await view.screenshot({
+            path: info.outputPath(`access-link-${mode}-destination.png`),
+          });
+          // Permission is requested only by the separate switch action.
+          await toggle.click();
+          await expect(
+            view.getByText("Access wasn’t allowed. This setting is still off."),
+          ).toBeVisible();
+          expect(
+            await view.evaluate(() => websiteAccessFixture.requests),
+          ).toEqual([{ origins: ["http://*/*", "https://*/*"] }]);
+        }
+        await settings.click();
+        await expect(
+          view.getByRole("button", { name: "Fonts", exact: true }),
+        ).toHaveAttribute("aria-pressed", "true");
+        await expect(link).toBeVisible();
+      }
+      // Opening Settings normally should not reuse a past focus request.
+      await settings.click();
+      await expect(toggle).toBeEnabled();
+      await expect(toggle).not.toBeFocused();
+      await settings.click();
+      await app.page.goto("chrome://settings");
+      await view.getByRole("button", { name: /Scan again/ }).click();
+      await expect(
+        view.getByRole("heading", { name: "This page cannot be inspected" }),
+      ).toBeVisible();
+      await expect(link).toHaveCount(0);
+    } finally {
+      await app.context.close();
+    }
+  });
+
   test(`${mode} website access requires confirmation and supports revoke, regrant and external changes`, async ({}, info) => {
     const app = await launch(info, { permissionFixture: true });
     try {

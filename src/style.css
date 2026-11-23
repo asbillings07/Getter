@@ -756,6 +756,23 @@ dd {
   margin: 5px 0 0;
   color: var(--dim);
 }
+.website-access input:focus {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+.access-settings-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 8px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.access-settings-link:hover {
+  text-decoration-thickness: 2px;
+}
 .site-access-info {
   font-size: 12px;
   color: var(--accent);

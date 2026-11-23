@@ -8,6 +8,8 @@ Getter is a Chrome Manifest V3 extension. Version **3.1.1** adds usage percentag
 
 This branch adds **Settings → Website access → Allow on all websites** and fixes rescanning a new site in the side panel. The switch reflects Chrome’s actual permissions: it is off initially, turns on only after access is granted, and can revoke or request access again. With it off, **Scan again** can ask for just the current site and continue after approval. Chrome may remember a previous approval when access is requested again. No prompt appears solely because you navigate. Browser settings and the Web Store remain restricted.
 
+The access message includes **Enable for all sites in Settings →**, which opens Settings directly at the all-websites switch. Following the link does not grant access; turn on the switch to request it from Chrome.
+
 The candidate retains version 3.1.1 for unpacked Chrome testing. The prior 3.1.1 release approval does not cover this change; a new reviewed, owner-accepted candidate and a higher release version are required before a store update.
 
 ## Build and verify

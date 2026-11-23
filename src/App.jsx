@@ -195,6 +195,7 @@ function App() {
     [lastTool, setLastTool] = useState("colors"),
     [switching, setSwitching] = useState(false);
   const [view, setView] = useState("colors"),
+    [focusWebsiteAccess, setFocusWebsiteAccess] = useState(false),
     [scan, setScan] = useState(empty),
     [options, setOptions] = useState(null),
     [notices, setNotices] = useState([]),
@@ -408,6 +409,11 @@ function App() {
       setPreviews(options?.images.loadPreviews || false);
     setView(next);
   }
+  function openSettings(focusAccess = false) {
+    returnView.current = view;
+    setFocusWebsiteAccess(focusAccess);
+    setView("settings");
+  }
   function updateFeature(name, value) {
     setFeatures((current) => ({ ...current, [name]: value }));
   }
@@ -551,10 +557,7 @@ function App() {
             className="settings-button"
             onClick={() => {
               if (view === "settings") chooseView(returnView.current);
-              else {
-                returnView.current = view;
-                setView("settings");
-              }
+              else openSettings();
             }}
             aria-pressed={view === "settings"}
           >
@@ -729,7 +732,7 @@ function App() {
                     ))}
                   </div>
                 </section>
-                <WebsiteAccess api={api} />
+                <WebsiteAccess api={api} focusOnOpen={focusWebsiteAccess} />
                 <div className="preferences">
                   {Object.entries(labels).map(([key, label]) => {
                     const group =
@@ -799,14 +802,27 @@ function App() {
             </h1>
             <p>{scan.message}</p>
             {["access", "denied"].includes(scan.status) && (
-              <div className="site-access-info">
-                <Info label="About site access">
-                  Only this site is requested. Chrome remembers your choice; you
-                  can remove access in Chrome’s extension settings. To allow all
-                  websites, use Website access in Getter Settings.
-                </Info>
-                <span>About site access</span>
-              </div>
+              <>
+                <a
+                  className="access-settings-link"
+                  href="#website-access"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    openSettings(true);
+                  }}
+                >
+                  Enable for all sites in Settings{" "}
+                  <span aria-hidden="true">→</span>
+                </a>
+                <div className="site-access-info">
+                  <Info label="About site access">
+                    Only this site is requested. Chrome remembers your choice;
+                    you can remove access in Chrome’s extension settings. To
+                    allow all websites, use Website access in Getter Settings.
+                  </Info>
+                  <span>About site access</span>
+                </div>
+              </>
             )}
             {scan.status === "loading" && options && (
               <button

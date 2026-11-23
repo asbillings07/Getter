@@ -2,12 +2,22 @@ import React, { useEffect, useRef, useState } from "react";
 import { websiteOrigins } from "../core/access.js";
 import Info from "./Info.jsx";
 
-export default function WebsiteAccess({ api }) {
+export default function WebsiteAccess({ api, focusOnOpen = false }) {
   const [enabled, setEnabled] = useState(null),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
   const live = useRef(false),
-    revision = useRef(0);
+    revision = useRef(0),
+    toggle = useRef(null),
+    focused = useRef(false);
+  useEffect(() => {
+    // Wait for Chrome's permission read to enable the switch, then focus once.
+    if (focusOnOpen && enabled !== null && !focused.current) {
+      focused.current = true;
+      toggle.current.scrollIntoView({ block: "nearest" });
+      toggle.current.focus({ preventScroll: true });
+    }
+  }, [focusOnOpen, enabled]);
   async function refresh() {
     const read = ++revision.current;
     const allowed = await api.permissions.contains({ origins: websiteOrigins });
@@ -71,7 +81,11 @@ export default function WebsiteAccess({ api }) {
     }
   }
   return (
-    <section className="website-access" aria-labelledby="website-access-title">
+    <section
+      id="website-access"
+      className="website-access"
+      aria-labelledby="website-access-title"
+    >
       <h2 id="website-access-title">Website access</h2>
       <div className="setting">
         <span className="website-access-label">
@@ -85,6 +99,7 @@ export default function WebsiteAccess({ api }) {
           </Info>
         </span>
         <input
+          ref={toggle}
           id="allow-all-websites"
           type="checkbox"
           role="switch"
