@@ -1,4 +1,5 @@
 import { test, expect, chromium } from "@playwright/test";
+import { execFileSync } from "node:child_process";
 import { createServer } from "node:http";
 import { cp, readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
@@ -8,6 +9,10 @@ let insecureHits = 0;
 const imageOrigin = "https://images.fixture.test";
 const png = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl1sAAAAASUVORK5CYII=",
+  "base64",
+);
+const studioPng = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFklEQVR4nGNQybj//93dVf8ZQASIAwBmpgu9CscQTgAAAABJRU5ErkJggg==",
   "base64",
 );
 test.beforeAll(async () => {
@@ -41,12 +46,12 @@ test.beforeAll(async () => {
       res.end('<p style="color:rgb(10,20,30)">Frame text</p>');
       return;
     }
-    if (req.url === "/usage") {
+    if (req.url.split("?")[0] === "/usage") {
       res.setHeader("Content-Type", "text/html");
       res.end(`<!doctype html><html><head><title>Usage fixture</title><style>
         body{color:#17253b;background:#fff;font:16px Arial}
         p{color:#187c70}p.alternate{color:#2059be;font-family:Georgia}
-        h2{font-family:Georgia}
+        h2{font-family:Georgia;font-style:italic}
         </style></head><body>${"<p>Frequent style</p>".repeat(6)}${'<p class="alternate">Alternate style</p>'.repeat(2)}<h2>Heading</h2></body></html>`);
       return;
     }
@@ -63,7 +68,28 @@ test.beforeAll(async () => {
         </body></html>`);
       return;
     }
-    if (req.url === "/workbench") {
+    if (req.url === "/collection-component") {
+      res.setHeader("Content-Type", "text/html");
+      res.end(`<!doctype html><title>Studio component fixture</title><style>
+        body{color:#234567;font:16px Arial;margin:24px}
+        #card{display:flex;gap:18px;padding:20px;background-color:#eeddaa;border-radius:12px;
+          box-shadow:0 4px 12px #1122333a;animation:glide 2s linear infinite;}
+        @keyframes glide{from{opacity:.8;transform:translateX(0)}to{opacity:1;transform:translateX(5px)}}
+      </style><section id="card"><h2>Private fixture content</h2><button onclick="window.pageAction = true">Private fixture button</button></section><img alt="Site artwork" src="${imageOrigin}/studio-image.png">`);
+      return;
+    }
+    if (req.url === "/studio-motion") {
+      res.setHeader("Content-Type", "text/html");
+      res.end(`<!doctype html><title>Studio motion fixture</title><style>
+        body { margin: 30px; font: 16px Arial; color: #203b32; }
+        #promo { padding: 20px; width: 400px; box-shadow: 0 6px 18px #0003; animation: rise 120ms ease-out; }
+        @keyframes rise { from { opacity: .1; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        #buy { color: white; background-color: #244939; transition: background-color 180ms ease-out; }
+        #buy:hover { background-color: #32654e; }
+      </style><main><article id="promo"><h2>Juniper blend</h2><img alt="Blend artwork" src="${imageOrigin}/studio-image.png" width="80" height="80"><button id="buy" onclick="window.bought=true">Shop blend</button><input placeholder="Email address" value="private-field-value"></article><section id="newsletter"><h2>Field notes</h2><p>Seasonal stories</p></section><span id="plain">Plain text</span></main><img alt="Vector artwork" src="${imageOrigin}/artwork.svg">`);
+      return;
+    }
+    if (req.url.split("?")[0] === "/workbench") {
       res.setHeader("Content-Type", "text/html");
       res.end(`<!doctype html><html><head><title>Getter workspace fixture</title><style>
         body{font:16px Arial;margin:40px;color:#123456}main{max-width:650px}
@@ -94,11 +120,12 @@ async function launch(
     fixtureHostGrants = true,
     permissionFixture = false,
     denyPermissionRequests = false,
+    buildDir = "dist",
   } = {},
 ) {
   const extension = testInfo.outputPath("extension");
   await mkdir(extension, { recursive: true });
-  await cp("dist", extension, { recursive: true });
+  await cp(buildDir, extension, { recursive: true });
   const manifest = JSON.parse(
     await readFile(path.join(extension, "manifest.json"), "utf8"),
   );
@@ -215,8 +242,18 @@ async function launch(
       });
     } else if (pathname === "/denied.png") {
       await route.fulfill({ status: 403, headers, body: "Unavailable" });
+    } else if (pathname === "/artwork.svg") {
+      await route.fulfill({
+        status: 200,
+        headers: { ...headers, "content-type": "image/svg+xml" },
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="navy"/></svg>',
+      });
     } else {
-      await route.fulfill({ status: 200, headers, body: png });
+      await route.fulfill({
+        status: 200,
+        headers,
+        body: pathname === "/studio-image.png" ? studioPng : png,
+      });
     }
   });
   if (staleImageRace) {
@@ -280,6 +317,1356 @@ async function launch(
     openPanel: () => openPopup("sidepanel.html"),
   };
 }
+
+test("Studio account QA entry preserves the free tool in popup and side panel", async ({}, info) => {
+  execFileSync(process.execPath, ["scripts/build.mjs", "--studio-account-qa"]);
+  const app = await launch(info, { buildDir: "dist-studio-qa" });
+  try {
+    await app.page.goto(`${origin}/workbench`);
+    const popup = await app.openPopup();
+    const panel = await app.openPanel();
+    await popup.setViewportSize({ width: 720, height: 600 });
+    await panel.setViewportSize({ width: 300, height: 820 });
+    await panel.emulateMedia({ colorScheme: "dark" });
+    await popup.emulateMedia({ colorScheme: "light" });
+    const initialPages = app.context.pages().length;
+    for (const [view, workspace] of [
+      [popup, /Side panel/],
+      [panel, /Popup/],
+    ]) {
+      const account = view.getByRole("button", {
+        name: "Account",
+        exact: true,
+      });
+      const settings = view.getByRole("button", {
+        name: "Settings",
+        exact: true,
+      });
+      const subscribe = view.getByRole("button", {
+        name: "Subscribe to Studio",
+      });
+      const accountTitle = view.getByRole("heading", {
+        name: "Account & plan",
+      });
+      const back = view.getByRole("button", { name: "Back", exact: true });
+      const freeTools = view.getByRole("navigation", { name: "Explore page" });
+      const workspaceButton = view.getByRole("button", { name: workspace });
+      await expect(workspaceButton).toBeEnabled();
+      await expect(
+        freeTools.getByRole("button", { name: "Quick Inspect" }),
+      ).toBeVisible();
+      const row = await Promise.all(
+        [account, workspaceButton, subscribe, settings].map((button) =>
+          button.boundingBox(),
+        ),
+      );
+      expect(new Set(row.map(({ y }) => Math.round(y))).size).toBe(1);
+      expect(row.at(-1).x + row.at(-1).width).toBeLessThanOrEqual(
+        (await view.evaluate(() => document.documentElement.clientWidth)) - 12,
+      );
+
+      await freeTools
+        .getByRole("button", { name: "Text", exact: true })
+        .click();
+      const search = view.getByRole("searchbox", {
+        name: "Find in extracted text",
+      });
+      await search.fill("readable world");
+      const localData = await view.evaluate(() =>
+        chrome.storage.local.get(null),
+      );
+
+      await account.click();
+      await expect(accountTitle).toBeFocused();
+      await expect(freeTools).toBeHidden();
+      await expect(view.getByText("Signed out", { exact: true })).toBeVisible();
+      await expect(
+        view.getByRole("heading", { name: "Getter Free" }),
+      ).toBeVisible();
+      await expect(
+        view.getByRole("heading", { name: "Getter Studio" }),
+      ).toBeVisible();
+      await expect(
+        view.getByRole("button", { name: "Continue to sign-in" }),
+      ).toBeInViewport();
+      await view.screenshot({
+        path: info.outputPath(
+          `getter-${view === panel ? "side-panel" : "popup"}-account.png`,
+        ),
+      });
+      await view
+        .getByRole("button", { name: "Sign in or create an account" })
+        .click();
+      await expect(
+        view.getByText(/Aptelum sign-in is unavailable/),
+      ).toBeInViewport({ ratio: 1 });
+      await back.click();
+      await expect(account).toBeFocused();
+      await expect(search).toHaveValue("readable world");
+
+      await subscribe.click();
+      const continueToSignIn = view.getByRole("button", {
+        name: "Continue to sign-in",
+      });
+      await expect(continueToSignIn).toBeFocused();
+      await continueToSignIn.click();
+      await expect(
+        view.getByText(/Aptelum sign-in is unavailable/),
+      ).toBeInViewport({ ratio: 1 });
+      await expect(
+        view.getByRole("button", { name: "Open Studio" }),
+      ).toHaveCount(0);
+      await view
+        .getByRole("button", { name: "Already subscribed? Sign in" })
+        .click();
+      await expect(
+        view.getByText(/Aptelum sign-in is unavailable/),
+      ).toBeVisible();
+      await back.click();
+      await expect(subscribe).toBeFocused();
+      await expect(search).toHaveValue("readable world");
+
+      await settings.click();
+      const settingsAccount = view.getByRole("button", {
+        name: /Account & plan/,
+      });
+      await settingsAccount.click();
+      await expect(accountTitle).toBeVisible();
+      await back.click();
+      await expect(settingsAccount).toBeFocused();
+      await settings.click();
+      await expect(search).toHaveValue("readable world");
+      expect(await view.evaluate(() => chrome.storage.local.get(null))).toEqual(
+        localData,
+      );
+      expect(app.context.pages()).toHaveLength(initialPages);
+    }
+  } finally {
+    await app.context.close();
+  }
+});
+
+async function openStudioOptions(
+  app,
+  open = () => app.worker.evaluate(() => chrome.runtime.openOptionsPage()),
+) {
+  const nextPage = app.context.waitForEvent("page");
+  await open();
+  const studio = await nextPage;
+  await expect(studio).toHaveURL(/\/studio\.html$/);
+  return studio;
+}
+
+test("Studio collections save selected styles from multiple sites and reopen after Chrome restarts", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const buildDir = "dist-studio-workspace-qa";
+  let app = await launch(info, { buildDir });
+  try {
+    const firstUrl = `${origin}/workbench?private=omit-first#omit-first-fragment`;
+    await app.page.goto(firstUrl);
+    const popup = await app.openPopup();
+    const openStudio = popup.getByRole("button", { name: "Open Studio QA" });
+    await expect(openStudio).toBeInViewport({ ratio: 1 });
+    const studio = await openStudioOptions(app, () => openStudio.click());
+    await studio.setViewportSize({ width: 1280, height: 860 });
+    await studio.getByRole("button", { name: "New project" }).click();
+    await studio
+      .getByRole("textbox", { name: "Project name" })
+      .fill("Fieldwork");
+    await studio.keyboard.press("Enter");
+    await expect(
+      studio.getByRole("heading", { name: "Fieldwork collection" }),
+    ).toBeVisible();
+    await studio
+      .getByLabel("Open tabs")
+      .selectOption({ label: "Getter workspace fixture · 127.0.0.1" });
+    await studio.getByRole("button", { name: "Scan styles" }).click();
+    const color = studio.getByRole("checkbox", { name: /#123456/ });
+    const font = studio.getByRole("checkbox", { name: /Arial.*body/ });
+    await color.check();
+    await font.check();
+    await studio.getByRole("button", { name: "Save selected (2)" }).click();
+    await expect(
+      studio.getByText("Saved to the collection on this device."),
+    ).toBeVisible();
+
+    await color.check();
+    await font.check();
+    await studio.getByRole("button", { name: "Save selected (2)" }).click();
+    await expect(
+      studio.getByText("These styles are already saved from this scan."),
+    ).toBeVisible();
+
+    await color.check();
+    await app.page.reload();
+    await expect(
+      studio.getByText(
+        "The page changed or closed. Scan the current page before saving.",
+      ),
+    ).toBeVisible();
+    await expect(
+      studio.getByRole("button", { name: "Save selected (1)" }),
+    ).toHaveCount(0);
+
+    const secondUrl = `${origin.replace("127.0.0.1", "localhost")}/usage?private=omit-second#omit-second-fragment`;
+    await studio.getByLabel("Website address").fill(secondUrl);
+    await studio.getByRole("button", { name: "Open website" }).click();
+    await studio
+      .getByLabel("Open tabs")
+      .selectOption({ label: "Usage fixture · localhost" });
+    await studio.getByRole("button", { name: "Scan styles" }).click();
+    await studio.getByRole("checkbox", { name: /#187C70/ }).check();
+    await studio.getByRole("checkbox", { name: /Georgia.*h2.*italic/ }).check();
+    await studio.getByLabel("Source reference").selectOption("title");
+    await studio.getByRole("button", { name: "Save selected (2)" }).click();
+    await expect(
+      studio.getByText("Saved to the collection on this device."),
+    ).toBeVisible();
+    const views = studio.getByRole("navigation", { name: "Collection views" });
+    await views.getByRole("button", { name: "Assets", exact: true }).click();
+    const assets = studio.getByRole("region", { name: /Collection assets/ });
+    await expect(assets.getByRole("article")).toHaveCount(4);
+    await expect(
+      assets.getByRole("article", { name: "#187C70", exact: true }),
+    ).toBeVisible();
+    await expect(
+      assets.getByRole("article", { name: "#FFFFFF", exact: true }),
+    ).toHaveCount(0);
+    await studio.screenshot({
+      path: info.outputPath("getter-studio-collection.png"),
+    });
+
+    const stored = await studio.evaluate(async () => {
+      const db = await new Promise((resolve, reject) => {
+        const request = indexedDB.open("getter-studio-workspace-qa", 1);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      try {
+        return await new Promise((resolve, reject) => {
+          const request = db
+            .transaction("projects")
+            .objectStore("projects")
+            .getAll();
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+      } finally {
+        db.close();
+      }
+    });
+    const [first, second] = stored[0].collections[0].captures;
+    expect(stored[0].collections[0].captures).toHaveLength(2);
+    expect(first.source).toEqual({ hostname: "127.0.0.1" });
+    expect(second.source).toEqual({ title: "Usage fixture" });
+    expect(second.items).toContainEqual(
+      expect.objectContaining({ type: "font", fontStyle: "italic" }),
+    );
+    expect(first.coverage.usageTotals.colors).toBeGreaterThan(
+      first.items[0].count,
+    );
+    expect(first.coverage.framesOmitted).toBe(2);
+    expect(JSON.stringify(stored)).not.toMatch(
+      /omit-first|omit-second|\/workbench|\/usage|Readable world|sample image/i,
+    );
+    await studio.getByRole("button", { name: "Projects", exact: true }).click();
+    await studio.getByRole("button", { name: "New project" }).click();
+    await studio
+      .getByRole("textbox", { name: "Project name" })
+      .fill("Second brand");
+    await studio.getByRole("button", { name: "Create project" }).click();
+    await expect(
+      studio.getByRole("heading", { name: "Second brand collection" }),
+    ).toBeVisible();
+    await views.getByRole("button", { name: "Assets", exact: true }).click();
+    await expect(assets.getByRole("article")).toHaveCount(0);
+
+    await app.context.close();
+    app = await launch(info, { buildDir });
+    const reopened = await openStudioOptions(app);
+    await reopened
+      .getByRole("button", { name: "Fieldwork collection", exact: true })
+      .click();
+    const restoredStyles = reopened.getByRole("region", {
+      name: /Collection assets/,
+    });
+    await expect(restoredStyles.getByRole("article")).toHaveCount(4);
+    await expect(
+      restoredStyles.getByRole("article", { name: "#187C70", exact: true }),
+    ).toBeVisible();
+    await expect(
+      reopened.getByRole("group", { name: "Styles found on this page" }),
+    ).toHaveCount(0);
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("Studio lists ungranted tabs without reading them and asks only for the selected site", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, {
+    buildDir: "dist-studio-workspace-qa",
+    fixtureHostGrants: false,
+    denyPermissionRequests: true,
+  });
+  try {
+    const panel = await app.openPanel();
+    await panel.setViewportSize({ width: 300, height: 820 });
+    const openStudio = panel.getByRole("button", { name: "Open Studio QA" });
+    await expect(openStudio).toBeInViewport({ ratio: 1 });
+    const studio = await openStudioOptions(app, () => openStudio.click());
+    await studio.getByRole("button", { name: "New project" }).click();
+    await studio
+      .getByRole("textbox", { name: "Project name" })
+      .fill("Local project");
+    await studio.getByRole("button", { name: "Create project" }).click();
+    const option = await studio
+      .getByRole("option", { name: /127\.0\.0\.1/ })
+      .getAttribute("value");
+    await studio.getByLabel("Open tabs").selectOption(option);
+    expect(await studio.evaluate(() => websiteAccessFixture.requests)).toEqual(
+      [],
+    );
+    await studio.getByRole("button", { name: "Scan styles" }).click();
+    await expect(
+      studio.getByText(
+        "Site access was declined. Your collection is unchanged.",
+      ),
+    ).toBeVisible();
+    expect(await studio.evaluate(() => websiteAccessFixture.requests)).toEqual([
+      { origins: ["http://127.0.0.1/*"] },
+    ]);
+    await studio
+      .getByRole("navigation", { name: "Collection views" })
+      .getByRole("button", { name: "Assets", exact: true })
+      .click();
+    await expect(
+      studio
+        .getByRole("region", { name: /Collection assets/ })
+        .getByRole("article"),
+    ).toHaveCount(0);
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("Studio curates upgraded collections, captures component assets, and exports a reusable design kit", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
+  try {
+    await app.page.goto(`${origin}/collection-component`);
+    const popup = await app.openPopup();
+    // Install the previous QA layout in this extension profile before opening Studio.
+    await popup.evaluate(
+      () =>
+        new Promise((resolve, reject) => {
+          const opening = indexedDB.open("getter-studio-workspace-qa", 1);
+          opening.onupgradeneeded = () =>
+            opening.result.createObjectStore("projects", { keyPath: "id" });
+          opening.onerror = () => reject(opening.error);
+          opening.onsuccess = () => {
+            const db = opening.result;
+            const transaction = db.transaction("projects", "readwrite");
+            transaction.oncomplete = () => {
+              db.close();
+              resolve();
+            };
+            transaction.onabort = () => reject(transaction.error);
+            transaction.objectStore("projects").add({
+              schemaVersion: 1,
+              id: "prior-project",
+              name: "Fieldwork",
+              updatedAt: "2026-11-24T14:30:00Z",
+              collection: {
+                id: "prior-collection",
+                name: "Fieldwork collection",
+                captures: [
+                  {
+                    id: "old-capture",
+                    scanId: "old-scan",
+                    kind: "selected-styles",
+                    extractionVersion: 1,
+                    savedAt: "2026-11-24T14:30:00Z",
+                    source: { hostname: "origin.example" },
+                    coverage: { viewport: { width: 1280, height: 900 } },
+                    items: [
+                      {
+                        type: "color",
+                        value: "rgb(35, 69, 103)",
+                        count: 5,
+                        kinds: ["Text"],
+                      },
+                    ],
+                  },
+                ],
+              },
+            });
+          };
+        }),
+    );
+    const studio = await openStudioOptions(app);
+    await studio.setViewportSize({ width: 1280, height: 880 });
+    await studio
+      .getByRole("button", { name: "Fieldwork collection", exact: true })
+      .click();
+    await studio.getByRole("button", { name: "Edit collection" }).click();
+    const dialog = studio.getByRole("dialog");
+    await dialog.getByLabel("Name", { exact: true }).fill("Fieldwork identity");
+    await dialog.getByLabel("Notes").fill("Summer campaign");
+    await dialog.getByRole("button", { name: "Save collection" }).click();
+    await expect(
+      studio.getByRole("heading", { name: "Fieldwork identity" }),
+    ).toBeVisible();
+    await expect(
+      studio.getByRole("main").getByText("Summer campaign"),
+    ).toBeVisible();
+
+    const views = studio.getByRole("navigation", { name: "Collection views" });
+    const assets = studio.getByRole("region", { name: /Collection assets/ });
+    const color = assets.getByRole("article", {
+      name: "Brand blue",
+      exact: true,
+    });
+    await assets.getByRole("button", { name: "Item details" }).click();
+    await dialog.getByLabel("Name", { exact: true }).fill("Brand blue");
+    await dialog.getByLabel("Role").fill("Primary");
+    await dialog.getByLabel("Color in this collection").fill("#2468DF");
+    await dialog.getByRole("button", { name: "Save item" }).click();
+    await expect(color.getByText("Primary", { exact: true })).toBeVisible();
+    await expect(color.getByText("#2468DF", { exact: true })).toBeVisible();
+    await views.getByRole("button", { name: "Captures", exact: true }).click();
+    await studio.getByText("View captured values", { exact: true }).click();
+    await expect(studio.getByText("#234567", { exact: true })).toBeVisible();
+
+    await views
+      .getByRole("button", { name: "Add assets", exact: true })
+      .click();
+    await studio
+      .getByLabel("Open tabs")
+      .selectOption({ label: "Studio component fixture · 127.0.0.1" });
+    await studio.getByRole("button", { name: "Scan styles" }).click();
+    await studio.getByRole("checkbox", { name: /Site artwork/ }).check();
+    const saved = studio.getByText("Saved to the collection on this device.", {
+      exact: true,
+    });
+    await studio.getByRole("button", { name: "Save selected (1)" }).click();
+    await expect(saved).toBeVisible();
+    await studio.getByLabel("Add a local image").setInputFiles({
+      name: "Broken.png",
+      mimeType: "image/png",
+      buffer: Buffer.from("invalid image"),
+    });
+    await expect(studio.getByText(/could not be decoded/)).toBeVisible();
+    await studio.getByLabel("Add a local image").setInputFiles({
+      name: "Logo.png",
+      mimeType: "image/png",
+      buffer: studioPng,
+    });
+    await expect(saved).toBeVisible();
+
+    await studio.getByRole("button", { name: "Pick an element" }).click();
+    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    await app.page
+      .locator("#card")
+      .click({ position: { x: 8, y: 8 }, force: true });
+    await expect(
+      studio.getByRole("heading", { name: "Review selected section" }),
+    ).toBeVisible();
+    await studio.getByLabel("Capture scope").selectOption("component");
+    await studio.getByLabel("Name", { exact: true }).fill("Feature card");
+    await studio.getByRole("button", { name: "Save capture" }).click();
+    await expect(saved).toBeVisible();
+    await studio.getByLabel("Capture scope").selectOption("effect");
+    await studio.getByLabel("Name", { exact: true }).fill("Card shadow");
+    await studio.getByRole("button", { name: "Save capture" }).click();
+    await expect(saved).toBeVisible();
+    await studio.getByLabel("Capture scope").selectOption("motion");
+    await studio.getByLabel("Name", { exact: true }).fill("Card motion");
+    await studio.getByRole("button", { name: "Play motion" }).click();
+    expect(
+      await studio
+        .locator(".studio-sample")
+        .evaluate((sample) => sample.getAnimations().length),
+    ).toBeGreaterThan(0);
+    await studio.getByRole("button", { name: "Save capture" }).click();
+    await expect(saved).toBeVisible();
+
+    await views.getByRole("button", { name: "Assets", exact: true }).click();
+    await expect(assets.getByRole("article")).toHaveCount(6);
+    await expect(
+      assets.getByRole("article", { name: "Feature card" }),
+    ).toContainText("button");
+    await expect(studio.getByText(/Private fixture/)).toHaveCount(0);
+    await expect(assets.getByRole("img", { name: "Logo.png" })).toBeVisible();
+    await assets.getByLabel("Type").selectOption("image");
+    await expect(assets.getByRole("article")).toHaveCount(2);
+    await assets.getByLabel("Find assets").fill("logo");
+    await expect(assets.getByRole("article")).toHaveCount(1);
+    await assets.getByLabel("Type").selectOption("all");
+    await assets.getByLabel("Find assets").clear();
+    await studio.screenshot({
+      path: info.outputPath("getter-studio-curated-assets.png"),
+    });
+    await views
+      .getByRole("button", { name: "Design kit", exact: true })
+      .click();
+    await studio.getByLabel("Kit name").fill("Fieldwork brand kit");
+    await studio.getByRole("button", { name: "Save design kit" }).click();
+    await expect(
+      studio.getByText("Design kit saved on this device."),
+    ).toBeVisible();
+    await views.getByRole("button", { name: "Assets", exact: true }).click();
+    await color.getByRole("button", { name: "Remove", exact: true }).click();
+    await expect(color).toHaveCount(0);
+    await views
+      .getByRole("button", { name: "Design kit", exact: true })
+      .click();
+    await studio
+      .getByLabel("Saved design kits")
+      .selectOption({ label: "Fieldwork brand kit" });
+    await expect(
+      studio.getByRole("checkbox", { name: /Brand blue/ }),
+    ).toBeChecked();
+    const filePromise = studio.waitForEvent("download");
+    await studio.getByRole("button", { name: "Download export" }).click();
+    const file = await filePromise;
+    expect(await file.failure()).toBeNull();
+    const zip = await JSZip.loadAsync(await readFile(await file.path()));
+    const kit = JSON.parse(await zip.file("collection.json").async("text"));
+    expect(kit.assets).toHaveLength(6);
+    expect(JSON.stringify(kit)).not.toMatch(
+      /Private fixture|origin\.example|images\.fixture\.test|getter-inspection-overlay/,
+    );
+    const css = await zip.file("styles.css").async("text");
+    expect(css).toContain("--getter-color-brand-blue: #2468DF;");
+    expect(css).toContain("@keyframes getter-card-motion-1");
+    const importedColor = await studio.evaluate((css) => {
+      const sheet = new CSSStyleSheet();
+      sheet.replaceSync(css);
+      return sheet.cssRules[0].style
+        .getPropertyValue("--getter-color-brand-blue")
+        .trim();
+    }, css);
+    expect(importedColor).toBe("#2468DF");
+    for (const entry of kit.assets.filter(
+      ({ value }) => value.type === "image",
+    ))
+      expect(await zip.file(entry.value.filename).async("nodebuffer")).toEqual(
+        studioPng,
+      );
+
+    await studio.getByLabel("Destination").selectOption("figma");
+    await expect(
+      studio.getByText("1 of 6 selected items will transfer."),
+    ).toBeVisible();
+    const figmaPromise = studio.waitForEvent("download");
+    await studio.getByRole("button", { name: "Download export" }).click();
+    const figmaFile = await figmaPromise;
+    expect(
+      JSON.parse(await readFile(await figmaFile.path(), "utf8"))["brand-blue"]
+        .$value,
+    ).toEqual({
+      colorSpace: "srgb",
+      components: [36 / 255, 104 / 255, 223 / 255],
+      alpha: 1,
+    });
+    await studio.getByLabel("Destination").selectOption("adobe");
+    const adobePromise = studio.waitForEvent("download");
+    await studio.getByRole("button", { name: "Download export" }).click();
+    const adobeFile = await adobePromise;
+    const ase = await readFile(await adobeFile.path());
+    expect(ase.toString("ascii", 0, 4)).toBe("ASEF");
+    expect(ase.readUInt32BE(8)).toBe(1);
+    await studio.getByLabel("Destination").selectOption("canva");
+    await expect(
+      studio.getByRole("button", { name: "Print or save PDF" }),
+    ).toBeEnabled();
+    await studio.emulateMedia({ media: "print" });
+    await expect(
+      studio
+        .locator(".studio-print-guide")
+        .getByText("Brand blue", { exact: true }),
+    ).toBeVisible();
+    const guide = await studio.pdf({ format: "Letter", printBackground: true });
+    expect(guide.toString("ascii", 0, 4)).toBe("%PDF");
+    await studio.emulateMedia({ media: "screen" });
+    await views.getByRole("button", { name: "Assets", exact: true }).click();
+    await studio.getByText("Recently removed (1)", { exact: true }).click();
+    await studio.getByRole("button", { name: "Restore Brand blue" }).click();
+    await expect(color).toBeVisible();
+    await studio
+      .getByRole("button", { name: "New collection", exact: true })
+      .click();
+    await dialog.getByLabel("Name", { exact: true }).fill("Campaign ideas");
+    await dialog.getByRole("button", { name: "Create collection" }).click();
+    await expect(
+      studio.getByRole("heading", { name: "Campaign ideas" }),
+    ).toBeVisible();
+    await expect(assets.getByRole("article")).toHaveCount(0);
+    await studio
+      .getByRole("combobox", { name: "Collection", exact: true })
+      .selectOption({ label: "Fieldwork identity" });
+    await expect(assets.getByRole("article")).toHaveCount(6);
+    await color.getByRole("button", { name: "Copy to collection" }).click();
+    await dialog
+      .getByRole("button", { name: "Copy item", exact: true })
+      .click();
+    await expect(
+      studio.getByText("Item copied to the other collection."),
+    ).toBeVisible();
+    await studio
+      .getByRole("combobox", { name: "Collection", exact: true })
+      .selectOption({ label: "Campaign ideas" });
+    await expect(
+      color.getByText("origin.example", { exact: true }),
+    ).toBeVisible();
+    await views
+      .getByRole("button", { name: "Add assets", exact: true })
+      .click();
+    await studio
+      .getByLabel("Open tabs")
+      .selectOption({ label: "Studio component fixture · 127.0.0.1" });
+    await studio.getByRole("button", { name: "Scan styles" }).click();
+    await studio.getByRole("button", { name: "Save page styles" }).click();
+    await expect(saved).toBeVisible();
+    await views.getByRole("button", { name: "Captures", exact: true }).click();
+    await expect(studio.getByText(/Page style snapshot/)).toHaveCount(1);
+    await studio.getByRole("button", { name: "Capture new version" }).click();
+    await studio
+      .getByLabel("Open tabs")
+      .selectOption({ label: "Studio component fixture · 127.0.0.1" });
+    await studio.getByRole("button", { name: "Scan styles" }).click();
+    await studio.getByRole("button", { name: "Save page styles" }).click();
+    await expect(saved).toBeVisible();
+    await views.getByRole("button", { name: "Captures", exact: true }).click();
+    await expect(studio.getByText(/Page style snapshot/)).toHaveCount(2);
+    await expect(studio.getByText(/New version/)).toBeVisible();
+    await studio.reload();
+    await studio
+      .getByRole("button", { name: "Fieldwork identity", exact: true })
+      .click();
+    await views
+      .getByRole("button", { name: "Design kit", exact: true })
+      .click();
+    await studio
+      .getByLabel("Saved design kits")
+      .selectOption({ label: "Fieldwork brand kit" });
+    await expect(
+      studio.getByRole("checkbox", { name: /Brand blue/ }),
+    ).toBeChecked();
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("Studio Colors keeps Save inside each card and saves the full palette in one action", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
+  try {
+    await app.page.goto(`${origin}/usage`);
+    const panel = await app.openPanel();
+    await panel.setViewportSize({ width: 300, height: 820 });
+    const cards = panel.locator(".swatches > article.swatch");
+    await expect(cards).toHaveCount(4);
+    const card = cards.filter({
+      has: panel.getByRole("button", { name: "Copy #187C70", exact: true }),
+    });
+    const copy = card.getByRole("button", {
+      name: "Copy #187C70",
+      exact: true,
+    });
+    const add = card.getByRole("button", {
+      name: "Save to collection: #187C70",
+      exact: true,
+    });
+    await expect(add).toHaveText(/Save to collection/);
+    await panel.evaluate(() => {
+      window.copiedColors = [];
+      navigator.clipboard.writeText = async (value) =>
+        window.copiedColors.push(value);
+    });
+    await copy.click();
+    expect(await panel.evaluate(() => window.copiedColors)).toEqual([
+      "#187C70",
+    ]);
+    const palette = panel.getByRole("button", {
+      name: "Save palette to collection",
+      exact: true,
+    });
+    await expect(palette).toBeInViewport({ ratio: 1 });
+    await panel.screenshot({
+      path: info.outputPath("getter-colors-collection.png"),
+    });
+
+    await add.click();
+    const single = panel.getByRole("dialog", {
+      name: "Save to collection",
+      exact: true,
+    });
+    await expect(single.getByRole("checkbox")).toHaveCount(1);
+    await expect(single.getByRole("checkbox")).toBeChecked();
+    await single
+      .getByRole("textbox", { name: "Project name" })
+      .fill("Palette test");
+    await single
+      .getByRole("textbox", { name: /Collection name/ })
+      .fill("Single swatch");
+    await single.getByRole("button", { name: "Create and save" }).click();
+    await expect(single.getByRole("status")).toContainText(
+      "Saved to Single swatch",
+    );
+    await single.getByRole("button", { name: "Keep browsing" }).click();
+
+    await palette.click();
+    const full = panel.getByRole("dialog", {
+      name: "Save palette to collection",
+      exact: true,
+    });
+    await expect(full.getByText("4 colors from this scan")).toBeVisible();
+    await expect(full.getByRole("checkbox")).toHaveCount(0);
+    await full
+      .getByRole("combobox", { name: "Collection", exact: true })
+      .selectOption("");
+    await full
+      .getByRole("textbox", { name: "Collection name", exact: true })
+      .fill("Page palette");
+    await full
+      .getByRole("button", { name: "Save palette", exact: true })
+      .click();
+    await expect(full.getByRole("status")).toContainText(
+      "Saved to Page palette",
+    );
+    expect(await panel.evaluate(() => window.copiedColors)).toEqual([
+      "#187C70",
+    ]);
+    const opened = app.context.waitForEvent("page");
+    await full
+      .getByRole("button", { name: "Open collection", exact: true })
+      .click();
+    const studio = await opened;
+    const assets = studio.getByRole("region", { name: /Collection assets/ });
+    await expect(assets.getByRole("article")).toHaveCount(4);
+    for (const name of ["#187C70", "#17253B", "#2059BE", "#FFFFFF"]) {
+      await expect(
+        assets.getByRole("article", { name, exact: true }),
+      ).toBeVisible();
+    }
+    await studio.getByRole("button", { name: "Captures", exact: true }).click();
+    await expect(studio.getByText(/Color palette · 4 items/)).toBeVisible();
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("Studio Inspect keeps the existing tools and saves motion, text, and reusable component assets", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
+  try {
+    await app.page.goto(`${origin}/studio-motion`);
+    const panel = await app.openPanel();
+    await panel.setViewportSize({ width: 370, height: 840 });
+    await panel
+      .getByRole("button", { name: "Quick Inspect", exact: true })
+      .click();
+    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    await app.page.locator("#promo h2").click({ force: true });
+    await panel
+      .getByRole("button", { name: "Select parent", exact: true })
+      .click();
+    await expect(panel.locator(".element-title code")).toHaveText(
+      "article#promo",
+    );
+    await panel.getByRole("button", { name: /Copy CSS/ }).click();
+    await expect(panel.locator(".code-preview")).toContainText("article#promo");
+    await panel.getByRole("button", { name: /Back to/ }).click();
+    await panel.getByRole("switch", { name: "Show all properties" }).check();
+    await panel.getByRole("button", { name: "Effects", exact: true }).click();
+    const animation = panel.getByRole("region", { name: "Studio animation" });
+    const dialog = panel.getByRole("dialog");
+    const finished = app.page
+      .locator("#promo")
+      .evaluate((element) => element.getAnimations().length);
+    expect(await finished).toBe(0);
+    await animation.getByRole("button", { name: "Preview animation" }).click();
+    expect(
+      await animation
+        .locator(".studio-sample")
+        .evaluate((element) =>
+          element
+            .getAnimations()
+            .some(({ effect }) => effect.getTiming().duration === 120),
+        ),
+    ).toBe(true);
+    await animation
+      .locator(".studio-sample")
+      .evaluate((element) =>
+        Promise.all(element.getAnimations().map((effect) => effect.finished)),
+      );
+    await panel.screenshot({
+      path: info.outputPath("getter-inspect-animation.png"),
+    });
+    await animation.getByRole("button", { name: "Save animation" }).click();
+    await dialog.getByRole("textbox", { name: "Project name" }).fill("Juniper");
+    await expect(
+      dialog.getByRole("textbox", { name: "Collection name" }),
+    ).toHaveValue("Assets");
+    await dialog.getByRole("button", { name: "Create and save" }).click();
+    await expect(dialog.getByRole("status")).toContainText("Saved to Assets");
+    await dialog.getByRole("button", { name: "Keep inspecting" }).click();
+
+    const buy = app.page.locator("#buy");
+    await buy.hover();
+    await expect(buy).toHaveCSS("background-color", "rgb(50, 101, 78)");
+    await buy.click({ force: true });
+    const transition = panel.getByRole("region", { name: "Studio transition" });
+    await transition
+      .getByRole("button", { name: "Preview transition" })
+      .click();
+    expect(
+      await transition
+        .locator(".studio-sample")
+        .evaluate((element) =>
+          element
+            .getAnimations()
+            .some(({ effect }) =>
+              effect.getKeyframes().some((frame) => frame.backgroundColor),
+            ),
+        ),
+    ).toBe(true);
+    await transition.getByRole("button", { name: "Save transition" }).click();
+    await dialog
+      .getByRole("button", { name: "Save transition", exact: true })
+      .click();
+    await expect(dialog.getByRole("status")).toContainText("Saved to Assets");
+    await dialog.getByRole("button", { name: "Keep inspecting" }).click();
+    expect(await app.page.evaluate(() => window.bought)).toBeUndefined();
+    await panel
+      .getByRole("button", { name: "＋ Save to collection", exact: true })
+      .click();
+    await expect(dialog).toHaveAccessibleName("Save component to collection");
+    await expect(
+      dialog.getByRole("heading", { name: "button component" }),
+    ).toBeVisible();
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await panel
+      .getByRole("button", { name: "Select parent", exact: true })
+      .click();
+    await panel
+      .getByRole("button", { name: "＋ Save to collection", exact: true })
+      .click();
+    await expect(dialog).toHaveAccessibleName("Save component to collection");
+    await expect(
+      dialog.getByRole("button", { name: /Back to capture choices/ }),
+    ).toHaveCount(0);
+    await expect(
+      dialog.getByRole("checkbox", { name: "Include 1 image" }),
+    ).toBeChecked();
+    await dialog
+      .getByRole("button", { name: "Save component", exact: true })
+      .click();
+    await expect(dialog.getByRole("status")).toContainText("Saved to Assets");
+    await dialog.getByRole("button", { name: "Keep inspecting" }).click();
+    await panel
+      .getByRole("button", { name: "Individual assets", exact: true })
+      .click();
+    await expect(dialog).toHaveAccessibleName("Save an individual asset");
+    await expect(
+      dialog.getByRole("button", { name: /^Save font:/ }).first(),
+    ).toBeVisible();
+    await expect(
+      dialog.getByRole("button", { name: /^Save component:/ }),
+    ).toHaveCount(0);
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+
+    await panel.getByRole("button", { name: "Text", exact: true }).click();
+    await expect(
+      panel.getByRole("button", { name: /Copy text/ }),
+    ).toBeEnabled();
+    await expect(
+      panel.getByRole("button", { name: /Save \.txt/ }),
+    ).toBeEnabled();
+    await panel
+      .getByRole("button", { name: "Save all text to collection" })
+      .click();
+    await dialog
+      .getByRole("button", { name: "Save all text", exact: true })
+      .click();
+    await expect(dialog.getByRole("status")).toContainText("Saved to Assets");
+    const opened = app.context.waitForEvent("page");
+    await dialog.getByRole("button", { name: "Open collection" }).click();
+    const studio = await opened;
+    const assets = studio.getByRole("region", { name: /Collection assets/ });
+    await expect(assets.getByRole("article")).toHaveCount(4);
+    const component = assets.getByRole("article", {
+      name: "article component",
+      exact: true,
+    });
+    await expect(
+      component.getByText("Juniper blend", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      component.getByRole("img", { name: "Blend artwork" }),
+    ).toBeVisible();
+    await expect(component.getByText(/Captured motion/)).toBeVisible();
+    await expect(assets.getByText("private-field-value")).toHaveCount(0);
+    await expect(
+      assets.getByRole("article", { name: "Page text", exact: true }),
+    ).toContainText("Seasonal stories");
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("Studio collection buttons, tabs and mixed swatches fit the popup and narrow side panel", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
+  try {
+    await app.page.goto(`${origin}/mixed-colors`);
+    for (const [open, width, columns] of [
+      [app.openPanel, 300, 2],
+      [app.openPopup, 720, 4],
+    ]) {
+      const tool = await open();
+      await tool.setViewportSize({ width, height: 820 });
+      const tabs = tool.locator(".tabs button");
+      const cards = tool.locator(".studio-color-card");
+      await expect(cards.first()).toBeVisible();
+      const geometry = await tabs.evaluateAll((items) =>
+        items.map((tab) => {
+          const { width, height, top } = tab.getBoundingClientRect();
+          return { width, height, top };
+        }),
+      );
+      expect(geometry).toHaveLength(5);
+      expect(new Set(geometry.map(({ top }) => top)).size).toBe(1);
+      expect(
+        Math.max(...geometry.map(({ width }) => width)) -
+          Math.min(...geometry.map(({ width }) => width)),
+      ).toBeLessThan(1);
+      expect(geometry.every(({ height }) => height >= 44)).toBe(true);
+      const swatches = await cards.evaluateAll((items) =>
+        items.map((card) => {
+          const box = card.getBoundingClientRect();
+          const fill = card.querySelector(".color").getBoundingClientRect();
+          const save = card
+            .querySelector(".studio-color-save")
+            .getBoundingClientRect();
+          return { top: box.top, fill: fill.top, save: save.top };
+        }),
+      );
+      expect(
+        swatches.filter(({ top }) => top === swatches[0].top),
+      ).toHaveLength(columns);
+      for (const swatch of swatches) {
+        expect(swatch.fill - swatch.top).toBeCloseTo(1);
+        expect(
+          swatches
+            .filter(({ top }) => top === swatch.top)
+            .every(
+              ({ fill, save }) => fill === swatch.fill && save === swatch.save,
+            ),
+        ).toBe(true);
+      }
+      for (const [tab, label] of [
+        ["Colors", "Save palette to collection"],
+        ["Fonts", "Save all typography to collection"],
+        ["Text", "Save all text to collection"],
+      ]) {
+        await tool.getByRole("button", { name: tab, exact: true }).click();
+        const button = tool.getByRole("button", { name: label, exact: true });
+        await expect(button).toBeEnabled();
+        expect(
+          await button.evaluate((node) => {
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            const text = range.getBoundingClientRect();
+            const button = node.getBoundingClientRect();
+            return (
+              button.left >= 0 &&
+              button.right <= innerWidth &&
+              text.left >= button.left &&
+              text.right <= button.right &&
+              node.scrollWidth <= node.clientWidth
+            );
+          }),
+        ).toBe(true);
+      }
+      await tool.close();
+    }
+    await app.page.goto(`${origin}/studio-motion`);
+    const popup = await app.openPopup();
+    await popup.getByRole("button", { name: "Fonts", exact: true }).click();
+    await popup
+      .getByRole("button", {
+        name: "Save all typography to collection",
+        exact: true,
+      })
+      .click();
+    const dialog = popup.getByRole("dialog");
+    await expect(
+      dialog.getByText(/Review styles · (\d+) of \1 selected/),
+    ).toBeVisible();
+    await dialog
+      .getByRole("textbox", { name: "Project name" })
+      .fill("Popup captures");
+    await dialog
+      .getByRole("button", { name: "Create and save", exact: true })
+      .click();
+    await expect(dialog.getByRole("status")).toContainText(
+      "Saved to Typography",
+    );
+    await dialog.getByRole("button", { name: "Keep browsing" }).click();
+    await popup.getByRole("button", { name: "Images", exact: true }).click();
+    await popup
+      .getByRole("button", {
+        name: "Save all images to collection",
+        exact: true,
+      })
+      .click();
+    await expect(
+      dialog.getByText("Review images · 2 of 2 selected"),
+    ).toBeVisible();
+    await dialog
+      .getByRole("button", { name: "Save 2 images", exact: true })
+      .click();
+    await expect(dialog.getByRole("alert")).toContainText(
+      "Deselect the images marked unavailable",
+    );
+    await expect(dialog.getByRole("status")).toHaveCount(0);
+    await dialog
+      .getByRole("checkbox", { name: /Vector artwork.*Unavailable/ })
+      .uncheck();
+    await dialog
+      .getByRole("button", { name: "Save selected (1)", exact: true })
+      .click();
+    await expect(dialog.getByRole("status")).toContainText(
+      "Saved to Typography",
+    );
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("Studio saves while browsing two sites, then edits and exports a design from those assets", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
+  try {
+    await app.page.goto(`${origin}/collection-component`);
+    const panel = await app.openPanel();
+    await panel.setViewportSize({ width: 370, height: 840 });
+    const dialog = panel.getByRole("dialog");
+    const keepBrowsing = () =>
+      dialog.getByRole("button", { name: "Keep browsing" }).click();
+    await panel
+      .getByRole("button", { name: "Save to collection: #234567", exact: true })
+      .click();
+    await dialog
+      .getByRole("textbox", { name: "Project name" })
+      .fill("Trail project");
+    await dialog
+      .getByRole("textbox", { name: /Collection name/ })
+      .fill("Trail campaign");
+    await dialog
+      .getByRole("button", { name: "Create and save", exact: true })
+      .click();
+    await expect(dialog.getByRole("status")).toContainText(
+      "Saved to Trail campaign",
+    );
+    await keepBrowsing();
+    await panel.getByRole("button", { name: "Fonts", exact: true }).click();
+    await panel
+      .getByRole("button", {
+        name: "Save to collection: Arial body",
+        exact: true,
+      })
+      .click();
+    await expect(
+      dialog.getByRole("combobox", { name: "Collection", exact: true }),
+    ).toHaveValue(/./);
+    await dialog
+      .getByRole("button", { name: "Save font", exact: true })
+      .click();
+    await expect(dialog.getByRole("status")).toContainText(
+      "Saved to Trail campaign",
+    );
+    await keepBrowsing();
+
+    await panel.getByRole("button", { name: "Images", exact: true }).click();
+    await panel
+      .getByRole("button", {
+        name: "Save to collection: Site artwork",
+        exact: true,
+      })
+      .click();
+    await dialog
+      .getByRole("button", { name: "Save image", exact: true })
+      .click();
+    await expect(dialog.getByRole("status")).toContainText(
+      "Saved to Trail campaign",
+    );
+    await keepBrowsing();
+
+    await panel
+      .getByRole("button", { name: "Quick Inspect", exact: true })
+      .click();
+    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    await app.page
+      .locator("#card")
+      .click({ position: { x: 8, y: 8 }, force: true });
+    await panel
+      .getByRole("button", { name: "＋ Save to collection", exact: true })
+      .click();
+    await expect(
+      dialog.getByRole("heading", { name: "Save component to collection" }),
+    ).toBeVisible();
+    await dialog
+      .getByRole("textbox", { name: "Name", exact: true })
+      .fill("Feature card");
+    await dialog
+      .getByRole("button", { name: "Save component", exact: true })
+      .click();
+    await expect(dialog.getByRole("status")).toContainText(
+      "Saved to Trail campaign",
+    );
+    await dialog.getByRole("button", { name: "Keep inspecting" }).click();
+
+    await panel.getByRole("button", { name: "Colors", exact: true }).click();
+    await panel
+      .getByRole("button", { name: "Save to collection: #234567", exact: true })
+      .click();
+    await app.page.goto(
+      `${origin.replace("127.0.0.1", "localhost")}/usage?keep=private#capture`,
+    );
+    await dialog
+      .getByRole("button", { name: "Save color", exact: true })
+      .click();
+    await expect(dialog.getByRole("alert")).toContainText("The page changed");
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await panel.getByRole("button", { name: "Scan again" }).click();
+    await panel
+      .getByRole("button", { name: "Save to collection: #187C70", exact: true })
+      .click();
+    await expect(dialog.getByText("localhost", { exact: true })).toBeVisible();
+    await dialog
+      .getByRole("button", { name: "Save color", exact: true })
+      .click();
+    await expect(dialog.getByRole("status")).toContainText(
+      "Saved to Trail campaign",
+    );
+    await panel.screenshot({
+      path: info.outputPath("getter-browse-and-save.png"),
+    });
+    const opened = app.context.waitForEvent("page");
+    await dialog
+      .getByRole("button", { name: "Open collection", exact: true })
+      .click();
+    const studio = await opened;
+    await expect(studio).toHaveURL(/\/studio\.html\?project=/);
+    await studio.setViewportSize({ width: 1440, height: 900 });
+    await expect(
+      studio.getByRole("heading", { name: "Trail campaign", exact: true }),
+    ).toBeVisible();
+    const assets = studio.getByRole("region", { name: /Collection assets/ });
+    await expect(assets.getByRole("article")).toHaveCount(5);
+    await assets
+      .getByRole("button", { name: "Create design", exact: true })
+      .click();
+    const create = studio.getByRole("dialog", { name: "Create a design" });
+    await create
+      .getByRole("textbox", { name: "Design name" })
+      .fill("Trail website");
+    await create
+      .getByRole("combobox", { name: "Starting layout" })
+      .selectOption("website");
+    await create
+      .getByRole("button", { name: "Create design", exact: true })
+      .click();
+    const editor = studio.getByRole("region", { name: "Studio editor" });
+    await expect(
+      editor.getByRole("heading", { name: "Trail website" }),
+    ).toBeVisible();
+    const canvas = editor.locator(".design-artboard");
+    await editor
+      .getByRole("button", { name: "Apply #187C70", exact: true })
+      .click();
+    await expect(canvas.locator(":scope > rect")).toHaveAttribute(
+      "fill",
+      "rgb(24, 124, 112)",
+    );
+    await editor
+      .getByRole("textbox", { name: "Canvas background" })
+      .fill("#F7F3E9");
+    await editor
+      .getByRole("textbox", { name: "Canvas background" })
+      .press("Enter");
+    await editor
+      .getByRole("button", { name: "Call to action", exact: true })
+      .click();
+    await editor
+      .getByRole("button", { name: "Apply #187C70", exact: true })
+      .click();
+    await editor.getByRole("button", { name: "Headline", exact: true }).click();
+    const properties = editor.getByRole("complementary", {
+      name: "Design properties",
+    });
+    await properties
+      .getByRole("textbox", { name: "Layer text" })
+      .fill("A brighter trail");
+    await editor
+      .getByRole("button", { name: "Apply Arial · body", exact: true })
+      .click();
+    await expect(
+      properties.getByRole("textbox", { name: "Font family" }),
+    ).toHaveValue("Arial");
+    await editor.getByRole("button", { name: "Undo", exact: true }).click();
+    await expect(
+      properties.getByRole("textbox", { name: "Font family" }),
+    ).toHaveValue("Georgia, serif");
+    await editor.getByRole("button", { name: "Redo", exact: true }).click();
+    await expect(
+      properties.getByRole("textbox", { name: "Font family" }),
+    ).toHaveValue("Arial");
+    await properties.getByRole("spinbutton", { name: "Type size" }).fill("66");
+    await properties
+      .getByRole("spinbutton", { name: "Type size" })
+      .press("Enter");
+    await properties
+      .getByRole("spinbutton", { name: "X position" })
+      .fill("110");
+    await properties
+      .getByRole("spinbutton", { name: "X position" })
+      .press("Enter");
+    await expect(
+      canvas
+        .locator("g[data-layer-id]")
+        .filter({ hasText: "A brighter trail" }),
+    ).toHaveAttribute("transform", "translate(110 269)");
+    await editor
+      .getByRole("button", { name: "Insert Site artwork", exact: true })
+      .click();
+    await expect(canvas.locator("image")).toHaveAttribute(
+      "href",
+      /^data:image\/png;base64,/,
+    );
+    const imageLayer = canvas
+      .locator("g[data-layer-id]")
+      .filter({ has: studio.locator("image") });
+    const imageBox = await imageLayer.boundingBox();
+    await expect(imageLayer).toHaveAttribute("transform", "translate(809 180)");
+    await studio.mouse.move(
+      imageBox.x + imageBox.width / 2,
+      imageBox.y + imageBox.height / 2,
+    );
+    await studio.mouse.down();
+    await studio.mouse.move(
+      imageBox.x + imageBox.width / 2 + 42,
+      imageBox.y + imageBox.height / 2 + 20,
+      { steps: 4 },
+    );
+    await studio.mouse.up();
+    await expect(imageLayer).not.toHaveAttribute(
+      "transform",
+      "translate(809 180)",
+    );
+    await editor.getByRole("button", { name: "Undo", exact: true }).click();
+    await editor
+      .getByRole("button", { name: "Insert Feature card", exact: true })
+      .click();
+    await expect(
+      canvas.getByText("Private fixture button", { exact: true }),
+    ).toBeVisible();
+    await properties
+      .getByRole("spinbutton", { name: "X position" })
+      .fill("860");
+    await properties
+      .getByRole("spinbutton", { name: "X position" })
+      .press("Enter");
+    await properties
+      .getByRole("spinbutton", { name: "Y position" })
+      .fill("520");
+    await properties
+      .getByRole("spinbutton", { name: "Y position" })
+      .press("Enter");
+    await properties
+      .getByRole("spinbutton", { name: "Width", exact: true })
+      .fill("440");
+    await properties
+      .getByRole("spinbutton", { name: "Width", exact: true })
+      .press("Enter");
+    await editor
+      .getByRole("button", { name: "Save draft", exact: true })
+      .click();
+    await expect(editor.getByRole("status")).toHaveText(
+      "Draft saved to collection",
+    );
+    await editor.locator(".design-sidebar").evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    await studio.screenshot({
+      path: info.outputPath("getter-studio-design-editor.png"),
+    });
+
+    await editor
+      .getByRole("button", { name: "Export draft", exact: true })
+      .click();
+    const exportBox = studio.getByRole("dialog", { name: "Export draft" });
+    const svgReady = studio.waitForEvent("download");
+    await exportBox.getByRole("button", { name: "Download SVG" }).click();
+    const svg = await readFile(await (await svgReady).path(), "utf8");
+    expect(svg).toMatch(/<svg[^>]+xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
+    expect(svg).toContain("A brighter trail");
+    expect(svg).toContain("data:image/png;base64,");
+    expect(svg).not.toMatch(
+      /data-editor-only|localhost|keep=private|onclick=|window\.pageAction/,
+    );
+    await exportBox
+      .getByRole("combobox", { name: "File format" })
+      .selectOption("png");
+    const pngReady = studio.waitForEvent("download");
+    await exportBox.getByRole("button", { name: "Download PNG" }).click();
+    const pixels = await readFile(await (await pngReady).path());
+    expect(pixels.subarray(1, 4).toString()).toBe("PNG");
+    expect(pixels.readUInt32BE(16)).toBe(1440);
+    expect(pixels.readUInt32BE(20)).toBe(900);
+    await exportBox.getByRole("button", { name: "Done" }).click();
+    await editor.getByRole("button", { name: /Back to collection/ }).click();
+    await expect(assets.getByRole("article")).toHaveCount(5);
+    await studio.reload();
+    await studio.getByRole("button", { name: "Editor", exact: true }).click();
+    await studio.getByRole("button", { name: "Open Trail website" }).click();
+    await expect(
+      canvas.getByText("A brighter trail", { exact: true }),
+    ).toBeVisible();
+    await expect(canvas.locator("image")).toHaveAttribute(
+      "href",
+      /^data:image\/png;base64,/,
+    );
+  } finally {
+    await app.context.close();
+  }
+});
+
 test("ungranted side-panel sites are identified without automatic permission requests", async ({}, info) => {
   const app = await launch(info, {
     fixtureHostGrants: false,

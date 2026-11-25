@@ -2,8 +2,13 @@ import { extractPage, aggregate } from "./extract.js";
 import { activePage, siteOrigin, supportedPage } from "./access.js";
 export { supportedPage } from "./access.js";
 export class ScanSession {
-  constructor(api, onState, { followTabs = false } = {}) {
+  constructor(
+    api,
+    onState,
+    { followTabs = false, captureMetadata = false } = {},
+  ) {
     this.followTabs = followTabs;
+    this.captureMetadata = captureMetadata;
     this.api = api;
     this.onState = onState;
     this.sequence = 0;
@@ -179,7 +184,14 @@ export class ScanSession {
           ...(tab.documentId ? { documentIds: [tab.documentId] } : {}),
         },
         func: extractPage,
-        args: [{ maxNodes: 4000, maxMs: 100, maxItems: 500 }],
+        args: [
+          {
+            maxNodes: 4000,
+            maxMs: 100,
+            maxItems: 500,
+            ...(this.captureMetadata ? { captureMetadata: true } : {}),
+          },
+        ],
       });
       if (!current()) return;
       const main = results.find((r) => r.frameId === 0);
@@ -210,7 +222,16 @@ export class ScanSession {
                 ...(await this.api.scripting.executeScript({
                   target: { tabId: tab.id, documentIds: [frame.documentId] },
                   func: extractPage,
-                  args: [{ maxNodes: 1000, maxMs: 40, maxItems: 200 }],
+                  args: [
+                    {
+                      maxNodes: 1000,
+                      maxMs: 40,
+                      maxItems: 200,
+                      ...(this.captureMetadata
+                        ? { captureMetadata: true }
+                        : {}),
+                    },
+                  ],
                 })),
               );
             } catch {
@@ -250,6 +271,14 @@ export class ScanSession {
         documentId: main.documentId,
         url: tab.url,
         message: notes.join(" "),
+        ...(this.captureMetadata
+          ? {
+              coverage: {
+                viewport: main.result.viewport,
+                framesOmitted: omitted,
+              },
+            }
+          : {}),
       });
     } catch {
       if (current()) {

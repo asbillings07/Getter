@@ -5,6 +5,7 @@ const m = JSON.parse(await readFile("dist/manifest.json", "utf8"));
 const pkg = JSON.parse(await readFile("package.json", "utf8"));
 const lock = JSON.parse(await readFile("package-lock.json", "utf8"));
 assert.equal(m.version, pkg.version);
+assert.equal(m.name, "Getter");
 assert.equal(lock.version, pkg.version);
 assert.equal(lock.packages[""].version, pkg.version);
 assert.equal(m.manifest_version, 3);
@@ -21,6 +22,7 @@ assert.deepEqual(m.permissions, [
 assert.equal(m.host_permissions, undefined);
 assert.deepEqual(m.optional_host_permissions, ["http://*/*", "https://*/*"]);
 assert.equal(m.web_accessible_resources, undefined);
+assert.equal(m.options_ui, undefined);
 assert.equal(
   m.content_security_policy.extension_pages,
   "script-src 'self'; object-src 'none'; base-uri 'none'; connect-src https:; img-src 'self' https:",
@@ -49,6 +51,14 @@ assert.match(
   /https:\/\/github\.com\/asbillings07\/Getter\/blob\/main\/PRIVACY\.md/,
 );
 assert.doesNotMatch(popup, /Created by Aaron Billings|An Aptelum product/);
+assert.doesNotMatch(
+  popup,
+  /Subscribe to Studio|Open Studio QA|Aptelum sign-in is unavailable|Save palette to collection|Save all (typography|images|text) to collection|Individual assets|studio-side-dialog|studio-inspect-motion/,
+);
+assert.doesNotMatch(
+  await readFile("dist/inspect.js", "utf8"),
+  /getter-studio-inspect|studio-capture|studio-motion|select-parent/,
+);
 assert.deepEqual((await readdir("dist")).sort(), [
   "background.js",
   "images",

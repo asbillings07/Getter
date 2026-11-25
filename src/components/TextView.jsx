@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { extractText, textContent } from "../core/text.js";
 import { verifyDocument } from "../core/workspace.js";
 import Info from "./Info.jsx";
+import { collectionLabels } from "../studio/library.js";
 export default function TextView({
   scan,
   model,
@@ -9,6 +10,7 @@ export default function TextView({
   onCopy,
   onDownload,
   onNotice,
+  onCollect,
 }) {
   const [loading, setLoading] = useState(false),
     [error, setError] = useState("");
@@ -109,6 +111,20 @@ export default function TextView({
           · {blocks.length} blocks
         </span>
       </div>
+      {GETTER_STUDIO_WORKSPACE_QA && onCollect && (
+        <button
+          className="secondary studio-batch-add studio-collection-button"
+          disabled={
+            loading ||
+            !blocks.length ||
+            !!error ||
+            result?.documentId !== scan.documentId
+          }
+          onClick={() => onCollect(textContent(result), result.scope)}
+        >
+          {collectionLabels.text}
+        </button>
+      )}
       <div className="text-source-row">
         <div className="segments" role="group" aria-label="Text source">
           {[

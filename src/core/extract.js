@@ -5,6 +5,9 @@ export function extractPage({
   maxNodes = 8000,
   maxMs = 200,
   maxItems = 500,
+  stylesOnly = false,
+  includeImageCandidates = false,
+  captureMetadata = false,
 } = {}) {
   const start = performance.now();
   const colors = new Map(),
@@ -77,6 +80,9 @@ export function extractPage({
           fontFamily: style.fontFamily,
           fontSize: style.fontSize,
           fontWeight: style.fontWeight,
+          ...(stylesOnly || captureMetadata
+            ? { fontStyle: style.fontStyle }
+            : {}),
           letterSpacing: style.letterSpacing,
           lineHeight: style.lineHeight,
         };
@@ -85,7 +91,7 @@ export function extractPage({
         else if (fonts.size < maxItems) fonts.set(key, { ...item, count: 1 });
         else limited = true;
       }
-      if (node.localName === "img") {
+      if ((!stylesOnly || includeImageCandidates) && node.localName === "img") {
         const src = node.currentSrc || node.src;
         if (/^https?:\/\//i.test(src) && !images.has(src)) {
           if (images.size < maxItems)
@@ -109,6 +115,12 @@ export function extractPage({
     limited,
     visited,
     frames,
+    ...(stylesOnly || captureMetadata
+      ? {
+          viewport: { width: innerWidth, height: innerHeight },
+          title: document.title.trim().slice(0, 120),
+        }
+      : {}),
   };
 }
 export function colorLabel(value) {

@@ -1,4 +1,9 @@
 import { snapshotElement } from "./core/inspect.js";
+import {
+  captureComponent,
+  readActiveMotion,
+  readMotion,
+} from "./studio/inspect.js";
 // Runs only after the user opens Inspect. Isolated-world state cannot be read by page scripts.
 if (!globalThis.__getterInspector) {
   const state = {
@@ -10,7 +15,19 @@ if (!globalThis.__getterInspector) {
     raf: 0,
     hovered: null,
     observer: null,
+    studio: false,
+    selectionId: 0,
   };
+  const transitions = new WeakMap();
+  const recorded = (element) => transitions.get(element) || [];
+  function transition(event) {
+    const node = event.target;
+    if (!(node instanceof Element) || event.pseudoElement) return;
+    const active = readActiveMotion(node).filter(
+      ({ kind }) => kind === "transition",
+    );
+    if (active.length) transitions.set(node, active);
+  }
   globalThis.__getterInspector = state;
   const send = (message) => {
     try {
@@ -20,6 +37,7 @@ if (!globalThis.__getterInspector) {
     }
   };
   const snapshot = (requestId) => {
+    if (state.studio) return;
     const node = state.selected?.deref();
     if (!node?.isConnected) {
       if (state.selected || requestId) send({ type: "removed", requestId });
@@ -27,7 +45,14 @@ if (!globalThis.__getterInspector) {
       return;
     }
     try {
-      send({ type: "snapshot", snapshot: snapshotElement(node), requestId });
+      const result = snapshotElement(node);
+      if (GETTER_STUDIO_WORKSPACE_QA) {
+        result.selectionId = state.selectionId;
+        result.hasParent =
+          !!node.parentElement &&
+          !["body", "html"].includes(node.parentElement.localName);
+      }
+      send({ type: "snapshot", snapshot: result, requestId });
     } catch {
       send({
         type: "error",
@@ -39,6 +64,8 @@ if (!globalThis.__getterInspector) {
   function pause() {
     state.picking = false;
     document.removeEventListener("pointerover", hover, true);
+    if (GETTER_STUDIO_WORKSPACE_QA)
+      document.removeEventListener("transitionrun", transition, true);
     window.removeEventListener("click", select, true);
     for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup"])
       window.removeEventListener(type, suppressPress, true);
@@ -102,7 +129,20 @@ if (!globalThis.__getterInspector) {
       });
       return;
     }
+    if (GETTER_STUDIO_WORKSPACE_QA && state.studio) {
+      pause();
+      try {
+        send({ type: "studio-capture", capture: captureComponent(element) });
+      } catch {
+        send({
+          type: "error",
+          message: "This element could not be captured. Pick another element.",
+        });
+      }
+      return;
+    }
     state.selected = new WeakRef(element);
+    state.selectionId++;
     snapshot();
   }
   function key(event) {
@@ -150,6 +190,8 @@ if (!globalThis.__getterInspector) {
     shadow.append(style, box, banner);
     document.documentElement.append(host);
     document.addEventListener("pointerover", hover, true);
+    if (GETTER_STUDIO_WORKSPACE_QA && !state.studio)
+      document.addEventListener("transitionrun", transition, true);
     window.addEventListener("click", select, true);
     for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup"])
       window.addEventListener(type, suppressPress, true);
@@ -158,10 +200,16 @@ if (!globalThis.__getterInspector) {
     window.addEventListener("resize", position);
   }
   chrome.runtime.onConnect.addListener((port) => {
-    if (port.name !== "getter-inspect" || port.sender?.id !== chrome.runtime.id)
+    const studio =
+      GETTER_STUDIO_WORKSPACE_QA && port.name === "getter-studio-inspect";
+    if (
+      (!studio && port.name !== "getter-inspect") ||
+      port.sender?.id !== chrome.runtime.id
+    )
       return;
     state.port?.disconnect();
     state.port = port;
+    state.studio = studio;
     port.onMessage.addListener((message) => {
       if (port !== state.port) return;
       if (message.type === "start") start();
@@ -170,6 +218,47 @@ if (!globalThis.__getterInspector) {
         send({ type: "paused" });
       }
       if (message.type === "refresh") snapshot(message.requestId);
+      if (
+        GETTER_STUDIO_WORKSPACE_QA &&
+        ["collect-selection", "inspect-motion", "select-parent"].includes(
+          message.type,
+        )
+      ) {
+        const node = state.selected?.deref();
+        try {
+          if (!node?.isConnected || message.selectionId !== state.selectionId)
+            throw Error();
+          if (message.type === "select-parent") {
+            const parent = node.parentElement;
+            if (!parent || ["body", "html"].includes(parent.localName))
+              throw Error();
+            state.selected = new WeakRef(parent);
+            state.selectionId++;
+            snapshot(message.requestId);
+          } else if (message.type === "inspect-motion") {
+            send({
+              type: "studio-motion",
+              motion: readMotion(node, recorded(node)),
+              requestId: message.requestId,
+            });
+          } else {
+            send({
+              type: "studio-capture",
+              capture: captureComponent(node, {
+                withAssets: true,
+                transitions: recorded,
+              }),
+              requestId: message.requestId,
+            });
+          }
+        } catch {
+          send({
+            type: "error",
+            message: "The selection changed. Choose an element again.",
+            requestId: message.requestId,
+          });
+        }
+      }
     });
     port.onDisconnect.addListener(() => {
       void chrome.runtime.lastError;

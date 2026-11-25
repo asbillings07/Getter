@@ -2,15 +2,18 @@ import React, { useEffect, useRef, useState } from "react";
 import { sections, inspectGroups, cssSnippet } from "../core/inspect.js";
 import { verifyDocument } from "../core/workspace.js";
 import Info from "./Info.jsx";
+import InspectMotion from "../studio/InspectMotion.jsx";
 export default function InspectView({
   scan,
   model,
   onChange,
   onCopy,
   onNotice,
+  onCollect,
 }) {
   const [status, setStatus] = useState("connecting"),
     [note, setNote] = useState("");
+  const [motion, setMotion] = useState(null);
   const connection = useRef(),
     latest = useRef(),
     waiters = useRef(new Map()),
@@ -38,7 +41,15 @@ export default function InspectView({
           const { model: m, onChange: change } = latest.current;
           if (message.requestId) {
             waiters.current.get(message.requestId)?.(
-              message.type === "snapshot" ? message.snapshot : null,
+              message.type === "snapshot"
+                ? message.snapshot
+                : GETTER_STUDIO_WORKSPACE_QA &&
+                    message.type === "studio-capture"
+                  ? message.capture
+                  : GETTER_STUDIO_WORKSPACE_QA &&
+                      message.type === "studio-motion"
+                    ? message.motion
+                    : null,
             );
             waiters.current.delete(message.requestId);
           }
@@ -115,13 +126,8 @@ export default function InspectView({
       document.removeEventListener("visibilitychange", hide);
     };
   }, []);
-  async function copy(value, label) {
-    const selected = model.snapshot?.selector;
-    if (!(await verifyDocument(chrome, scan))) {
-      onNotice("The page changed. Scan again before copying.");
-      return;
-    }
-    const fresh = await new Promise((resolve) => {
+  function request(message) {
+    return new Promise((resolve) => {
       const id = ++requestId.current;
       const timeout = setTimeout(() => {
         waiters.current.delete(id);
@@ -132,13 +138,21 @@ export default function InspectView({
         resolve(snapshot);
       });
       try {
-        connection.current?.postMessage({ type: "refresh", requestId: id });
+        connection.current?.postMessage({ ...message, requestId: id });
       } catch {
         clearTimeout(timeout);
         waiters.current.delete(id);
         resolve(null);
       }
     });
+  }
+  async function copy(value, label) {
+    const selected = model.snapshot?.selector;
+    if (!(await verifyDocument(chrome, scan))) {
+      onNotice("The page changed. Scan again before copying.");
+      return;
+    }
+    const fresh = await request({ type: "refresh" });
     if (
       !fresh ||
       fresh.selector !== selected ||
@@ -148,6 +162,50 @@ export default function InspectView({
       return;
     }
     onCopy(value, label, scan);
+  }
+  const selectionId = model.snapshot?.selectionId;
+  useEffect(() => {
+    if (
+      !GETTER_STUDIO_WORKSPACE_QA ||
+      !onCollect ||
+      model.section !== "effects" ||
+      selectionId === undefined
+    )
+      return;
+    let live = true;
+    setMotion(null);
+    request({ type: "inspect-motion", selectionId }).then((value) => {
+      if (live) setMotion({ value, selectionId, documentId: scan.documentId });
+    });
+    return () => {
+      live = false;
+    };
+  }, [scan.documentId, selectionId, model.section, model.picking, !!onCollect]);
+
+  async function selectParent() {
+    if (!(await verifyDocument(chrome, scan))) {
+      onNotice("The page changed. Scan again before selecting.");
+      return;
+    }
+    await request({ type: "select-parent", selectionId });
+  }
+
+  async function collect(scope) {
+    const selectionId = model.snapshot?.selectionId;
+    if (!(await verifyDocument(chrome, scan))) {
+      onNotice("The page changed. Scan again before saving.");
+      return;
+    }
+    const capture = await request({ type: "collect-selection", selectionId });
+    if (
+      !capture ||
+      latest.current.model.snapshot?.selectionId !== selectionId ||
+      !(await verifyDocument(chrome, scan))
+    ) {
+      onNotice("Choose the element again before saving.");
+      return;
+    }
+    onCollect(capture, scope);
   }
   const snapshot = model.snapshot,
     groups = inspectGroups(snapshot, model.section, model.all, model.query);
@@ -253,9 +311,44 @@ export default function InspectView({
         )}
         {snapshot && (
           <>
-            <div className="element-title">
+            <div
+              className={
+                GETTER_STUDIO_WORKSPACE_QA && onCollect
+                  ? "element-title studio-inspect-selection"
+                  : "element-title"
+              }
+            >
               <code title={snapshot.selector}>{snapshot.selector}</code>
+              {GETTER_STUDIO_WORKSPACE_QA &&
+                onCollect &&
+                snapshot.hasParent && (
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={selectParent}
+                  >
+                    Select parent
+                  </button>
+                )}
             </div>
+            {GETTER_STUDIO_WORKSPACE_QA && onCollect && (
+              <div className="studio-inspect-save-actions">
+                <button
+                  type="button"
+                  className="secondary studio-collection-button"
+                  onClick={() => collect("component")}
+                >
+                  ＋ Save to collection
+                </button>
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => collect("individual")}
+                >
+                  Individual assets
+                </button>
+              </div>
+            )}
             {snapshot.limited && (
               <p className="scan-note">Some long values were limited.</p>
             )}
@@ -363,6 +456,19 @@ export default function InspectView({
             </>
           ) : (
             <>
+              {GETTER_STUDIO_WORKSPACE_QA &&
+                onCollect &&
+                model.section === "effects" &&
+                motion?.selectionId === selectionId &&
+                motion?.documentId === scan.documentId &&
+                motion.value && (
+                  <InspectMotion
+                    motion={motion.value}
+                    snapshot={snapshot}
+                    query={model.query}
+                    onSave={collect}
+                  />
+                )}
               {model.section === "layout" && !model.query && (
                 <>
                   <div className="dimension-summary">
