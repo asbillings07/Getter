@@ -34,6 +34,7 @@
 @media (max-width: 370px) {
   :root[data-mode="panel"] .studio-account-qa .top-actions {
     gap: 4px;
+    max-width: 100%;
   }
   :root[data-mode="panel"] .studio-account-qa .top-actions .studio-icon-button {
     width: 32px;
@@ -43,7 +44,10 @@
   }
   :root[data-mode="panel"] .studio-account-qa .studio-entry-button {
     font-size: 12px;
+    line-height: 1.15;
+    min-width: 0;
     padding-inline: 4px;
+    white-space: normal;
   }
 }
 .studio-account-qa [hidden] {
