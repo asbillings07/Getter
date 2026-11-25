@@ -405,7 +405,6 @@ function canvasAtSelectionPoint(root, win, point) {
   if (!point || ["html", "body"].includes(root.localName)) return null;
   const canvases = root.getElementsByTagName("canvas");
   if (!canvases.length || canvases.length > maxNearbyCanvases) return null;
-  const selection = root.getBoundingClientRect();
   let match;
   for (const canvas of canvases) {
     if (
@@ -428,13 +427,7 @@ function canvasAtSelectionPoint(root, win, point) {
     if (match) return null;
     match = canvas;
   }
-  if (
-    !match ||
-    win.getComputedStyle(match).pointerEvents !== "none" ||
-    !containsRect(selection, match.getBoundingClientRect())
-  )
-    return null;
-  const frame = mediaFrame(match, win, true);
+  const frame = match && canvasFrameWithinSelection(root, match, win);
   if (!frame) return null;
   const { x, y, width, height } = frame.rect;
   const pageX = point.x + win.scrollX;
@@ -442,6 +435,16 @@ function canvasAtSelectionPoint(root, win, point) {
   return pageX >= x && pageX < x + width && pageY >= y && pageY < y + height
     ? match
     : null;
+}
+
+function canvasFrameWithinSelection(root, canvas, win) {
+  if (
+    !root.contains(canvas) ||
+    win.getComputedStyle(canvas).pointerEvents !== "none" ||
+    !containsRect(root.getBoundingClientRect(), canvas.getBoundingClientRect())
+  )
+    return null;
+  return mediaFrame(canvas, win, true);
 }
 
 function transparentHitTarget(root, scope, win) {
@@ -593,7 +596,7 @@ function clickedCanvasPixel(node, crop, x, y) {
   return ctx.getImageData(0, 0, 1, 1).data[3] > 32;
 }
 
-export function bindArtworkSelection(root, point) {
+function bindArtworkSelection(root, point) {
   if (!point || root.localName !== "div") return null;
   const win = root.ownerDocument.defaultView;
   const selectArtwork = { status: "select-artwork" };
@@ -693,6 +696,17 @@ export function bindArtworkSelection(root, point) {
     };
   }
   return null;
+}
+
+export function bindMotionSelection(root, point) {
+  const artwork = bindArtworkSelection(root, point);
+  if (artwork) return { artwork };
+  if (!point) return;
+  const win = root.ownerDocument.defaultView;
+  const canvas = canvasAtSelectionPoint(root, win, point);
+  // Keep a fallback match across retries without reusing the click coordinates.
+  if (canvas && !selectedMedia(root, win).length)
+    return { canvas: new WeakRef(canvas) };
 }
 
 function geometry(node, win) {
@@ -899,22 +913,25 @@ function mediaObserver(node, readFrame) {
   };
 }
 
-export async function sampleMotion(root, signal, point, artwork) {
+export async function sampleMotion(root, signal, { artwork, canvas } = {}) {
   if (artwork?.status) return { status: artwork.status };
   const doc = root.ownerDocument;
   const win = doc.defaultView;
-  const candidates = artwork ? [] : selectedMedia(root, win);
-  const nearbyCanvas =
-    !artwork && !candidates.length && canvasAtSelectionPoint(root, win, point);
+  const nearbyCanvas = canvas?.deref();
+  if (canvas && !nearbyCanvas) return { status: "unavailable" };
   const media = artwork
     ? [mediaObserver(artwork.node, artwork.frame)]
-    : (nearbyCanvas ? [nearbyCanvas] : candidates).map((node) =>
-        mediaObserver(node, () =>
-          root.contains(node)
-            ? mediaFrame(node, win, node === root || node === nearbyCanvas)
-            : null,
-        ),
-      );
+    : nearbyCanvas
+      ? [
+          mediaObserver(nearbyCanvas, () =>
+            canvasFrameWithinSelection(root, nearbyCanvas, win),
+          ),
+        ]
+      : selectedMedia(root, win).map((node) =>
+          mediaObserver(node, () =>
+            root.contains(node) ? mediaFrame(node, win, node === root) : null,
+          ),
+        );
   const bounds = new AbortController();
   let useGeometry = true;
   const viewportChanged = (event) => {

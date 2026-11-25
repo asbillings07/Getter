@@ -189,11 +189,13 @@ test.beforeAll(async () => {
         </style>
         <div id="book-stage">${"<span hidden></span>".repeat(180)}<div id="book-clip"><canvas width="340" height="210"></canvas></div></div>
         <script>
-          const context=document.querySelector("canvas").getContext("2d");
           function draw(time) {
+            const canvas=document.querySelector("#book-clip canvas");
+            const context=canvas.getContext("2d");
             context.clearRect(0,0,340,210);
             context.fillStyle="#4967aa";
-            context.fillRect(50+35*Math.sin(time/220),50,80,110);
+            const offset=canvas.dataset.moving==="true"?35*Math.sin(time/220):0;
+            context.fillRect(50+offset,50,80,110);
             requestAnimationFrame(draw);
           }
           requestAnimationFrame(draw);
@@ -1514,7 +1516,7 @@ test("Studio detects and replays selected canvas and scroll motion without a rec
   }
 });
 
-test("Studio finds a deep pointer-transparent canvas only inside an unambiguous click and safe clip", async ({}, info) => {
+test("Studio retries a deep pointer-transparent canvas from the same unambiguous selection", async ({}, info) => {
   execFileSync(process.execPath, [
     "scripts/build.mjs",
     "--studio-workspace-qa",
@@ -1534,12 +1536,23 @@ test("Studio finds a deep pointer-transparent canvas only inside an unambiguous 
     const motion = panel.getByRole("region", {
       name: "Studio observed motion",
     });
+    const still = panel.getByText(/^No motion detected/);
+    async function retryOutsideCanvas() {
+      const bounds = await stage.boundingBox();
+      await app.page.mouse.move(bounds.x + 410, bounds.y - 12);
+      await app.page.mouse.move(bounds.x + 410, bounds.y + 100);
+    }
 
     await click();
     await expect(panel.locator(".element-title code")).toHaveText(
       "div#book-stage",
     );
     await panel.getByRole("button", { name: "Effects", exact: true }).click();
+    await expect(still).toBeVisible();
+    await canvas.evaluate((node) => {
+      node.dataset.moving = "true";
+    });
+    await retryOutsideCanvas();
     await expect(motion.getByText(/Canvas in selection/)).toBeVisible();
     await expect(
       motion.getByRole("button", { name: "Save motion" }),
@@ -1547,9 +1560,25 @@ test("Studio finds a deep pointer-transparent canvas only inside an unambiguous 
     await motion.getByRole("button", { name: "Preview motion" }).click();
     await expect(motion.getByRole("status")).toHaveText("Preview complete.");
 
+    await canvas.evaluate((node) => {
+      node.dataset.moving = "false";
+    });
+    await click();
+    await expect(still).toBeVisible();
+    await canvas.evaluate((node) => {
+      const replacement = node.cloneNode();
+      replacement.dataset.moving = "true";
+      node.replaceWith(replacement);
+    });
+    await retryOutsideCanvas();
+    await expect(
+      panel.getByText(/^This motion can’t be previewed/),
+    ).toBeVisible();
+    await expect(motion).toHaveCount(0);
+
     async function expectNoPreview(x) {
       await click(x);
-      await expect(panel.getByText(/^No motion detected/)).toBeVisible();
+      await expect(still).toBeVisible();
       await expect(motion).toHaveCount(0);
     }
 

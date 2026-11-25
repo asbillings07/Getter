@@ -4,7 +4,7 @@ import {
   readActiveMotion,
   readMotion,
 } from "./studio/inspect.js";
-import { bindArtworkSelection, sampleMotion } from "./studio/sample-motion.js";
+import { bindMotionSelection, sampleMotion } from "./studio/sample-motion.js";
 // Runs only after the user opens Inspect. Isolated-world state cannot be read by page scripts.
 if (!globalThis.__getterInspector) {
   const state = {
@@ -20,7 +20,7 @@ if (!globalThis.__getterInspector) {
     selectionId: 0,
   };
   const transitions = new WeakMap();
-  let sampler, observed, samplingStatus, artwork;
+  let sampler, observed, samplingStatus, motionSelection;
   let sampleId = 0;
   const widestFrame = (clip) =>
     Math.max(...clip.frames.map(({ width }) => (width / 100) * clip.width));
@@ -63,11 +63,12 @@ if (!globalThis.__getterInspector) {
     sampler = observed = samplingStatus = undefined;
   }
   const startSampling = GETTER_STUDIO_WORKSPACE_QA
-    ? (element, point, refresh = false) => {
+    ? (element, refresh = false) => {
         sampler?.abort();
         if (!refresh) observed = undefined;
         const controller = new AbortController();
         const { port, selectionId } = state;
+        const selection = motionSelection;
         sampler = controller;
         const publish = (result) => {
           if (
@@ -81,7 +82,7 @@ if (!globalThis.__getterInspector) {
           if (
             refresh &&
             (!result.asset?.clip ||
-              (!artwork.scene &&
+              (!selection.artwork.scene &&
                 widestFrame(result.asset.clip) <
                   widestFrame(observed.clip) + 8))
           ) {
@@ -100,14 +101,14 @@ if (!globalThis.__getterInspector) {
         };
         if (refresh) samplingStatus = "checking";
         else publish({ status: "checking" });
-        sampleMotion(element, controller.signal, point, artwork).then(
-          publish,
-          () => publish({ status: "unavailable" }),
+        sampleMotion(element, controller.signal, selection).then(publish, () =>
+          publish({ status: "unavailable" }),
         );
       }
     : null;
   const sampleOnInteraction = GETTER_STUDIO_WORKSPACE_QA
     ? (event) => {
+        const artwork = motionSelection?.artwork;
         const navigation = event.type === "wheel" || event.type === "keydown";
         const refresh =
           navigation &&
@@ -133,7 +134,7 @@ if (!globalThis.__getterInspector) {
           rect.right > 0 &&
           rect.left < innerWidth
         )
-          startSampling(node, undefined, refresh);
+          startSampling(node, refresh);
       }
     : null;
   function setSelection(element, requestId, point) {
@@ -141,8 +142,8 @@ if (!globalThis.__getterInspector) {
     state.selectionId++;
     snapshot(requestId);
     if (GETTER_STUDIO_WORKSPACE_QA) {
-      artwork = bindArtworkSelection(element, point);
-      startSampling(element, point);
+      motionSelection = bindMotionSelection(element, point);
+      startSampling(element);
     }
   }
   const snapshot = (requestId) => {
@@ -152,7 +153,7 @@ if (!globalThis.__getterInspector) {
       if (state.selected || requestId) send({ type: "removed", requestId });
       state.selected = null;
       if (GETTER_STUDIO_WORKSPACE_QA) {
-        artwork = null;
+        motionSelection = undefined;
         stopSampling();
       }
       return;
@@ -400,7 +401,7 @@ if (!globalThis.__getterInspector) {
       if (state.selected && !node?.isConnected) {
         state.selected = null;
         if (GETTER_STUDIO_WORKSPACE_QA) {
-          artwork = null;
+          motionSelection = undefined;
           stopSampling();
         }
         send({ type: "removed" });
