@@ -43,7 +43,7 @@ if (studioAccountQa) {
     : "Getter Studio Account QA";
   manifest.action.default_title = manifest.name;
   if (studioWorkspaceQa) {
-    manifest.version_name = `${manifest.version} Browse and Design QA 4`;
+    manifest.version_name = `${manifest.version} Browse and Design QA 9`;
     manifest.options_ui = { page: "studio.html", open_in_tab: true };
     manifest.content_security_policy.extension_pages =
       manifest.content_security_policy.extension_pages.replace(

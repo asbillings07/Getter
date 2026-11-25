@@ -57,7 +57,7 @@ assert.doesNotMatch(
 );
 assert.doesNotMatch(
   await readFile("dist/inspect.js", "utf8"),
-  /getter-studio-inspect|studio-capture|studio-motion|select-parent/,
+  /getter-studio-inspect|studio-capture|studio-((sampled|native)-)?motion|select-parent/,
 );
 assert.deepEqual((await readdir("dist")).sort(), [
   "background.js",

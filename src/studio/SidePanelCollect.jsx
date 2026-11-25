@@ -26,6 +26,7 @@ function labelFor(asset) {
 
 function inspectionItems(capture) {
   const tree = capture.component;
+  if (!tree) return capture.observedMotion ? [capture.observedMotion] : [];
   const text = capture.text;
   return [
     {
@@ -42,11 +43,13 @@ function inspectionItems(capture) {
       ? [{ type: "effect", name: `${tree.tag} effect`, css: capture.effects }]
       : []),
     ...motionAssets({ css: capture.motion, animations: capture.animations }),
+    ...(capture.observedMotion ? [capture.observedMotion] : []),
   ];
 }
 
 const scopeLabel = (asset) => {
-  if (asset.type === "motion") return asset.kind;
+  if (asset.type === "motion")
+    return ["visual", "scripted"].includes(asset.kind) ? "motion" : asset.kind;
   return {
     component: "component",
     font: "font",
@@ -549,6 +552,9 @@ export default function SidePanelCollect({
                   onChange={(event) => setItemName(event.target.value)}
                 />
               </label>
+              {choice.clip?.scope === "scene" && (
+                <p className="scan-note">Entire scene</p>
+              )}
               {choice.type === "image" ? (
                 <span>
                   {choice.width} × {choice.height}

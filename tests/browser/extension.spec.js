@@ -89,6 +89,154 @@ test.beforeAll(async () => {
       </style><main><article id="promo"><h2>Juniper blend</h2><img alt="Blend artwork" src="${imageOrigin}/studio-image.png" width="80" height="80"><button id="buy" onclick="window.bought=true">Shop blend</button><input placeholder="Email address" value="private-field-value"></article><section id="newsletter"><h2>Field notes</h2><p>Seasonal stories</p></section><span id="plain">Plain text</span></main><img alt="Vector artwork" src="${imageOrigin}/artwork.svg">`);
       return;
     }
+    if (req.url === "/direct-artwork-motion") {
+      res.setHeader("Content-Type", "text/html");
+      res.end(`<!doctype html><title>Direct artwork motion fixture</title>
+        <style>
+          body {margin:32px}
+          #book-scene {position:relative;width:450px;height:260px}
+          #book-clip {clip-path:inset(0px)}
+          #book-clip canvas, #book-layer {pointer-events:none}
+          #book-layer {position:absolute;inset:0}
+          #book-target {position:absolute;top:52px;left:104px;width:144px;height:150px;pointer-events:auto}
+          #book-target span {display:none}
+          #book-target.painted::before {content:"";position:absolute;inset:0;background:#333}
+          #cat-window {position:relative;width:190px;height:125px;overflow:hidden}
+          #cat-turn {position:absolute;top:-16px;left:30px}
+          canvas {display:block}
+        </style>
+        <div id="book-scene"><div id="book-clip"><canvas width="450" height="260"></canvas></div><div id="book-layer"><div id="book-target" aria-label="The featured book"><span>Book hit area</span></div></div></div>
+        <div id="cat-window"><div id="cat-turn"><canvas width="150" height="165"></canvas></div></div>
+        <script>
+          const book=document.querySelector("#book-clip canvas").getContext("2d");
+          const catTurn=document.querySelector("#cat-turn");
+          const cat=catTurn.querySelector("canvas").getContext("2d");
+          cat.fillStyle="#1471d9";
+          cat.fillRect(0,0,150,165);
+          cat.fillStyle="#eed340";
+          cat.fillRect(20,32,45,31);
+          function draw(t) {
+            book.clearRect(0,0,450,260);
+            book.fillStyle="#f00000";
+            book.fillRect(0,0,30,260);
+            book.fillStyle="#2459dc";
+            book.fillRect(104,52,144,150);
+            book.fillStyle="#13bf62";
+            book.fillRect(140+22*Math.sin(t/190),86,28,54);
+            catTurn.style.transform="rotate("+(17+3*Math.sin(t/230))+"deg)";
+            requestAnimationFrame(draw);
+          }
+          requestAnimationFrame(draw);
+        </script>`);
+      return;
+    }
+    if (req.url === "/shelf-artwork-motion") {
+      res.setHeader("Content-Type", "text/html");
+      res.end(`<!doctype html><title>Shelf artwork motion fixture</title>
+        <style>
+          body {margin:32px}
+          #shelf {position:relative;width:450px;height:260px}
+          #shelf canvas, #targets {position:absolute;inset:0;pointer-events:none}
+          #gap, #spine, #neighbor {position:absolute;top:52px;height:150px;pointer-events:auto}
+          #gap {left:0;width:450px}
+          #spine {left:60px;width:44px}
+          #neighbor {left:255px;width:130px}
+        </style>
+        <div id="shelf"><canvas width="450" height="260"></canvas><div id="targets">
+          <div id="gap"></div><div id="spine"></div><div id="neighbor"></div>
+        </div></div>
+        <script>
+          const spine = document.querySelector("#spine");
+          const neighbor = document.querySelector("#neighbor");
+          const canvas = document.querySelector("canvas");
+          const ctx = canvas.getContext("2d");
+          let start;
+          window.addEventListener("wheel", () => { start ??= performance.now(); });
+          window.addEventListener("keydown", (event) => {
+            if (event.key === "ArrowRight") start ??= performance.now();
+          });
+          function draw(now) {
+            const elapsed = start === undefined ? 0 : Math.max(0, now - start);
+            const width = 44 + Math.round(Math.min(1, elapsed / 900) * 110);
+            spine.style.width = width + "px";
+            const turning = elapsed > 0 && elapsed < 460;
+            spine.style.pointerEvents = neighbor.style.pointerEvents = turning ? "none" : "";
+            ctx.clearRect(0, 0, 450, 260);
+            ctx.fillStyle = "#04e00b";
+            ctx.fillRect(0, 0, 450, 24);
+            ctx.fillStyle = "#2459dc";
+            ctx.fillRect(60, 52, width, 150);
+            ctx.fillStyle = "#071f50";
+            ctx.fillRect(66 + Math.floor(now / 100) % 10, 80, 5, 30);
+            ctx.fillStyle = "#e6cd4e";
+            if (width > 60) ctx.fillRect(114, 76, width - 62, 46);
+            ctx.fillStyle = "#f00000";
+            ctx.fillRect(255, 52, 130, 150);
+            requestAnimationFrame(draw);
+          }
+          requestAnimationFrame(draw);
+        </script>`);
+      return;
+    }
+    if (req.url === "/nested-canvas-motion") {
+      res.setHeader("Content-Type", "text/html");
+      res.end(`<!doctype html><title>Nested canvas motion fixture</title>
+        <style>
+          body {margin:40px}
+          #book-stage {position:relative;width:480px;height:240px;background:#eee}
+          #book-clip {position:absolute;inset:0 auto auto 0;width:340px;height:210px;clip-path:inset(0px);pointer-events:none}
+          canvas {display:block;pointer-events:none}
+        </style>
+        <div id="book-stage">${"<span hidden></span>".repeat(180)}<div id="book-clip"><canvas width="340" height="210"></canvas></div></div>
+        <script>
+          const context=document.querySelector("canvas").getContext("2d");
+          function draw(time) {
+            context.clearRect(0,0,340,210);
+            context.fillStyle="#4967aa";
+            context.fillRect(50+35*Math.sin(time/220),50,80,110);
+            requestAnimationFrame(draw);
+          }
+          requestAnimationFrame(draw);
+        </script>`);
+      return;
+    }
+    if (req.url === "/automatic-motion") {
+      res.setHeader("Content-Type", "text/html");
+      res.end(`<!doctype html><title>Automatic motion fixture</title>
+        <style>body{min-height:200vh} canvas{display:block} #scroll-motion,#still{margin:40px; padding:16px; background:#2468df;color:white} #still{position:fixed;top:12px;right:12px} #hidden-media {height:80px;} #hidden-media span {opacity:0;} #masked {clip-path:inset(100%);} #cropped {width:48px;height:40px;overflow:hidden;} #static-crop {position:absolute;top:92vh;right:24px;}</style>
+        <section id="moving"><canvas width="120" height="80"></canvas></section>
+        <p id="scroll-motion">Scroll motion</p><p id="still">Still selection</p>
+        <section id="hidden-media"><span><canvas width="120" height="10"></canvas></span><canvas id="masked" width="120" height="10"></canvas></section>
+        <section id="cropped"><canvas width="120" height="40"></canvas></section><canvas id="static-crop" width="120" height="300"></canvas>
+        <script>
+          const section=document.querySelector("#moving");
+          const canvas=section.querySelector("canvas");
+          const ctx=canvas.getContext("2d");
+          ctx.fillStyle="#278764";
+          ctx.fillRect(15, 15, 60, 40);
+          function move(t){canvas.style.transform="translateX("+Math.sin(t/160)*12+"px)";requestAnimationFrame(move);}
+          requestAnimationFrame(move);
+          const still=document.querySelector("#static-crop").getContext("2d");
+          still.fillStyle="navy";
+          still.fillRect(0,0,120,35);
+          still.fillStyle="orange";
+          still.fillRect(0,35,120,220);
+          const samples=[...document.querySelectorAll("#hidden-media canvas,#cropped canvas")].map(node=>node.getContext("2d"));
+          setInterval(() => {
+            const green = Math.floor(performance.now()/200)%2 === 0;
+            for (const sample of samples) {
+              sample.fillStyle="red";
+              sample.fillRect(0,0,120,40);
+              sample.fillStyle=green?"green":"blue";
+              sample.fillRect(0,0,49,40);
+            }
+          }, 100);
+          window.addEventListener("scroll", () => {
+            document.querySelector("#scroll-motion").style.translate = Math.min(scrollY/2, 100)+"px 0";
+          });
+        </script>`);
+      return;
+    }
     if (req.url.split("?")[0] === "/workbench") {
       res.setHeader("Content-Type", "text/html");
       res.end(`<!doctype html><html><head><title>Getter workspace fixture</title><style>
@@ -1227,6 +1375,573 @@ test("Studio Inspect keeps the existing tools and saves motion, text, and reusab
     await expect(
       assets.getByRole("article", { name: "Page text", exact: true }),
     ).toContainText("Seasonal stories");
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("Studio detects and replays selected canvas and scroll motion without a recording step", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
+  try {
+    await app.page.goto(`${origin}/automatic-motion`);
+    const panel = await app.openPanel();
+    await panel
+      .getByRole("button", { name: "Quick Inspect", exact: true })
+      .click();
+    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    const canvas = app.page.locator("#moving canvas");
+    expect(await canvas.evaluate((node) => node.getAnimations().length)).toBe(
+      0,
+    );
+    await canvas.dispatchEvent("click");
+    await panel.getByRole("button", { name: "Effects", exact: true }).click();
+    const motion = panel.getByRole("region", {
+      name: "Studio observed motion",
+    });
+    await expect(motion.getByRole("heading")).toHaveText("Canvas motion");
+    await motion.getByRole("button", { name: "Preview motion" }).click();
+    await expect(motion.getByRole("status")).toHaveText("Preview complete.");
+    await expect(motion.getByRole("img")).toBeVisible();
+    await motion.getByRole("button", { name: "Save motion" }).click();
+    const dialog = panel.getByRole("dialog");
+    await dialog
+      .getByRole("textbox", { name: "Project name" })
+      .fill("Motion tests");
+    await dialog.getByRole("button", { name: "Create and save" }).click();
+    await expect(dialog.getByRole("status")).toContainText("Saved to Assets");
+    const opened = app.context.waitForEvent("page");
+    await dialog.getByRole("button", { name: "Open collection" }).click();
+    const studio = await opened;
+    const saved = studio.getByRole("article", {
+      name: "Canvas motion",
+      exact: true,
+    });
+    await expect(saved.getByRole("img")).toBeVisible();
+    await saved.getByRole("button", { name: "Preview motion" }).click();
+    await expect(saved.getByRole("status")).toHaveText("Preview complete.");
+    await studio.close();
+    await app.page.bringToFront();
+    await panel.getByRole("switch", { name: "Select on page" }).check();
+    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    await canvas.dispatchEvent("click");
+    await app.page.locator("#still").dispatchEvent("click");
+    await expect(panel.locator(".element-title code")).toHaveText("p#still");
+    const effects = panel.getByRole("button", { name: "Effects", exact: true });
+    if ((await effects.getAttribute("aria-pressed")) !== "true")
+      await effects.click();
+    await expect(panel.getByText(/^No motion detected/)).toBeVisible();
+    await app.page.mouse.wheel(0, 40);
+    await app.page.waitForFunction(() => scrollY >= 40);
+    await expect(motion).toHaveCount(0);
+    await expect(panel.getByText(/^No motion detected/)).toBeVisible();
+    await app.page.locator("#hidden-media").dispatchEvent("click");
+    await expect(panel.locator(".element-title code")).toHaveText(
+      "section#hidden-media",
+    );
+    await expect(panel.getByText(/^No motion detected/)).toBeVisible();
+    await expect(motion).toHaveCount(0);
+
+    await app.page.locator("#cropped").dispatchEvent("click");
+    await expect(panel.locator(".element-title code")).toHaveText(
+      "section#cropped",
+    );
+    await expect(motion.getByRole("heading")).toHaveText("Canvas motion");
+    const crop = await motion
+      .locator(".studio-visual-stage img")
+      .evaluate(async (image) => {
+        await image.decode();
+        const buffer = document.createElement("canvas");
+        buffer.width = image.naturalWidth;
+        buffer.height = image.naturalHeight;
+        const context = buffer.getContext("2d");
+        context.drawImage(image, 0, 0);
+        return {
+          width: buffer.width,
+          red: context
+            .getImageData(0, 0, buffer.width, buffer.height)
+            .data.some((value, index) => index % 4 === 0 && value > 150),
+        };
+      });
+    expect(crop).toEqual({ width: 48, red: false });
+    await app.page.locator("#cropped canvas").evaluate((node) => {
+      node.style.transform = "scaleX(-1)";
+    });
+    await app.page.locator("#hidden-media").dispatchEvent("click");
+    await expect(panel.locator(".element-title code")).toHaveText(
+      "section#hidden-media",
+    );
+    await app.page.locator("#cropped").dispatchEvent("click");
+    await expect(panel.locator(".element-title code")).toHaveText(
+      "section#cropped",
+    );
+    await expect(panel.getByText(/^No motion detected/)).toBeVisible();
+    await expect(motion).toHaveCount(0);
+
+    await app.page.locator("#static-crop").dispatchEvent("click");
+    await expect(panel.locator(".element-title code")).toHaveText(
+      "canvas#static-crop",
+    );
+    await app.page.mouse.wheel(0, 32);
+    await app.page.waitForFunction(() => scrollY >= 72);
+    await expect(panel.getByText(/^No motion detected/)).toBeVisible();
+    await expect(motion).toHaveCount(0);
+
+    await app.page.locator("#scroll-motion").dispatchEvent("click");
+    await expect(panel.locator(".element-title code")).toHaveText(
+      "p#scroll-motion",
+    );
+    await expect(panel.getByText(/^No motion detected/)).toBeVisible();
+    await app.page.mouse.wheel(0, 80);
+    await expect(motion.getByRole("heading")).toHaveText("Scripted motion");
+    await motion.getByRole("button", { name: "Preview motion" }).click();
+    expect(
+      await motion
+        .locator(".studio-sample")
+        .evaluate((element) =>
+          element
+            .getAnimations()
+            .some(({ effect }) =>
+              effect.getKeyframes().some((frame) => frame.translate),
+            ),
+        ),
+    ).toBe(true);
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("Studio finds a deep pointer-transparent canvas only inside an unambiguous click and safe clip", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
+  try {
+    await app.page.goto(`${origin}/nested-canvas-motion`);
+    const panel = await app.openPanel();
+    await panel
+      .getByRole("button", { name: "Quick Inspect", exact: true })
+      .click();
+    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    const stage = app.page.locator("#book-stage");
+    const clip = app.page.locator("#book-clip");
+    const canvas = clip.locator("canvas");
+    const click = (x = 110) => stage.click({ position: { x, y: 100 } });
+    const motion = panel.getByRole("region", {
+      name: "Studio observed motion",
+    });
+
+    await click();
+    await expect(panel.locator(".element-title code")).toHaveText(
+      "div#book-stage",
+    );
+    await panel.getByRole("button", { name: "Effects", exact: true }).click();
+    await expect(motion.getByText(/Canvas in selection/)).toBeVisible();
+    await expect(
+      motion.getByRole("button", { name: "Save motion" }),
+    ).toBeEnabled();
+    await motion.getByRole("button", { name: "Preview motion" }).click();
+    await expect(motion.getByRole("status")).toHaveText("Preview complete.");
+
+    async function expectNoPreview(x) {
+      await click(x);
+      await expect(panel.getByText(/^No motion detected/)).toBeVisible();
+      await expect(motion).toHaveCount(0);
+    }
+
+    await expectNoPreview(410);
+    await clip.evaluate((node) => {
+      node.style.clipPath = "inset(8px)";
+    });
+    await expectNoPreview();
+    await clip.evaluate((node) => {
+      node.style.clipPath = "inset(0px round 12px)";
+    });
+    await expectNoPreview();
+    await clip.evaluate((node) => {
+      node.style.clipPath = "";
+    });
+    await canvas.evaluate((node) => {
+      node.style.transform = "translateX(12px)";
+    });
+    await expectNoPreview();
+    await canvas.evaluate((node) => {
+      node.style.transform = "";
+      const other = node.cloneNode();
+      other.style.position = "absolute";
+      other.style.inset = "0";
+      node.after(other);
+    });
+    await expectNoPreview();
+    await stage.locator("span").evaluateAll((nodes) => {
+      for (const node of nodes) node.remove();
+    });
+    await expectNoPreview();
+    await clip
+      .locator("canvas")
+      .last()
+      .evaluate((node) => node.remove());
+    await expectNoPreview(410);
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("Studio previews clicked artwork within its hitbox and preserves a visible canvas rotation", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
+  try {
+    await app.page.goto(`${origin}/direct-artwork-motion`);
+    const panel = await app.openPanel();
+    await panel
+      .getByRole("button", { name: "Quick Inspect", exact: true })
+      .click();
+    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    const book = app.page.locator("#book-target");
+    const artwork = panel.getByRole("region", {
+      name: "Studio observed motion",
+    });
+    const visual = artwork.locator(".studio-visual-stage img");
+    const start = panel.getByText(/Checking the selected element for motion/);
+    const absent = panel.getByText(
+      /No motion detected|This motion can’t be previewed/,
+    );
+
+    await book.click();
+    await expect(panel.locator(".element-title code")).toHaveText(
+      "div#book-target",
+    );
+    await panel.getByRole("button", { name: "Effects", exact: true }).click();
+    await expect(artwork.getByText(/Selected artwork/)).toBeVisible();
+    expect(
+      await visual.evaluate(async (image) => {
+        await image.decode();
+        const scratch = document.createElement("canvas");
+        scratch.width = image.naturalWidth;
+        scratch.height = image.naturalHeight;
+        const ctx = scratch.getContext("2d");
+        ctx.drawImage(image, 0, 0);
+        const pixels = ctx.getImageData(
+          0,
+          0,
+          scratch.width,
+          scratch.height,
+        ).data;
+        return {
+          width: scratch.width,
+          height: scratch.height,
+          red: pixels.some((value, i) => i % 4 === 0 && value > 150),
+        };
+      }),
+    ).toEqual({ width: 144, height: 150, red: false });
+    const firstFrame = await visual.getAttribute("src");
+    await artwork.getByRole("button", { name: "Preview motion" }).click();
+    await expect(artwork.getByRole("status")).toHaveText("Preview complete.");
+
+    // Moving off the book can hide the page's target while the preview is open.
+    await book.evaluate((node) => {
+      node.style.display = "none";
+    });
+    await artwork
+      .getByRole("button", { name: "Save motion", exact: true })
+      .click();
+    const dialog = panel.getByRole("dialog");
+    await expect(dialog.locator(".studio-visual-stage img")).toHaveAttribute(
+      "src",
+      firstFrame,
+    );
+    await dialog.getByRole("textbox", { name: "Project name" }).fill("Artwork");
+    await dialog.getByRole("button", { name: "Create and save" }).click();
+    await expect(dialog.getByRole("status")).toContainText("Saved to Assets");
+    await dialog.getByRole("button", { name: "Keep inspecting" }).click();
+    await book.evaluate((node) => {
+      node.style.display = "";
+    });
+
+    await book.evaluate((node) => node.classList.add("painted"));
+    await book.click();
+    await expect(start).toBeVisible();
+    await expect(absent).toBeVisible();
+    await expect(visual).toHaveCount(0);
+
+    await book.evaluate((node) => {
+      node.classList.remove("painted");
+      node.style.left = "288px";
+    });
+    await book.click();
+    await expect(
+      panel.getByText("Select artwork on the page to preview its motion."),
+    ).toBeVisible();
+    await expect(visual).toHaveCount(0);
+
+    await book.evaluate((node) => {
+      node.style.left = "";
+      node.parentElement.style.overflow = "hidden";
+      node.parentElement.style.width = "180px";
+    });
+    await book.click();
+    await expect(start).toBeVisible();
+    await expect(absent).toBeVisible();
+    await expect(visual).toHaveCount(0);
+
+    await book.evaluate((node) => {
+      node.parentElement.style.overflow = "";
+      node.parentElement.style.width = "";
+      const wrapper = document.querySelector("#book-clip");
+      wrapper.style.clipPath = "none";
+      wrapper.querySelector("canvas").style.transform = "scaleX(-1)";
+    });
+    await book.click();
+    await expect(start).toBeVisible();
+    await expect(absent).toBeVisible();
+    await expect(visual).toHaveCount(0);
+    await app.page.locator("#book-clip canvas").evaluate((node) => {
+      node.parentElement.style.clipPath = "";
+      node.style.transform = "";
+    });
+
+    await book.evaluate((node) => {
+      node.style.left = "";
+    });
+    await book.click();
+    await expect(start).toBeVisible();
+    await app.page
+      .locator("#book-clip canvas")
+      .evaluate((node) => document.body.append(node));
+    await expect(absent).toBeVisible();
+    await expect(visual).toHaveCount(0);
+
+    const clickCat = async () => {
+      const box = await app.page.locator("#cat-window").boundingBox();
+      await app.page.mouse.click(box.x + 85, box.y + 57);
+    };
+    await clickCat();
+    await expect(panel.locator(".element-title code")).toHaveText(
+      "div#cat-turn > canvas",
+    );
+    await expect(artwork.getByText(/Selected artwork/)).toBeVisible();
+    await panel.emulateMedia({ colorScheme: "dark" });
+    await expect(artwork.locator(".studio-visual-stage")).toHaveCSS(
+      "background-color",
+      "rgb(242, 245, 249)",
+    );
+    expect(
+      await visual.evaluate(async (image) => {
+        await image.decode();
+        const scratch = document.createElement("canvas");
+        scratch.width = image.naturalWidth;
+        scratch.height = image.naturalHeight;
+        const ctx = scratch.getContext("2d");
+        ctx.drawImage(image, 0, 0);
+        const pixels = ctx.getImageData(
+          0,
+          0,
+          scratch.width,
+          scratch.height,
+        ).data;
+        const transparentEdge = pixels.some(
+          (value, i) => i % 4 === 3 && value === 0,
+        );
+        const painted = pixels.some((value, i) => i % 4 === 3 && value === 255);
+        return { height: scratch.height, transparentEdge, painted };
+      }),
+    ).toEqual({ height: 125, transparentEdge: true, painted: true });
+    await artwork.getByRole("button", { name: "Preview motion" }).click();
+    await expect(artwork.getByRole("status")).toHaveText("Preview complete.");
+
+    await app.page.locator("#cat-window").evaluate((node) => {
+      node.style.transform = "rotate(8deg)";
+    });
+    await clickCat();
+    await expect(start).toBeVisible();
+    await expect(
+      panel.getByText(/Scripted motion|This motion can’t be previewed/).first(),
+    ).toBeVisible();
+    await expect(visual).toHaveCount(0);
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("Studio previews and saves the whole shelf without capturing artwork outside the selected row", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
+  try {
+    await app.page.setViewportSize({ width: 850, height: 844 });
+    await app.page.goto(`${origin}/shelf-artwork-motion`);
+    const panel = await app.openPanel();
+    await panel.getByRole("button", { name: "Quick Inspect" }).click();
+    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    await app.page.mouse.click(260, 147);
+    await app.page.keyboard.press("ArrowRight");
+    await expect(panel.locator(".element-title code")).toHaveText("div#gap");
+    await panel.getByRole("button", { name: "Effects", exact: true }).click();
+    const scene = panel.getByRole("region", { name: "Studio observed motion" });
+    await expect(scene.getByText(/Entire scene/)).toBeVisible();
+    const image = scene.locator(".studio-visual-stage img");
+    expect(
+      await image.evaluate(async (node) => {
+        await node.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = node.naturalWidth;
+        canvas.height = node.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(node, 0, 0);
+        const blue = ctx.getImageData(42, 36, 1, 1).data;
+        const red = ctx.getImageData(160, 36, 1, 1).data;
+        const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        const outside = pixels.some(
+          (green, index) =>
+            index % 4 === 1 &&
+            green > 180 &&
+            pixels[index - 1] < 20 &&
+            pixels[index + 1] < 20,
+        );
+        return {
+          size: [canvas.width, canvas.height],
+          blue: blue[2] > 160,
+          red: red[0] > 180,
+          outside,
+        };
+      }),
+    ).toEqual({ size: [256, 85], blue: true, red: true, outside: false });
+    const first = await image.getAttribute("src");
+    await scene.getByRole("button", { name: "Preview motion" }).click();
+    await expect(image).not.toHaveAttribute("src", first);
+    await expect(scene.getByRole("status")).toHaveText("Preview complete.");
+    const last = await image.getAttribute("src");
+    await scene.getByRole("button", { name: "Save motion" }).click();
+    const dialog = panel.getByRole("dialog");
+    await expect(
+      dialog.getByText("Entire scene", { exact: true }),
+    ).toBeVisible();
+    await dialog
+      .getByRole("textbox", { name: "Project name" })
+      .fill("Shelf scene");
+    await dialog.getByRole("button", { name: "Create and save" }).click();
+    await expect(dialog.getByRole("status")).toContainText("Saved to Assets");
+    const opened = app.context.waitForEvent("page");
+    await dialog.getByRole("button", { name: "Open collection" }).click();
+    const studio = await opened;
+    const saved = studio.getByRole("article", { name: "Entire scene motion" });
+    const savedImage = saved.locator(".studio-visual-stage img");
+    await expect(savedImage).toHaveAttribute("src", first);
+    await saved.getByRole("button", { name: "Preview motion" }).click();
+    await expect(saved.getByRole("status")).toHaveText("Preview complete.");
+    await expect(savedImage).toHaveAttribute("src", last);
+
+    await app.page.bringToFront();
+    const picker = panel.getByRole("switch", { name: "Select on page" });
+    if (!(await picker.isChecked())) await picker.check();
+    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    const row = app.page.locator("#gap");
+    await app.page.mouse.click(260, 147);
+    await row.evaluate((node) =>
+      Object.assign(node.style, { top: "0px", height: "260px" }),
+    );
+    await expect(panel.locator(".element-title code")).toHaveText("div#gap");
+    await panel.getByRole("button", { name: "Effects", exact: true }).click();
+    await expect(
+      panel.getByText(
+        "This motion can’t be previewed from the selected element.",
+      ),
+    ).toBeVisible();
+    await expect(scene).toHaveCount(0);
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("Studio follows a turning shelf spine and skips an ambiguous broad layer", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
+  try {
+    await app.page.setViewportSize({ width: 850, height: 844 });
+    await app.page.goto(`${origin}/shelf-artwork-motion`);
+    const panel = await app.openPanel();
+    await panel.getByRole("button", { name: "Quick Inspect" }).click();
+    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    const observed = panel.getByRole("region", {
+      name: "Studio observed motion",
+    });
+    const image = observed.locator(".studio-visual-stage img");
+    const selected = panel.locator(".element-title code");
+    const clickGap = () => app.page.mouse.click(260, 147);
+    await app.page.locator("#neighbor").evaluate((node) => {
+      node.style.display = "none";
+    });
+    await clickGap();
+    await expect(selected).toHaveText("div#gap");
+    await panel.getByRole("button", { name: "Effects", exact: true }).click();
+    await expect(
+      panel.getByText("Select artwork on the page to preview its motion."),
+    ).toBeVisible();
+    await expect(observed).toHaveCount(0);
+    await app.page.locator("#neighbor").evaluate((node) => {
+      node.style.display = "";
+    });
+
+    await app.page.locator("#spine").click();
+    await expect(selected).toHaveText("div#spine");
+    await expect(observed.getByText(/Selected artwork/)).toBeVisible();
+    const stage = observed.locator(".studio-visual-stage");
+    const ratio = () => stage.evaluate((el) => el.style.aspectRatio);
+    expect(await ratio()).toBe("44 / 150");
+    await app.page.bringToFront();
+    await app.page.keyboard.press("ArrowRight");
+    await expect.poll(ratio, { timeout: 10000 }).toBe("154 / 150");
+    const spine = await image.getAttribute("src");
+    await observed.getByRole("button", { name: "Preview motion" }).click();
+    await expect(observed.getByRole("status")).toHaveText("Preview complete.");
+    const cover = await image.getAttribute("src");
+    expect(cover).not.toBe(spine);
+    expect(
+      await image.evaluate(async (node) => {
+        await node.decode();
+        const sample = document.createElement("canvas");
+        sample.width = node.naturalWidth;
+        sample.height = node.naturalHeight;
+        const ctx = sample.getContext("2d");
+        ctx.drawImage(node, 0, 0);
+        const yellow = ctx.getImageData(100, 36, 1, 1).data;
+        return {
+          width: sample.width,
+          yellow: yellow[0] > 190 && yellow[1] > 160,
+        };
+      }),
+    ).toEqual({ width: 154, yellow: true });
+
+    await observed
+      .getByRole("button", { name: "Save motion", exact: true })
+      .click();
+    const dialog = panel.getByRole("dialog");
+    await dialog
+      .getByRole("textbox", { name: "Project name" })
+      .fill("Shelf artwork");
+    await dialog.getByRole("button", { name: "Create and save" }).click();
+    await expect(dialog.getByRole("status")).toContainText("Saved to Assets");
+    const opened = app.context.waitForEvent("page");
+    await dialog.getByRole("button", { name: "Open collection" }).click();
+    const studio = await opened;
+    const saved = studio.getByRole("article", { name: "Canvas motion" });
+    const savedImage = saved.locator(".studio-visual-stage img");
+    await expect(savedImage).toHaveAttribute("src", spine);
+    await saved.getByRole("button", { name: "Preview motion" }).click();
+    await expect(saved.getByRole("status")).toHaveText("Preview complete.");
+    await expect(savedImage).toHaveAttribute("src", cover);
   } finally {
     await app.context.close();
   }

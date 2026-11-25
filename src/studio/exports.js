@@ -270,15 +270,22 @@ export async function prepareExport({
   const date = new Date("1980-01-01T00:00:00Z");
   const sourceById = new Map(captures.map(({ id, source }) => [id, source]));
   let bytes = 0;
-  function addImage(blob, filename) {
-    bytes += blob.size;
+  function countMedia(length) {
+    bytes += length;
     if (bytes > EXPORT_LIMITS.totalBytes)
-      throw Error("The selected images exceed 32 MB. Export a smaller set.");
+      throw Error("The selected media exceed 32 MB. Export a smaller set.");
+  }
+  function addImage(blob, filename) {
+    countMedia(blob.size);
     zip.file(filename, blob, { date, createFolders: false });
     return filename;
   }
   const assets = eligible.map((asset, index) => {
     const { blob, ...value } = asset.value;
+    if (value.clip)
+      countMedia(
+        value.clip.sources.reduce((total, frame) => total + frame.length, 0),
+      );
     if (blob)
       value.filename = addImage(blob, `images/${index + 1}-${value.filename}`);
     if (value.images?.length)

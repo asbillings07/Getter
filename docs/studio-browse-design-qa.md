@@ -16,8 +16,32 @@
    **Select parent** moves from a part to its containing element.
 4. In Quick Inspect **Effects**, use **Preview animation** or
    **Preview transition** when playable frames are available. Hover the
-   source element while picking to record its transition. The preview plays
+   source element to detect its transition. The preview plays
    in Getter. You can save motion separately or keep it with a component.
+   Getter also checks the selected element for two seconds. When it detects
+   supported scripted changes or readable canvas or video motion, **Preview
+   motion** and **Save motion** appear in **Effects**. Canvas and video save
+   as silent visual references that replay in the collection. For a supported
+   2D-rotated canvas, the reference preserves the tilt and crops to the visible
+   bounds. **Selected artwork** can also indicate a canvas matched to a click
+   on a transparent hit target. That reference follows the same target's
+   visible canvas bounds as its artwork turns. A shelf selection with
+   multiple distinct artwork targets on one canvas can show **Entire scene**
+   and save the visible shelf as one motion reference. Selecting a book
+   still follows that book. A light preview background keeps dark artwork
+   readable and preserves transparency in the saved frames.
+   When the clicked area contains one eligible canvas that passes pointer
+   input through, Getter can find it and show **Canvas in selection**.
+   This includes a rectangular zero inset clip that covers the whole canvas.
+   Getter checks the same selection again on hover, wheel, or video
+   playback when the first check finds no motion. Arrow-key navigation can
+   also restart the check for selected artwork. For a bound artwork target on
+   a stable canvas, the reference can follow the turn during catalogue
+   navigation. The visual reference crops to the viewport,
+   object fit, and supported rectangular clipping. It skips filtered or
+   masked media and clips with unsupported transforms. It does not reproduce
+   overlapping page layers. Getter uses no screen capture
+   permission.
 5. Pick a project and collection or use **Create and save** to start both.
    After the save, **Keep browsing** or **Keep inspecting**
    keeps the website in view. Getter remembers the last collection in the
