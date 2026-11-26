@@ -2372,6 +2372,7 @@ test("Design Review pairs a sample Figma layer, guards the reviewed site, and re
       compare.getByRole("heading", { name: "Screenshot reference" }),
     ).toBeVisible();
     await expect(compare.getByLabel("Figma layer")).toHaveCount(0);
+    await panel.setViewportSize({ width: 320, height: 460 });
     await compare
       .getByRole("button", { name: "Mark an area", exact: true })
       .click();
@@ -2412,6 +2413,24 @@ test("Design Review pairs a sample Figma layer, guards the reviewed site, and re
     bounds.forEach((value, index) =>
       expect(Math.abs(value - [25, 25, 50, 50][index])).toBeLessThan(1),
     );
+    const main = panel.getByRole("main");
+    const draftOutline = await outline.getAttribute("style");
+    await main.evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    const screenshotBox = await surface.boundingBox();
+    await panel.mouse.move(
+      screenshotBox.x + screenshotBox.width / 2,
+      screenshotBox.y + screenshotBox.height / 2,
+    );
+    await panel.mouse.wheel(0, 800);
+    await expect
+      .poll(() => main.evaluate((element) => element.scrollTop))
+      .toBeGreaterThan(0);
+    await expect(saveArea).toBeInViewport({ ratio: 1 });
+    await panel.mouse.wheel(0, -800);
+    await expect(main).toHaveJSProperty("scrollTop", 0);
+    await expect(outline).toHaveAttribute("style", draftOutline);
     await compare
       .getByLabel("Visual difference")
       .fill("The heading sits lower in staging.");

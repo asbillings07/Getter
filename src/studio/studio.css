@@ -1535,6 +1535,9 @@
   background: #176953;
   color: white;
 }
+.inspect-main:has(> .inspect-review) {
+  overflow-y: auto;
+}
 .inspect-review {
   margin: 12px 16px 16px;
   overflow-wrap: anywhere;
