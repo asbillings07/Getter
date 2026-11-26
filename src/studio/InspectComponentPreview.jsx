@@ -158,11 +158,10 @@ export default function InspectComponentPreview({
     }
     const partLeft = (selected.bounds.x - left) * scale;
     const partRight = partLeft + selected.bounds.width * scale;
-    if (
-      partLeft < viewport.scrollLeft ||
-      partRight > viewport.scrollLeft + viewport.clientWidth
-    )
-      viewport.scrollLeft = Math.max(0, partLeft - viewport.clientWidth / 4);
+    const { clientWidth, scrollLeft } = viewport;
+    if (partLeft < scrollLeft) viewport.scrollLeft = partLeft;
+    else if (partRight > scrollLeft + clientWidth)
+      viewport.scrollLeft = Math.min(partLeft, partRight - clientWidth);
     const top = (selected.bounds.y - y) * scale;
     const bottom = top + selected.bounds.height * scale;
     if (

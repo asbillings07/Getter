@@ -1910,7 +1910,7 @@ test("Inspect Pro keeps nested media and text in place while selecting or saving
           const name = index === 10 ? "blocked" : String(index + 1);
           image.id = `thumbnail-${name}`;
           image.alt = `Component thumbnail ${name}`;
-          image.width = 140;
+          image.width = name === "10" ? 680 : 140;
           image.height = 90;
           image.style.flexShrink = "0";
           image.src = `${imageOrigin}/component-thumb-${name}.png`;
@@ -2074,7 +2074,7 @@ test("Inspect Pro keeps nested media and text in place while selecting or saving
       });
     const afterRight = await scrollLeft();
     expect(afterRight).toBeGreaterThan(0);
-    await expect.poll(visibleFraction).toBeGreaterThan(0.9);
+    await expect.poll(visibleFraction).toBeGreaterThan(0.98);
     await expectPart(part("h3 · Second headline"), "h3#second-headline");
     await expect.poll(scrollLeft).toBeLessThan(afterRight);
     await expect.poll(visibleFraction).toBeGreaterThan(0.9);
