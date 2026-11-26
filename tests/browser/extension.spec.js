@@ -1564,6 +1564,14 @@ test("Inspect Pro opens the native panel, previews and saves the whole selected 
       panel.getByRole("heading", { name: "Inspect Pro", exact: true }),
     ).toBeVisible();
     await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    const selectionButton = panel.locator(".selection-button");
+    await expect(selectionButton).toHaveText("Pause selection");
+    await selectionButton.click();
+    await expect(selectionButton).toHaveText("Resume selecting");
+    await expect(app.page.locator("getter-inspection-overlay")).toHaveCount(0);
+    await selectionButton.click();
+    await expect(selectionButton).toHaveText("Pause selection");
+    await expect(app.page.locator("#promo")).toHaveCSS("cursor", "crosshair");
     await app.page.locator("#promo").evaluate(async (component) => {
       const canvas = document.createElement("canvas");
       canvas.width = 32;
@@ -1855,7 +1863,8 @@ test("Studio detects and replays selected canvas and scroll motion without a rec
     await expect(saved.getByRole("status")).toHaveText("Preview complete.");
     await studio.close();
     await app.page.bringToFront();
-    await panel.getByRole("switch", { name: "Select on page" }).check();
+    const resume = panel.getByRole("button", { name: "Resume selecting" });
+    if (await resume.isVisible()) await resume.click();
     await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
     await canvas.dispatchEvent("click");
     await app.page.locator("#still").dispatchEvent("click");
@@ -2382,8 +2391,8 @@ test("Studio previews and saves the whole shelf without capturing artwork outsid
     await expect(savedImage).toHaveAttribute("src", last);
 
     await app.page.bringToFront();
-    const picker = panel.getByRole("switch", { name: "Select on page" });
-    if (!(await picker.isChecked())) await picker.check();
+    const resume = panel.getByRole("button", { name: "Resume selecting" });
+    if (await resume.isVisible()) await resume.click();
     await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
     const row = app.page.locator("#gap");
     await app.page.mouse.click(260, 147);
@@ -4764,6 +4773,14 @@ test("Inspect continuously selects, pauses, shows expanded sections, and cleans 
   const app = await launch(info);
   try {
     await app.page.goto(`${origin}/workbench`);
+    const action = app.page.locator("#action");
+    const shadowButton = app.page.locator("#shadow-host button");
+    await app.page.evaluate(() => {
+      const styles = new CSSStyleSheet();
+      styles.replaceSync("#action { cursor: pointer !important; }");
+      document.adoptedStyleSheets.push(styles);
+    });
+    await shadowButton.evaluate((node) => (node.style.cursor = "help"));
     const before = await app.page
       .locator("html")
       .evaluate((el) => el.outerHTML);
@@ -4794,15 +4811,37 @@ test("Inspect continuously selects, pauses, shows expanded sections, and cleans 
     await expect(
       panel.getByRole("heading", { name: "Choose an element" }),
     ).toBeVisible();
-    await app.page.locator("#action").click();
+    const pause = panel.getByRole("button", { name: "Pause selection" });
+    const resume = panel.getByRole("button", { name: "Resume selecting" });
+    const overlay = app.page.locator("getter-inspection-overlay");
+    await expect(pause).toBeVisible();
+    await expect(action).toHaveCSS("cursor", "crosshair");
+    const pagePause = overlay.getByRole("button", {
+      name: "Pause",
+      exact: true,
+    });
+    await expect(pagePause).toHaveCSS("cursor", "pointer");
+    await pagePause.click();
+    await expect(resume).toHaveCount(1);
+    await expect(action).toHaveCSS("cursor", "pointer");
+    await resume.click();
+    await action.click();
     await expect(panel.locator(".element-title")).toContainText(
       "button#action",
     );
+    const propertySearch = panel.getByRole("searchbox", {
+      name: "Find CSS property",
+    });
+    await propertySearch.fill("cursor");
+    await panel.getByTitle("Copy cursor", { exact: true }).click();
+    await expect
+      .poll(() => panel.evaluate(() => window.copied.at(-1)))
+      .toBe("pointer");
+    await propertySearch.clear();
+    await expect(action).toHaveCSS("cursor", "crosshair");
     expect(await app.page.evaluate(() => window.actionClicks || 0)).toBe(0);
     expect(await app.page.evaluate(() => window.pressActions)).toEqual([]);
-    await expect(
-      panel.getByRole("switch", { name: "Select on page", exact: true }),
-    ).toBeChecked();
+    await expect(pause).toBeVisible();
     await app.page.locator("#card").click({ position: { x: 10, y: 10 } });
     await expect(panel.locator(".element-title")).toContainText("section#card");
     await panel.getByRole("button", { name: "Layout", exact: true }).click();
@@ -4839,11 +4878,11 @@ test("Inspect continuously selects, pauses, shows expanded sections, and cleans 
       .poll(() => panel.evaluate(() => window.copied.at(-1)))
       .toContain("section#card {");
     await panel.getByRole("button", { name: /Back to/ }).click();
-    await panel
-      .getByRole("switch", { name: "Select on page", exact: true })
-      .uncheck();
-    await expect(app.page.locator("getter-inspection-overlay")).toHaveCount(0);
-    await app.page.locator("#action").click();
+    await pause.click();
+    await expect(resume).toHaveCount(1);
+    await expect(overlay).toHaveCount(0);
+    await expect(action).toHaveCSS("cursor", "pointer");
+    await action.click();
     expect(await app.page.evaluate(() => window.actionClicks)).toBe(1);
     expect(await app.page.evaluate(() => window.pressActions)).toEqual([
       "pointerdown",
@@ -4852,9 +4891,8 @@ test("Inspect continuously selects, pauses, shows expanded sections, and cleans 
       "mouseup",
     ]);
     await expect(panel.locator(".element-title")).toContainText("section#card");
-    await panel
-      .getByRole("button", { name: "Resume selecting", exact: true })
-      .click();
+    await resume.click();
+    await expect(action).toHaveCSS("cursor", "crosshair");
     await app.page.locator("#plain").click();
     await expect(
       panel.getByRole("heading", { name: "No effects applied" }),
@@ -4898,25 +4936,25 @@ test("Inspect continuously selects, pauses, shows expanded sections, and cleans 
     await expect(
       panel.getByTitle("Copy original size", { exact: true }),
     ).toHaveText("1 × 1 px");
-    await app.page.locator("#shadow-host button").click();
+    await shadowButton.hover();
+    await expect(shadowButton).toHaveCSS("cursor", "crosshair");
+    await shadowButton.click();
     await expect(panel.locator(".element-title")).toContainText(
       "button#shadow-button",
     );
     await expect(panel.getByText(/inside a shadow root/)).toBeVisible();
     await app.page.keyboard.press("Escape");
-    await expect(
-      panel.getByRole("button", { name: "Resume selecting", exact: true }),
-    ).toBeVisible();
-    await panel
-      .getByRole("button", { name: "Resume selecting", exact: true })
-      .click();
+    await expect(resume).toBeVisible();
+    await expect(shadowButton).toHaveCSS("cursor", "help");
+    await resume.click();
     await app.page.locator("#plain").click();
     await app.page.locator("#plain").evaluate((el) => el.remove());
     await expect(
       panel.getByRole("heading", { name: "Element no longer available" }),
     ).toBeVisible();
     await panel.getByRole("button", { name: "Colors", exact: true }).click();
-    await expect(app.page.locator("getter-inspection-overlay")).toHaveCount(0);
+    await expect(overlay).toHaveCount(0);
+    await expect(action).toHaveCSS("cursor", "pointer");
     expect(await app.page.locator("#action").getAttribute("id")).toBe("action");
     expect(errors).toEqual([]);
     // Removing one fixture element was the only persistent page change.

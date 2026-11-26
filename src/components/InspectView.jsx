@@ -318,20 +318,17 @@ export default function InspectView({
   const toggle = (key, value) => onChange({ ...model, [key]: value });
   const controls = (
     <div className="inspect-mode-row">
-      <div className="inspect-switches">
-        <label className="setting">
-          Select on page
-          <input
-            type="checkbox"
-            role="switch"
-            checked={model.picking}
-            disabled={status === "error" || status === "connecting"}
-            onChange={(e) => {
-              setStatus("ready");
-              toggle("picking", e.target.checked);
-            }}
-          />
-        </label>
+      <div className="inspect-controls">
+        <button
+          type="button"
+          className="secondary selection-button"
+          onClick={() => {
+            if (!model.picking) setStatus("ready");
+            toggle("picking", !model.picking);
+          }}
+        >
+          {model.picking ? "Pause selection" : "Resume selecting"}
+        </button>
         <label className="setting">
           Show all properties
           <input
@@ -443,15 +440,9 @@ export default function InspectView({
           </p>
         )}
         {snapshot && !model.picking && (
-          <div className="selection-paused">
+          <div className="selection-paused" role="status">
             <strong>Selection paused</strong>
             <span>Use the page normally; this element stays selected.</span>
-            <button
-              className="secondary"
-              onClick={() => toggle("picking", true)}
-            >
-              Resume selecting
-            </button>
           </div>
         )}
         {snapshot && (
@@ -525,15 +516,12 @@ export default function InspectView({
                 : "Selection paused"}
           </h2>
           <p>
-            {status === "removed"
-              ? "Choose another element on the page."
-              : "Click any element on the page to inspect it. Selection stays active until you pause."}
+            {!model.picking
+              ? "Resume selecting when you’re ready to inspect an element."
+              : status === "removed"
+                ? "Choose another element on the page."
+                : "Click any element on the page to inspect it. Selection stays active until you pause."}
           </p>
-          {!model.picking && (
-            <button className="primary" onClick={() => toggle("picking", true)}>
-              Resume selecting
-            </button>
-          )}
         </div>
       ) : (
         <div className="inspect-results" aria-label="Inspect results">

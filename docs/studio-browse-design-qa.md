@@ -48,7 +48,7 @@
    keeps the website in view. Getter remembers the last collection in the
    browser session. **Open collection** shows the saved assets in Studio.
 
-Select on page, Show all properties, property search, value copying, and Copy CSS
+Pause selection and Resume selecting, Show all properties, property search, value copying, and Copy CSS
 are still available in Quick Inspect. Component captures started in the side
 panel include selected visible text, supported HTTPS image files, and supported
 motion. Form values and executable markup are excluded.

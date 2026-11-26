@@ -25,6 +25,11 @@ if (!globalThis.__getterInspector) {
   let proRoot,
     proParts = [],
     partsRevision = 0;
+  const selectionCursor = new CSSStyleSheet();
+  selectionCursor.replaceSync(
+    "@layer getter-inspection-cursor { :root, :root *, :host * { cursor: crosshair !important; } }",
+  );
+  let cursorShadow;
   let sampleId = 0;
   const widestFrame = (clip) =>
     Math.max(...clip.frames.map(({ width }) => (width / 100) * clip.width));
@@ -166,6 +171,8 @@ if (!globalThis.__getterInspector) {
       }
       return;
     }
+    // Keep the temporary picking cursor out of the page styles Getter copies.
+    selectionCursor.disabled = true;
     try {
       const result = snapshotElement(node);
       if (GETTER_STUDIO_WORKSPACE_QA) {
@@ -181,11 +188,23 @@ if (!globalThis.__getterInspector) {
         requestId,
         message: "This element could not be read. Choose another element.",
       });
+    } finally {
+      selectionCursor.disabled = false;
     }
   };
+  function restoreCursor(root) {
+    root.adoptedStyleSheets = root.adoptedStyleSheets.filter(
+      (sheet) => sheet !== selectionCursor,
+    );
+  }
   function pause() {
+    if (!state.picking) return;
     state.picking = false;
+    restoreCursor(document);
+    if (cursorShadow) restoreCursor(cursorShadow);
+    cursorShadow = null;
     document.removeEventListener("pointerover", hover, true);
+    document.removeEventListener("pointermove", hover, true);
     window.removeEventListener("click", select, true);
     for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup"])
       window.removeEventListener(type, suppressPress, true);
@@ -226,7 +245,16 @@ if (!globalThis.__getterInspector) {
       );
   function hover(event) {
     if (event.composedPath().includes(state.host)) return;
-    state.hovered = target(event);
+    const element = target(event);
+    if (element === state.hovered) return;
+    const root = element?.getRootNode();
+    const shadow = root instanceof ShadowRoot ? root : null;
+    if (shadow !== cursorShadow) {
+      if (cursorShadow) restoreCursor(cursorShadow);
+      cursorShadow = shadow;
+      cursorShadow?.adoptedStyleSheets.push(selectionCursor);
+    }
+    state.hovered = element;
     position();
   }
   function suppressPress(event) {
@@ -276,8 +304,9 @@ if (!globalThis.__getterInspector) {
     }
   }
   function start() {
-    pause();
+    if (state.picking) return;
     state.picking = true;
+    document.adoptedStyleSheets.push(selectionCursor);
     const host = document.createElement("getter-inspection-overlay");
     state.host = host;
     host.style.cssText =
@@ -285,7 +314,7 @@ if (!globalThis.__getterInspector) {
     const shadow = host.attachShadow({ mode: "open" });
     const style = document.createElement("style");
     style.textContent =
-      ":host{all:initial}*{box-sizing:border-box}.box{position:fixed;border:2px solid #387bf0;border-radius:3px;background:#387bf00b;pointer-events:none}.banner{position:fixed;top:12px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;max-width:calc(100vw - 24px);padding:10px 14px;background:#fff;color:#17253b;border:1px solid #cbd9f0;border-radius:9px;box-shadow:0 4px 20px #17253b22;font:13px/1.5 system-ui;pointer-events:auto}.banner button{font:inherit;color:#2059be;background:none;border:0;cursor:pointer;white-space:nowrap}.banner button:focus-visible{outline:2px solid #2059be}";
+      ":host{all:initial}*{box-sizing:border-box}.box{position:fixed;border:2px solid #387bf0;border-radius:3px;background:#387bf00b;pointer-events:none;cursor:crosshair}.banner{position:fixed;top:12px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;max-width:calc(100vw - 24px);padding:10px 14px;background:#fff;color:#17253b;border:1px solid #cbd9f0;border-radius:9px;box-shadow:0 4px 20px #17253b22;font:13px/1.5 system-ui;pointer-events:auto;cursor:default}.banner button{font:inherit;color:#2059be;background:none;border:0;cursor:pointer;white-space:nowrap}.banner button:focus-visible{outline:2px solid #2059be}";
     const box = document.createElement("div");
     box.className = "box";
     state.box = box;
@@ -312,6 +341,7 @@ if (!globalThis.__getterInspector) {
     shadow.append(style, box, banner);
     document.documentElement.append(host);
     document.addEventListener("pointerover", hover, true);
+    document.addEventListener("pointermove", hover, true);
     window.addEventListener("click", select, true);
     for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup"])
       window.addEventListener(type, suppressPress, true);
@@ -385,10 +415,7 @@ if (!globalThis.__getterInspector) {
     port.onMessage.addListener((message) => {
       if (port !== state.port) return;
       if (message.type === "start") start();
-      if (message.type === "pause") {
-        pause();
-        send({ type: "paused" });
-      }
+      if (message.type === "pause") pause();
       if (message.type === "refresh") snapshot(message.requestId);
       if (
         GETTER_STUDIO_WORKSPACE_QA &&
