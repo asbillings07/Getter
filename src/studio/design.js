@@ -6,7 +6,7 @@ export const formats = {
   portrait: { label: "Campaign artwork · portrait", width: 1080, height: 1350 },
   square: { label: "Campaign artwork · square", width: 1080, height: 1080 },
   story: { label: "Story / cover · vertical", width: 1080, height: 1920 },
-  brand: { label: "Brand board", width: 1200, height: 800 },
+  brand: { label: "Brand board", width: 1200, height: 1120 },
   blank: { label: "Blank canvas", width: 1200, height: 800 },
 };
 const { website, portrait, square, story, brand, blank } = formats;
@@ -140,158 +140,316 @@ function newsletterLayers() {
   ];
 }
 
+const creativePalette = {
+  primary: "#254638",
+  background: "#F3EEDF",
+  text: "#243D33",
+  accent: "#BDCCAA",
+};
+
 const campaignCopy = [
-  ["Make it a bright morning.", "Meet the new collection."],
-  ["Good things take care.", "Discover the details behind each piece."],
-  ["Make it part of your day.", "Explore the full collection."],
+  ["Your morning,\na little brighter.", "Meet our new collection."],
+  ["Bright notes.\nEasy mornings.", "Discover the details behind each piece."],
+  ["Make room for\na new ritual.", "Explore the full collection."],
 ];
 
-function campaignLayers(brand, height, copy) {
+function campaignLayers(brand, height, copy, palette) {
   const [headline, description] = copy;
-  const artworkHeight = height - 570;
+  const imageY = Math.round(height * 0.42);
+  const artworkHeight = Math.round(height * 0.28);
   return [
-    text("Brand name", brand, 68, 58, 944, 50, 32, true),
+    { ...text("Wordmark", brand, 64, 62, 950, 50, 32), letterSpacing: 3 },
     {
-      ...text("Headline", headline, 68, 132, 944, 184, 76, true),
-      compositionShift: (height - 550) / height,
+      ...text("Headline", headline, 64, 145, 952, 192, 91, true),
+      fontWeight: "400",
+      typeRole: "heading",
+      compositionShift: (imageY + artworkHeight - 235) / height,
+      spacingShift: -1,
     },
     layer("shape", {
-      name: "Campaign artwork",
-      x: 68,
-      y: 348,
-      width: 944,
+      name: "Product artwork",
+      x: 64,
+      y: imageY,
+      width: 952,
       height: artworkHeight,
-      compositionShift: -216 / height,
-      fill: accent,
-      radius: 26,
+      compositionShift: (106 - imageY) / height,
+      fill: palette.accent,
+      radius: 52,
       placeholder: "artwork",
     }),
     {
       ...text(
         "Artwork label",
         "Campaign artwork",
-        98,
-        321 + artworkHeight / 2,
-        884,
         84,
-        50,
+        imageY + artworkHeight / 2 - 26,
+        912,
+        78,
+        52,
         true,
       ),
       align: "middle",
-      compositionShift: -216 / height,
+      compositionShift: (106 - imageY) / height,
       placeholder: "artwork",
     },
-    text("Supporting copy", description, 68, height - 192, 944, 90, 38),
-    text("Campaign label", "NEW COLLECTION", 68, height - 81, 465, 41, 25),
     {
-      ...text("Site or handle", "@yourbrand", 548, height - 81, 464, 41, 25),
+      ...text("Supporting copy", description, 64, height - 205, 952, 85, 43),
+      typeRole: "body",
+      spacingShift: 1,
+    },
+    text("Campaign label", "NEW COLLECTION", 64, height - 103, 465, 50, 30),
+    {
+      ...text("Site or handle", "@yourbrand", 547, height - 103, 469, 50, 30),
       align: "end",
     },
-  ];
+  ].map((item) => ({ ...item, textColor: palette.text }));
 }
 
-function brandBoard(name) {
-  const swatches = [
-    ["Primary", green],
-    ["Background", paper],
-    ["Text", ink],
-    ["Accent", accent],
-  ].map(([name, fill], index) =>
+function brandBoard(name, palette) {
+  const swatches = Object.entries(palette).map(([role, fill], index) =>
     layer("shape", {
-      name,
+      name: role[0].toUpperCase() + role.slice(1),
       fill,
-      x: 60 + index * 277,
-      y: 262,
-      width: 249,
-      height: 112,
+      x: 54 + index * 276,
+      y: 387,
+      width: 260,
+      height: 155,
+      radius: 7,
       swatch: true,
-      stroke: "#d6d0c3",
+      swatchRole: role,
+      stroke: "#D6D0C3",
       strokeWidth: 1,
     }),
   );
   const [primary, background, inkSwatch, accentSwatch] = swatches;
+  const typeHead = text(
+    "Heading sample",
+    "Slow mornings.\nGood company.",
+    54,
+    619,
+    506,
+    136,
+    52,
+    true,
+  );
+  const body = text(
+    "Body sample",
+    "We believe the best days begin with something simple, made well.",
+    620,
+    622,
+    526,
+    96,
+    26,
+  );
   const content = [
-    text("Brand name", name, 60, 42, 1080, 45, 29, true),
-    text(
-      "Brand headline",
-      "Good things, slowly made.",
-      60,
-      99,
-      1080,
-      83,
-      64,
-      true,
-    ),
-    text(
-      "Brand description",
-      "Thoughtful details for everyday moments.",
-      60,
-      190,
-      1080,
-      43,
-      30,
-    ),
-    text("Headings label", "HEADINGS", 60, 410, 490, 30, 19),
-    text(
-      "Heading sample",
-      "Slow mornings. Good company.",
-      60,
-      448,
-      490,
-      115,
-      43,
-      true,
-    ),
-    text("Body label", "BODY", 620, 410, 520, 30, 19),
-    text(
-      "Body sample",
-      "We believe the best days begin with something simple, made well.",
-      620,
-      451,
-      520,
-      81,
-      27,
-    ),
-    text("Usage note", "Thoughtful details, everywhere.", 60, 609, 435, 58, 24),
-  ].map((item) => ({ ...item, textColorSource: inkSwatch.id }));
+    text("Wordmark", name, 54, 49, 1092, 57, 34, true),
+    {
+      ...text(
+        "Brand headline",
+        "Good things,\nslowly made.",
+        54,
+        113,
+        1092,
+        193,
+        89,
+        true,
+      ),
+      fontWeight: "400",
+      typeRole: "heading",
+    },
+    {
+      ...text(
+        "Brand description",
+        "Thoughtful details for everyday moments.",
+        54,
+        310,
+        1092,
+        54,
+        27,
+      ),
+      typeRole: "body",
+    },
+    {
+      ...text("Headings label", "HEADINGS", 54, 573, 502, 36, 22),
+      letterSpacing: 3,
+      specimenFor: typeHead.id,
+    },
+    { ...typeHead, fontWeight: "400", typeRole: "heading" },
+    {
+      ...text("Body label", "BODY", 620, 573, 526, 36, 22),
+      letterSpacing: 3,
+      specimenFor: body.id,
+    },
+    { ...body, typeRole: "body" },
+    {
+      ...text("Body details", "Regular", 620, 726, 526, 43, 20),
+      metricsFor: body.id,
+    },
+    {
+      ...text(
+        "Usage note",
+        "Thoughtful details, everywhere.",
+        54,
+        887,
+        490,
+        50,
+        24,
+      ),
+      typeRole: "body",
+    },
+  ].map((item) => ({
+    ...item,
+    textColor: palette.text,
+    textColorSource: inkSwatch.id,
+  }));
+
   return {
     backgroundSource: background.id,
+    background: palette.background,
     composition: "classic",
     layers: [
-      ...swatches.map((item) => ({ ...item, textColorSource: inkSwatch.id })),
+      ...swatches.map((item) => ({
+        ...item,
+        textColor: palette.text,
+        textColorSource: inkSwatch.id,
+      })),
       ...content,
       layer("button", {
         name: "Button sample",
         text: "Explore the collection",
-        x: 60,
-        y: 667,
-        width: 380,
+        x: 54,
+        y: 940,
+        width: 320,
         height: 67,
-        fontSize: 26,
+        fontSize: 25,
+        radius: 34,
+        fill: palette.primary,
         fillSource: primary.id,
       }),
       layer("shape", {
         name: "Brand artwork",
         x: 620,
-        y: 570,
-        width: 520,
-        height: 170,
+        y: 815,
+        width: 526,
+        height: 244,
+        radius: 48,
+        fill: palette.accent,
         fillSource: accentSwatch.id,
         placeholder: "artwork",
       }),
       {
-        ...text("Artwork label", "Brand artwork", 630, 632, 500, 58, 35, true),
+        ...text("Artwork label", "Brand artwork", 628, 905, 510, 62, 35, true),
         align: "middle",
+        textColor: palette.text,
         textColorSource: inkSwatch.id,
         placeholder: "artwork",
       },
     ].map((item) => ({
       ...item,
       compositionShift:
-        (item.y < 240 ? -8 : item.y < 400 ? 8 : item.y < 570 ? 18 : 28) /
+        (item.y < 375 ? -8 : item.y < 560 ? 10 : item.y < 790 ? 19 : 29) /
         formats.brand.height,
+      spacingShift: item.y < 375 ? 0 : item.y < 560 ? 1 : item.y < 790 ? 2 : 3,
     })),
   };
+}
+
+export function changeSpacing(draft, spacing) {
+  const offset = spacing - (draft.spacing ?? 20);
+  return {
+    ...draft,
+    spacing,
+    layers: draft.layers.map((item) =>
+      item.spacingShift
+        ? { ...item, y: item.y + offset * item.spacingShift }
+        : item,
+    ),
+  };
+}
+
+export function changeCreativeColor(draft, role, value) {
+  const swatch = draft.layers.find(({ swatchRole }) => swatchRole === role);
+  if (swatch) return changeDesignLayer(draft, swatch, { fill: value });
+  const palette = { ...creativePalette, ...draft.palette };
+  const previous = palette[role];
+  palette[role] = value;
+  return {
+    ...draft,
+    palette,
+    background:
+      role === "background" && draft.background === previous
+        ? value
+        : draft.background,
+    layers: draft.layers.map((item) => {
+      if (role === "text" && item.textColor === previous)
+        return { ...item, textColor: value };
+      if (role === "primary" && item.name === "Wordmark")
+        return { ...item, textColor: value };
+      if (
+        role === "accent" &&
+        item.placeholder === "artwork" &&
+        item.type === "shape"
+      )
+        return { ...item, fill: value };
+      return item;
+    }),
+  };
+}
+
+export function creativeColors(draft) {
+  const palette = {
+    ...creativePalette,
+    ...draft.palette,
+    background: draft.background,
+  };
+  for (const item of draft.layers)
+    if (item.swatchRole) palette[item.swatchRole] = item.fill;
+  return palette;
+}
+
+export function changeArtworkFormat(draft, format) {
+  if (format === "carousel") {
+    const resized = resizeCanvas(draft, "portrait");
+    if (resized.additionalSlides?.length)
+      return { ...resized, artworkFormat: format };
+    return {
+      ...resized,
+      artworkFormat: format,
+      additionalSlides: campaignCopy.slice(1).map((copy) => {
+        const view = {
+          width: resized.width,
+          height: resized.height,
+          background: resized.background,
+          composition: "headline-first",
+          spacing: 20,
+          layers: campaignLayers(
+            resized.layers.find(({ name }) => name === "Wordmark")?.text ||
+              resized.name,
+            resized.height,
+            copy,
+            creativeColors(resized),
+          ),
+        };
+        const image = resized.layers.find(
+          ({ type, fills, hidden }) =>
+            type === "image" && fills === "artwork" && !hidden,
+        );
+        seedArtwork(
+          view,
+          image
+            ? {
+                name: image.name,
+                id: image.assetId,
+                value: { type: "image", blob: image.blob },
+              }
+            : null,
+        );
+        const { width, height, ...content } = view;
+        return content;
+      }),
+    };
+  }
+  return { ...resizeCanvas(draft, format), artworkFormat: format };
 }
 
 const compositions = [
@@ -467,7 +625,12 @@ function template(format, brand, newsletter) {
   return [];
 }
 
-export function createDraft(name, layout, brand) {
+function seedArtwork(draft, asset) {
+  if (asset) draft.layers = [...draft.layers, addFromAsset(asset, draft)];
+  return draft;
+}
+
+export function createDraft(name, layout, brand, assets = []) {
   if (!Object.hasOwn(startingLayouts, layout))
     throw Error("Choose a starting layout.");
   const {
@@ -487,18 +650,63 @@ export function createDraft(name, layout, brand) {
     background: paper,
     layers: template(format, brand, newsletter),
   };
-  if (format === "brand") return { ...draft, ...brandBoard(brand) };
-  if (!["portrait", "square", "story"].includes(format)) return draft;
-  draft.composition = "headline-first";
-  draft.layers = campaignLayers(brand, height, campaignCopy[0]);
-  if (layout === "carousel") {
-    draft.additionalSlides = campaignCopy.slice(1).map((copy) => ({
-      background: paper,
-      composition: "headline-first",
-      layers: campaignLayers(brand, height, copy),
-    }));
+  if (!["brand", "portrait", "square", "story"].includes(format)) return draft;
+  const palette = { ...creativePalette };
+  const available = assets.filter(({ removedAt }) => !removedAt);
+  for (const asset of available.filter(({ value }) => value.type === "color")) {
+    const role = asset.role?.trim().toLowerCase();
+    if (Object.hasOwn(palette, role))
+      palette[role] = asset.color || asset.value.value;
   }
-  return draft;
+  const artwork = available.find(({ value }) => value.type === "image");
+  const layouts =
+    format === "brand"
+      ? brandBoard(brand, palette)
+      : {
+          composition: "headline-first",
+          artworkFormat: layout,
+          layers: campaignLayers(brand, height, campaignCopy[0], palette),
+        };
+  const creative = {
+    ...draft,
+    palette,
+    background: palette.background,
+    spacing: 20,
+    ...layouts,
+  };
+  const typography = available.filter(({ value }) => value.type === "font");
+  function seedType(layers) {
+    return layers.map((item) => {
+      const type =
+        item.typeRole &&
+        typography.find(
+          ({ role }) => role?.trim().toLowerCase() === item.typeRole,
+        );
+      return type && safeStyleValue(type.value.fontFamily)
+        ? { ...item, fontFamily: type.value.fontFamily }
+        : item;
+    });
+  }
+  creative.layers = seedType(creative.layers);
+  if (layout === "carousel") {
+    creative.additionalSlides = campaignCopy.slice(1).map((copy) => {
+      const view = seedArtwork(
+        {
+          width,
+          height,
+          background: palette.background,
+          composition: "headline-first",
+          spacing: 20,
+          layers: seedType(campaignLayers(brand, height, copy, palette)),
+        },
+        artwork,
+      );
+      const { width: _width, height: _height, ...content } = view;
+      return content;
+    });
+  }
+  seedArtwork(creative, artwork);
+  return creative;
 }
 
 export function draftSlide(design, index) {
@@ -508,14 +716,17 @@ export function draftSlide(design, index) {
 
 export function replaceDraftSlide(design, index, view) {
   if (!index) return view;
-  const { background, layers, composition, ...shared } = view;
+  const { background, layers, composition, spacing, ...shared } = view;
   return {
     ...shared,
     background: design.background,
     layers: design.layers,
     composition: design.composition,
+    spacing: design.spacing,
     additionalSlides: design.additionalSlides.map((slide, position) =>
-      position === index - 1 ? { background, layers, composition } : slide,
+      position === index - 1
+        ? { background, layers, composition, spacing }
+        : slide,
     ),
   };
 }
@@ -531,19 +742,28 @@ export function moveLayer(layers, id, offset) {
 
 export function resizeCanvas(draft, format) {
   const { width, height } = formats[format];
-  return {
-    ...draft,
-    format,
-    width,
-    height,
-    layers: draft.layers.map((item) => ({
+  const resizeLayers = (layers) =>
+    layers.map((item) => ({
       ...item,
       x: Math.round((item.x * width) / draft.width),
       y: Math.round((item.y * height) / draft.height),
       width: Math.max(1, Math.round((item.width * width) / draft.width)),
       height: Math.max(1, Math.round((item.height * height) / draft.height)),
-    })),
+    }));
+  const next = {
+    ...draft,
+    format,
+    width,
+    height,
+    layers: resizeLayers(draft.layers),
   };
+  if (draft.additionalSlides) {
+    next.additionalSlides = draft.additionalSlides.map((slide) => ({
+      ...slide,
+      layers: resizeLayers(slide.layers),
+    }));
+  }
+  return next;
 }
 
 function cssColor(value) {
@@ -627,7 +847,8 @@ export function addFromAsset(asset, draft) {
           (item) => item.type === "shape" && item.placeholder === "artwork",
         );
     if (slot) {
-      const { x, y, width, height, radius, compositionShift } = slot;
+      const { x, y, width, height, radius, compositionShift, spacingShift } =
+        slot;
       return layer("image", {
         ...base,
         x,
@@ -636,6 +857,7 @@ export function addFromAsset(asset, draft) {
         height,
         radius,
         compositionShift,
+        spacingShift,
         fills: "artwork",
         blob: asset.value.blob,
         fit: "cover",

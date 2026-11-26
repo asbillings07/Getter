@@ -9,6 +9,13 @@ import CollectionAssets, {
 import DesignKit from "./DesignKit.jsx";
 import Designs from "./Designs.jsx";
 import DesignEditor from "./DesignEditor.jsx";
+import {
+  ProjectsView,
+  WorkspaceFooter,
+  WorkspaceHeader,
+  WorkspaceSteps,
+} from "./Workspace.jsx";
+import { openWebsites, websiteAddress } from "./sources.js";
 import { cleanName, mergeAssets, moveAsset, savedAsset } from "./library.js";
 import {
   changeCollection,
@@ -16,20 +23,19 @@ import {
   createCollection,
   createProject,
   listProjects,
+  projectCollectionEntries,
   saveDesign,
+  saveProjectSite,
 } from "./projects.js";
 
-const sections = [
-  ["assets", "Assets"],
-  ["collect", "Add assets"],
+const collectionTools = [
   ["captures", "Captures"],
   ["kit", "Design kit"],
-  ["designs", "Editor"],
 ];
 
 function Studio() {
   const [projects, setProjects] = useState(null);
-  const [search, setSearch] = useState("");
+  const [siteOptions, setSiteOptions] = useState([]);
   const [selection, setSelection] = useState(null);
   const [section, setSection] = useState("assets");
   const [version, setVersion] = useState(null);
@@ -38,22 +44,51 @@ function Studio() {
   const [designId, setDesignId] = useState("");
   const [newDesign, setNewDesign] = useState(false);
   const [startingAsset, setStartingAsset] = useState(null);
+  const [startingLayout, setStartingLayout] = useState("website");
+  const [projectOverview, setProjectOverview] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [featuredCollection, setFeaturedCollection] = useState("");
   const currentProject = projects?.find(
     (project) => project.id === selection?.projectId,
   );
-  const collection = currentProject?.collections.find(
-    (entry) => entry.id === selection?.collectionId,
+  const ownerId = selection?.ownerId || currentProject?.id;
+  const owner = projects?.find(({ id }) => id === ownerId);
+  const collection = owner?.collections.find(
+    ({ id }) => id === selection?.collectionId,
   );
   const design = collection?.designs?.find(({ id }) => id === designId);
   const heading = useRef(null);
-  const query = search.trim().toLowerCase();
-  const shownProjects = projects?.flatMap((project) => {
-    if (project.name.toLowerCase().includes(query)) return [project];
-    const collections = project.collections.filter((entry) =>
-      entry.name.toLowerCase().includes(query),
-    );
-    return collections.length ? [{ ...project, collections }] : [];
-  });
+
+  const projectCollections = (project) =>
+    projectCollectionEntries(project, projects || []);
+
+  function showProjects() {
+    setSelection(null);
+    setNotice("");
+    refreshProjects();
+  }
+
+  async function openProjectDialog(next) {
+    setDialog(next);
+    try {
+      setSiteOptions(await openWebsites(chrome));
+    } catch {
+      setSiteOptions([]);
+    }
+  }
+
+  function siteFromFields({ address, tab }) {
+    if (address?.trim()) {
+      try {
+        const url = websiteAddress(address.trim());
+        return { address: url.origin + url.pathname, hostname: url.hostname };
+      } catch {
+        throw Error("Enter an HTTP or HTTPS website address.");
+      }
+    }
+    const selected = siteOptions.find(({ id }) => String(id) === tab);
+    return selected ? { tabId: tab, hostname: selected.hostname } : null;
+  }
 
   async function refreshProjects() {
     setError("");
@@ -69,9 +104,11 @@ function Studio() {
         setProjects(records);
         const params = new URLSearchParams(location.search);
         const project = records.find(({ id }) => id === params.get("project"));
-        const linked = project?.collections.find(
-          ({ id }) => id === params.get("collection"),
-        );
+        const linked =
+          project &&
+          projectCollectionEntries(project, records).find(
+            ({ id }) => id === params.get("collection"),
+          );
         if (linked) openCollection(project, linked);
       })
       .catch(() => setError("Couldn’t read projects saved on this device."));
@@ -96,19 +133,27 @@ function Studio() {
   }
 
   function openCollection(project, next, view = "assets") {
-    setSelection({ projectId: project.id, collectionId: next.id });
+    setNotice("");
+    setProjectOverview(view === "project");
+    setSelection({
+      projectId: project.id,
+      ownerId: next.ownerId || project.id,
+      collectionId: next.id,
+    });
     setVersion(null);
     setDesignId("");
     setNewDesign(false);
-    setSection(view);
+    setSection(view === "project" ? "assets" : view);
   }
 
   function openSection(view) {
+    setProjectOverview(false);
     setVersion(null);
     setSection(view);
   }
 
-  function startDesign(asset = null) {
+  function startDesign(asset = null, layout = "website") {
+    setStartingLayout(layout);
     setStartingAsset(asset);
     setNewDesign(true);
     openSection("designs");
@@ -116,7 +161,7 @@ function Studio() {
 
   async function writeDesign(draft, expectedRevision = null) {
     const { project, result } = await saveDesign(
-      currentProject.id,
+      ownerId,
       collection.id,
       draft,
       expectedRevision,
@@ -133,11 +178,7 @@ function Studio() {
   }
 
   async function updateCollection(mutate) {
-    const { project } = await changeCollection(
-      currentProject.id,
-      collection.id,
-      mutate,
-    );
+    const { project } = await changeCollection(ownerId, collection.id, mutate);
     updateProject(project);
   }
 
@@ -168,7 +209,7 @@ function Studio() {
 
   async function copyAsset(id, targetId) {
     const { project } = await copyAssetToCollection(
-      currentProject.id,
+      ownerId,
       collection.id,
       targetId,
       id,
@@ -176,13 +217,59 @@ function Studio() {
     updateProject(project);
   }
 
-  const projectDialog = dialog === "project";
+  const projectDialog = ["project", "reuse"].includes(dialog);
+  const siteDialog = ["choose-site", "change-site"].includes(dialog);
   const editDialog = dialog === "edit-collection";
-  async function submitDialog({ name, notes }) {
+  const reusable = (projects || []).flatMap((project) =>
+    project.collections.map((item) => ({
+      id: `${project.id}|${item.id}`,
+      name: item.name,
+      ownerId: project.id,
+      item,
+    })),
+  );
+  const siteFields = [
+    {
+      key: "tab",
+      label: "Open tabs",
+      options: [
+        { id: "", name: "Choose an open tab" },
+        ...siteOptions.map(({ id, label }) => ({
+          id: String(id),
+          name: label,
+        })),
+      ],
+    },
+    { key: "address", label: "Website address", max: 2048 },
+  ];
+  async function submitDialog(fields) {
+    const { name, notes, collection: destination } = fields;
     if (projectDialog) {
-      const project = await createProject(name);
+      const source = reusable.find(({ id }) => id === destination);
+      const site = siteFromFields(fields);
+      const project = await createProject(name, {
+        site,
+        collectionLink: source
+          ? { projectId: source.ownerId, collectionId: source.item.id }
+          : null,
+      });
       updateProject(project);
-      openCollection(project, project.collections[0], "collect");
+      const target = source
+        ? { ...source.item, ownerId: source.ownerId }
+        : project.collections[0];
+      openCollection(project, target, source || site ? "project" : "collect");
+    } else if (siteDialog) {
+      const site = siteFromFields(fields);
+      if (!site) throw Error("Choose an open tab or enter a website address.");
+      const source = reusable.find(({ id }) => id === destination);
+      const projectId =
+        dialog === "change-site" ? currentProject?.id : source?.ownerId;
+      if (!projectId) throw Error("Choose a collection for this site.");
+      const { project } = await saveProjectSite(projectId, site);
+      updateProject(project);
+      const target =
+        dialog === "change-site" ? { ...collection, ownerId } : source.item;
+      openCollection(project, target, "collect");
     } else if (editDialog) {
       await updateCollection((next, project) => {
         const cleaned = cleanName(name);
@@ -211,8 +298,9 @@ function Studio() {
 
   if (design)
     return (
-      <div className="studio-shell design-shell">
-        <main className="studio-content">
+      <div className="studio-shell design-shell workspace-shell">
+        <WorkspaceHeader project={currentProject} />
+        <main className="studio-content workspace-editor-content">
           <DesignEditor
             key={design.id}
             initial={design}
@@ -221,42 +309,61 @@ function Studio() {
             onSave={async (draft, revision) =>
               (await writeDesign(draft, revision)).revision
             }
-            onBack={() => {
+            onBack={(next = "assets") => {
               setStartingAsset(null);
               setDesignId("");
-              openSection("assets");
+              if (next === "projects") showProjects();
+              else openSection(next);
             }}
           />
         </main>
+        <WorkspaceFooter collection={collection} />
       </div>
     );
 
   return (
-    <div className="studio-shell">
-      <header className="studio-header">
-        <div className="brand">
-          <img
-            src="images/CSS-Getter-Icon-48px.png"
-            alt=""
-            width="24"
-            height="24"
-          />
-          <strong>Getter Studio</strong>
-        </div>
-        <nav aria-label="Studio">
-          <button
-            className="text-button"
-            aria-current={!selection ? "page" : undefined}
-            onClick={() => {
-              setSelection(null);
-              refreshProjects();
-            }}
-          >
-            Projects
-          </button>
-        </nav>
-      </header>
-      <main className="studio-content">
+    <div className="studio-shell workspace-shell">
+      <WorkspaceHeader
+        project={collection && !projectOverview ? currentProject : null}
+        onProjects={showProjects}
+        onInspect={() =>
+          reusable.length
+            ? openProjectDialog("choose-site")
+            : openProjectDialog("project")
+        }
+        onReview={() =>
+          setNotice("Design Review requires a separate QA build.")
+        }
+      />
+      {collection && !projectOverview && (
+        <WorkspaceSteps
+          active={section}
+          actions={{
+            collect: () => openSection("collect"),
+            assets: () => openSection("assets"),
+            designs: () => openSection("designs"),
+          }}
+        >
+          <div className="workspace-collection-tools">
+            {collectionTools.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                className="text-button"
+                aria-current={section === id ? "page" : undefined}
+                onClick={() => openSection(id)}
+              >
+                {label}
+              </button>
+            ))}
+            <button className="text-button" onClick={showProjects}>
+              Projects
+            </button>
+          </div>
+        </WorkspaceSteps>
+      )}
+      <main className="studio-content workspace-page">
+        {notice && <p role="status">{notice}</p>}
         {error && (
           <p role="alert">
             {error}{" "}
@@ -265,76 +372,133 @@ function Studio() {
             </button>
           </p>
         )}
-        {collection ? (
+        {collection && projectOverview ? (
           <>
             <div className="studio-heading">
               <div>
-                <p>{currentProject.name} / Collection</p>
+                <h1>{currentProject.name}</h1>
+                <p>
+                  {currentProject.site?.hostname ||
+                    "Choose a site to collect assets"}
+                </p>
+              </div>
+              <div className="studio-row">
+                <button
+                  className="secondary"
+                  onClick={() => openProjectDialog("change-site")}
+                >
+                  Change site
+                </button>
+                <button
+                  className="primary"
+                  onClick={() => openSection("collect")}
+                >
+                  Collect assets →
+                </button>
+              </div>
+            </div>
+            <div className="workspace-project-launch">
+              <section className="studio-card">
+                <small className="workspace-kicker">
+                  {currentProject.collectionLink
+                    ? "Linked collection"
+                    : "Collection"}
+                </small>
+                <h2>{collection.name}</h2>
+                <button
+                  className="secondary"
+                  onClick={() => openSection("assets")}
+                >
+                  Open collection →
+                </button>
+              </section>
+              <section className="studio-card">
+                <small className="workspace-kicker">Designs</small>
+                <h2>Continue designing</h2>
+                <button
+                  className="secondary"
+                  onClick={() => openSection("designs")}
+                >
+                  Open editor →
+                </button>
+              </section>
+            </div>
+          </>
+        ) : collection ? (
+          <>
+            <div className="studio-heading">
+              <div>
+                <small className="workspace-kicker">Your collection</small>
                 <h1 tabIndex={-1} ref={heading}>
                   {collection.name}
                 </h1>
+                <p>
+                  {
+                    collection.assets.filter(({ removedAt }) => !removedAt)
+                      .length
+                  }{" "}
+                  saved assets · originals stay linked to their source
+                </p>
                 {collection.notes && <p>{collection.notes}</p>}
               </div>
-              <small>On this device</small>
-            </div>
-            <div
-              className="studio-toolbar studio-fields"
-              aria-label="Collection controls"
-            >
-              <label>
-                Collection
-                <select
-                  value={collection.id}
-                  onChange={(event) =>
-                    openCollection(
-                      currentProject,
-                      currentProject.collections.find(
-                        ({ id }) => id === event.target.value,
-                      ),
-                    )
-                  }
-                >
-                  {currentProject.collections.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                className="secondary"
-                onClick={() => setDialog("collection")}
-              >
-                New collection
-              </button>
-              <button
-                className="secondary"
-                onClick={() => setDialog("edit-collection")}
-              >
-                Edit collection
-              </button>
-            </div>
-            <nav
-              aria-label="Collection views"
-              className="studio-collection-nav"
-            >
-              {sections.map(([id, label]) => (
+              <div className="studio-row">
                 <button
-                  type="button"
-                  key={id}
-                  className={section === id ? "primary" : "secondary"}
-                  aria-pressed={section === id}
-                  onClick={() => openSection(id)}
+                  className="secondary"
+                  aria-label="Edit collection"
+                  onClick={() => setDialog("edit-collection")}
                 >
-                  {label}
+                  Rename
                 </button>
-              ))}
-            </nav>
+                <button
+                  className="secondary"
+                  onClick={() => openSection("collect")}
+                >
+                  ＋ Collect more
+                </button>
+              </div>
+            </div>
+            {currentProject.collectionLink?.collectionId === collection.id && (
+              <p className="workspace-collection-origin">
+                <strong>Starting with {collection.name}.</strong> Saved colors,
+                typography, and artwork are ready to reuse.
+              </p>
+            )}
+            <details className="workspace-collection-switcher">
+              <summary>Manage collections</summary>
+              <div className="studio-row">
+                <label>
+                  Collection
+                  <select
+                    value={collection.id}
+                    onChange={(event) =>
+                      openCollection(
+                        currentProject,
+                        projectCollections(currentProject).find(
+                          ({ id }) => id === event.target.value,
+                        ),
+                      )
+                    }
+                  >
+                    {projectCollections(currentProject).map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  className="secondary"
+                  onClick={() => setDialog("collection")}
+                >
+                  New collection
+                </button>
+              </div>
+            </details>
             {section === "assets" && (
               <CollectionAssets
                 key={collection.id}
                 collection={collection}
-                destinations={currentProject.collections.filter(
+                destinations={owner.collections.filter(
                   ({ id }) => id !== collection.id,
                 )}
                 onCollect={() => openSection("collect")}
@@ -354,9 +518,10 @@ function Studio() {
             {section === "collect" && (
               <CollectionCapture
                 key={`${collection.id}:${version?.id || "new"}`}
-                projectId={currentProject.id}
+                projectId={ownerId}
                 collectionId={collection.id}
                 version={version}
+                site={currentProject.site}
                 onSave={updateProject}
               />
             )}
@@ -378,6 +543,12 @@ function Studio() {
                 key={collection.id}
                 collection={collection}
                 startingAsset={startingAsset}
+                startingLayout={startingLayout}
+                designCollectionName={
+                  currentProject.collectionLink
+                    ? currentProject.name
+                    : collection.name
+                }
                 creating={newDesign}
                 onNew={() => startDesign()}
                 onCancel={() => setNewDesign(false)}
@@ -389,89 +560,56 @@ function Studio() {
               />
             )}
           </>
+        ) : projects ? (
+          <ProjectsView
+            projects={projects}
+            collections={projectCollections}
+            onNew={() => openProjectDialog("project")}
+            onReuse={(collectionId) => {
+              setFeaturedCollection(
+                reusable.find(({ item }) => item.id === collectionId)?.id || "",
+              );
+              openProjectDialog("reuse");
+            }}
+            onChooseSite={() =>
+              openProjectDialog(reusable.length ? "choose-site" : "project")
+            }
+            onOpen={(project) => {
+              const target = projectCollections(project)[0];
+              if (target) openCollection(project, target, "project");
+            }}
+            onCollection={openCollection}
+          />
         ) : (
-          <>
-            <div className="studio-heading">
-              <h1 tabIndex={-1} ref={heading}>
-                Your projects
-              </h1>
-              <button
-                className="primary"
-                disabled={!projects || !!error}
-                onClick={() => setDialog("project")}
-              >
-                New project
-              </button>
-            </div>
-            {!projects && !error && <p role="status">Opening projects…</p>}
-            {projects?.length === 0 && (
-              <p>Create a project to start a collection on this device.</p>
-            )}
-            {projects?.length > 0 && (
-              <div className="studio-toolbar studio-fields">
-                <label>
-                  Find projects or collections
-                  <input
-                    type="search"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                  />
-                </label>
-              </div>
-            )}
-            {query && !shownProjects?.length && (
-              <p>No projects or collections match this search.</p>
-            )}
-            <div className="studio-projects">
-              {shownProjects?.map((project) => (
-                <article
-                  className="studio-card studio-project"
-                  key={project.id}
-                >
-                  <h2>{project.name}</h2>
-                  <p>On this device</p>
-                  <ul>
-                    {project.collections.map((item) => (
-                      <li key={item.id}>
-                        <button
-                          className="text-button"
-                          onClick={() => openCollection(project, item)}
-                        >
-                          {item.name}
-                        </button>
-                        <small>
-                          {
-                            item.assets.filter(({ removedAt }) => !removedAt)
-                              .length
-                          }{" "}
-                          assets
-                        </small>
-                      </li>
-                    ))}
-                  </ul>
-                </article>
-              ))}
-            </div>
-          </>
+          !error && <p role="status">Opening projects…</p>
         )}
       </main>
+      <WorkspaceFooter collection={collection} />
       {dialog && (
         <EditorDialog
           title={
             projectDialog
               ? "Create a project"
-              : editDialog
-                ? "Edit collection"
-                : "New collection"
-          }
-          description={
-            projectDialog
-              ? "A new collection will be saved with this project on this device."
-              : undefined
+              : siteDialog
+                ? "Choose a site"
+                : editDialog
+                  ? "Edit collection"
+                  : "New collection"
           }
           initial={{
             name: editDialog ? collection.name : "",
             notes: editDialog ? collection.notes : "",
+            collection:
+              dialog === "reuse"
+                ? featuredCollection
+                : dialog === "choose-site"
+                  ? reusable[0]?.id || ""
+                  : "",
+            address:
+              dialog === "change-site"
+                ? currentProject.site?.address || ""
+                : "",
+            tab: "",
           }}
           fields={
             projectDialog
@@ -482,17 +620,41 @@ function Studio() {
                     max: 50,
                     required: true,
                   },
+                  ...siteFields,
+                  {
+                    key: "collection",
+                    label: "Collection",
+                    options: [
+                      { id: "", name: "Start with a new collection" },
+                      ...reusable,
+                    ],
+                  },
                 ]
-              : editDialog
-                ? collectionFields
-                : collectionFields.slice(0, 1)
+              : siteDialog
+                ? [
+                    ...siteFields,
+                    ...(dialog === "choose-site"
+                      ? [
+                          {
+                            key: "collection",
+                            label: "Collection",
+                            options: reusable,
+                          },
+                        ]
+                      : []),
+                  ]
+                : editDialog
+                  ? collectionFields
+                  : collectionFields.slice(0, 1)
           }
           action={
             projectDialog
               ? "Create project"
-              : editDialog
-                ? "Save collection"
-                : "Create collection"
+              : siteDialog
+                ? "Collect assets"
+                : editDialog
+                  ? "Save collection"
+                  : "Create collection"
           }
           onSubmit={submitDialog}
           onClose={() => setDialog("")}

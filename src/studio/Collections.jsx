@@ -264,14 +264,36 @@ export default function CollectionAssets({
 
   return (
     <section aria-labelledby="assets-heading" className="studio-library">
-      <div className="studio-toolbar studio-fields">
-        <h2 id="assets-heading">
-          Collection assets <small>{current.length}</small>
-        </h2>
-        <label>
-          Find assets
+      <h2 id="assets-heading" className="workspace-sr-only">
+        Collection assets
+      </h2>
+      <div className="workspace-asset-filters">
+        <div className="workspace-asset-tabs" aria-label="Asset types">
+          {[
+            ["all", "All"],
+            ...Object.entries(assetKinds).map(([id, label]) => [
+              id,
+              id === "font" ? "Fonts" : id === "element" ? "Elements" : label,
+            ]),
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={filter === id}
+              onClick={() => {
+                setFilter(id);
+                setVisibleLimit(48);
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <label className="workspace-asset-search">
+          <span className="workspace-sr-only">Find assets</span>
           <input
             type="search"
+            placeholder="Find assets"
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
@@ -279,31 +301,7 @@ export default function CollectionAssets({
             }}
           />
         </label>
-        <label>
-          Type
-          <select
-            value={filter}
-            onChange={(event) => {
-              setFilter(event.target.value);
-              setVisibleLimit(48);
-            }}
-          >
-            <option value="all">All assets</option>
-            {Object.entries(assetKinds).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
       </div>
-      <button
-        type="button"
-        className="primary studio-inline-action design-launch"
-        onClick={() => onDesign()}
-      >
-        Create design
-      </button>
       {status && <p role="status">{status}</p>}
       {!collection.assets.length && (
         <div className="studio-card">
@@ -326,9 +324,6 @@ export default function CollectionAssets({
               key={asset.id}
               aria-label={asset.name}
             >
-              <small>{assetKinds[asset.value.type]}</small>
-              <h3>{asset.name}</h3>
-              {asset.role && <p>{asset.role}</p>}
               {asset.value.type === "color" && (
                 <span
                   className="studio-asset-color"
@@ -350,7 +345,10 @@ export default function CollectionAssets({
                   Aa
                 </span>
               )}
-              <AssetValue asset={asset} />
+              {asset.value.type === "image" && <AssetValue asset={asset} />}
+              <h3>{asset.name}</h3>
+              {asset.role && <p>{asset.role}</p>}
+              {asset.value.type !== "image" && <AssetValue asset={asset} />}
               <small>{sources(asset).join(" · ")}</small>
               {asset.notes && <p>{asset.notes}</p>}
               <div className="studio-row">
@@ -358,43 +356,8 @@ export default function CollectionAssets({
                   className="secondary"
                   onClick={() => setDetail(asset.id)}
                 >
-                  Item details
-                </button>
-                {asset.value.type !== "motion" && (
-                  <button
-                    className="text-button"
-                    onClick={() => onDesign(asset)}
-                  >
-                    Use in editor
-                  </button>
-                )}
-                {destinations.length > 0 && (
-                  <button
-                    className="text-button"
-                    onClick={() => setCopy(asset)}
-                  >
-                    Copy to collection
-                  </button>
-                )}
-                <button
-                  className="text-button"
-                  aria-label={`Move ${asset.name} earlier`}
-                  disabled={pending || index === 0}
-                  onClick={() =>
-                    change(() => onMove(asset.id, -1), "Item moved.")
-                  }
-                >
-                  ↑
-                </button>
-                <button
-                  className="text-button"
-                  aria-label={`Move ${asset.name} later`}
-                  disabled={pending || index === current.length - 1}
-                  onClick={() =>
-                    change(() => onMove(asset.id, 1), "Item moved.")
-                  }
-                >
-                  ↓
+                  <span className="workspace-sr-only">Item details</span>
+                  <span aria-hidden="true">Edit</span>
                 </button>
                 <button
                   className="text-button"
@@ -409,6 +372,47 @@ export default function CollectionAssets({
                   Remove
                 </button>
               </div>
+              <details className="workspace-asset-actions">
+                <summary>More actions</summary>
+                <div className="studio-row">
+                  {asset.value.type !== "motion" && (
+                    <button
+                      className="text-button"
+                      onClick={() => onDesign(asset)}
+                    >
+                      Use in editor
+                    </button>
+                  )}
+                  {destinations.length > 0 && (
+                    <button
+                      className="text-button"
+                      onClick={() => setCopy(asset)}
+                    >
+                      Copy to collection
+                    </button>
+                  )}
+                  <button
+                    className="text-button"
+                    aria-label={`Move ${asset.name} earlier`}
+                    disabled={pending || index === 0}
+                    onClick={() =>
+                      change(() => onMove(asset.id, -1), "Item moved.")
+                    }
+                  >
+                    ↑
+                  </button>
+                  <button
+                    className="text-button"
+                    aria-label={`Move ${asset.name} later`}
+                    disabled={pending || index === current.length - 1}
+                    onClick={() =>
+                      change(() => onMove(asset.id, 1), "Item moved.")
+                    }
+                  >
+                    ↓
+                  </button>
+                </div>
+              </details>
               {match && match.id !== asset.id && (
                 <button
                   className="text-button"
@@ -454,11 +458,31 @@ export default function CollectionAssets({
           ))}
         </details>
       )}
-      {!!current.length && (
-        <button className="secondary studio-inline-action" onClick={onExport}>
-          Use in design kit
-        </button>
-      )}
+      <div className="workspace-create">
+        <div>
+          <strong>Make something with this collection</strong>
+          <p>Your saved assets stay available as you design.</p>
+        </div>
+        <div className="studio-row">
+          {!!current.length && (
+            <button className="text-button" onClick={onExport}>
+              Use in design kit
+            </button>
+          )}
+          <button className="secondary" onClick={() => onDesign()}>
+            Create design
+          </button>
+          <button className="primary" onClick={() => onDesign(null, "brand")}>
+            Create brand board
+          </button>
+          <button
+            className="primary"
+            onClick={() => onDesign(null, "portrait")}
+          >
+            Create campaign
+          </button>
+        </div>
+      </div>
       {active && (
         <ItemDetails
           asset={active}

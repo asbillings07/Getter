@@ -58,9 +58,11 @@ fetch path and have the same format and size limits as Studio Collections.
 
 ## Use the collection in the editor
 
-1. From the collection, select **Create design** or **Use in editor** on an
-   asset. Choose a website layout, campaign artwork, brand board, or blank
-   canvas. **Simple navigation** starts with a header, hero, and footer.
+1. In **Projects**, start a new project, choose a website, or create a project
+   from an existing collection. Pick an open tab or enter a website address.
+   Open the project's collection and use **Create campaign** or **Create brand
+   board**. **Create design** and **Use in editor** also offer website layouts
+   and a blank canvas. **Simple navigation** starts with a header, hero, and footer.
    **Navigation + newsletter** adds editable signup artwork between the hero
    and footer.
 2. Select layers on the canvas or in **Layers**. Edit text and type styles,
@@ -83,12 +85,13 @@ collections use the same storage and do not need to be imported again.
 
 ### Campaign artwork
 
-Start with portrait or square artwork, a vertical story or cover, or a
-three-slide carousel. Insert an image from the collection to fill the artwork
-slot. Select **Canvas** to choose **Headline first** or **Image first**.
-Use **Slide 1**, **Slide 2**, and **Slide 3** to edit each slide independently.
-Saving a carousel saves all three slides. Export it as a ZIP with one numbered
-SVG or PNG per slide. Each file contains static artwork.
+Use the format menu above the canvas to choose portrait or square artwork, a
+vertical story or cover, or a three-slide carousel. Select **Product artwork**
+to replace the starter image from the collection. The **Design** controls
+include shared brand colors, spacing, and **Headline first** or **Image first**
+composition. Use **Slide 1**, **Slide 2**, and **Slide 3** to edit each slide.
+Saving a carousel saves all three slides. In **Export**, choose Figma or Canva,
+preview the draft, and download a ZIP with one numbered SVG or PNG per slide.
 
 ### Brand board
 
@@ -97,9 +100,11 @@ apply a collection color or edit its Fill. The swatch caption shows the
 current value. The swatches also update the sample button, canvas color, board
 copy, and artwork placeholder. Editing a linked property directly sets its
 own value. Edit the two type samples independently and insert or replace
-artwork from the collection. Select **Canvas** for the classic or airy
-composition. The options for a board are SVG and PNG. Receiving apps determine
-how imported SVG elements and fonts can be edited.
+artwork from the collection. Use **Composition** to choose Classic or Airy.
+In **Export**, choose Figma or Illustrator and download an SVG or PNG. The
+export screen can preview a heading font substitution without editing the
+saved draft. Receiving apps determine how imported SVG elements and fonts can
+be edited.
 
 ## Build
 

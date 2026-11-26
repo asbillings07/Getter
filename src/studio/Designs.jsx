@@ -5,6 +5,8 @@ import { createDraft, formats, startingLayouts } from "./design.js";
 export default function Designs({
   collection,
   startingAsset,
+  startingLayout,
+  designCollectionName,
   creating,
   onCancel,
   onNew,
@@ -12,6 +14,13 @@ export default function Designs({
   onCreate,
 }) {
   const [includeAsset, setIncludeAsset] = useState(true);
+  const [applyStyles, setApplyStyles] = useState(true);
+  const workflow =
+    startingLayout === "brand"
+      ? "brand board"
+      : startingLayout === "portrait"
+        ? "campaign"
+        : "";
   const designs = [...(collection.designs || [])].sort((a, b) =>
     b.updatedAt.localeCompare(a.updatedAt),
   );
@@ -59,24 +68,51 @@ export default function Designs({
       </div>
       {creating && (
         <EditorDialog
-          title="Create a design"
+          title={workflow ? `Create ${workflow}` : "Create a design"}
           initial={{
-            name: `${collection.name.slice(0, 53)} design`,
-            format: "website",
+            name: `${designCollectionName.slice(0, 53)} design`,
+            format: startingLayout,
           }}
           fields={[
             { key: "name", label: "Design name", max: 60, required: true },
-            { key: "format", label: "Starting layout", options },
+            ...(workflow
+              ? []
+              : [{ key: "format", label: "Starting layout", options }]),
           ]}
-          action="Create design"
+          action={workflow ? "Open editor" : "Create design"}
           onClose={onCancel}
           onSubmit={({ name, format }) =>
             onCreate(
-              createDraft(name, format, collection.name),
+              createDraft(
+                name,
+                format,
+                designCollectionName,
+                applyStyles
+                  ? collection.assets
+                  : collection.assets.filter(
+                      ({ value }) => value.type === "image",
+                    ),
+              ),
               includeAsset ? startingAsset : null,
             )
           }
         >
+          {workflow && (
+            <>
+              <p className="workspace-collection-origin">
+                {collection.assets.filter(({ removedAt }) => !removedAt).length}{" "}
+                collection assets ready.
+              </p>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={applyStyles}
+                  onChange={(event) => setApplyStyles(event.target.checked)}
+                />{" "}
+                Apply saved brand styles
+              </label>
+            </>
+          )}
           {startingAsset && (
             <label>
               <input

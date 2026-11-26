@@ -242,7 +242,19 @@ function SwatchCaption({ layer }) {
 }
 
 export default forwardRef(function DesignCanvas(
-  { draft, selected, onStart, onMove, onEnd, onCancel, exportOnly = false },
+  {
+    draft,
+    selected,
+    onStart,
+    onMove,
+    onEnd,
+    onCancel,
+    exportOnly = false,
+    inlineText,
+    onInlineEdit,
+    onTextChange,
+    onTextEnd,
+  },
   ref,
 ) {
   const interactive = !!onStart;
@@ -251,6 +263,16 @@ export default forwardRef(function DesignCanvas(
       .filter(({ fills, hidden }) => fills && !hidden)
       .map(({ fills }) => fills),
   );
+  const byId = new Map(draft.layers.map((item) => [item.id, item]));
+  function caption(item) {
+    const specimen = byId.get(item.specimenFor);
+    const metrics = byId.get(item.metricsFor);
+    if (specimen)
+      return `${item.text} · ${specimen.fontFamily.split(",")[0].toUpperCase()}`;
+    if (metrics)
+      return `${item.text} · ${metrics.fontSize} / ${Math.round(metrics.fontSize * metrics.lineHeight)}`;
+    return item.text;
+  }
   return (
     <svg
       ref={ref}
@@ -283,6 +305,13 @@ export default forwardRef(function DesignCanvas(
             transform={`translate(${layer.x} ${layer.y})`}
             opacity={layer.opacity}
             data-layer-id={layer.id}
+            onDoubleClick={
+              interactive &&
+              onInlineEdit &&
+              ["text", "button"].includes(layer.type)
+                ? () => onInlineEdit(layer)
+                : undefined
+            }
             onPointerDown={
               interactive ? (event) => onStart(event, layer) : undefined
             }
@@ -340,11 +369,39 @@ export default forwardRef(function DesignCanvas(
                 )}
                 {["text", "button"].includes(layer.type) && (
                   <TextContent
-                    layer={layer}
+                    layer={{ ...layer, text: caption(layer) }}
                     centered={layer.type === "button"}
                   />
                 )}
               </svg>
+            )}
+            {inlineText === layer.id && (
+              <foreignObject
+                data-editor-only=""
+                width={layer.width}
+                height={layer.height}
+              >
+                <textarea
+                  autoFocus
+                  aria-label="Edit canvas text"
+                  maxLength={600}
+                  className="workspace-inline-text"
+                  style={{
+                    fontFamily: layer.fontFamily,
+                    fontSize: layer.fontSize,
+                    fontWeight: layer.fontWeight,
+                    color: layer.textColor,
+                  }}
+                  value={layer.text}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onDoubleClick={(event) => event.stopPropagation()}
+                  onChange={(event) => onTextChange(event.target.value)}
+                  onBlur={onTextEnd}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") onTextEnd();
+                  }}
+                />
+              </foreignObject>
             )}
           </g>
         ))}

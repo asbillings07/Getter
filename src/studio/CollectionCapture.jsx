@@ -65,11 +65,12 @@ export default function CollectionCapture({
   projectId,
   collectionId,
   version,
+  site,
   onSave,
 }) {
   const [tabs, setTabs] = useState([]);
-  const [tabId, setTabId] = useState("");
-  const [address, setAddress] = useState("");
+  const [tabId, setTabId] = useState(site?.tabId || "");
+  const [address, setAddress] = useState(site?.address || "");
   const [review, setReview] = useState(null);
   const [element, setElement] = useState(null);
   const [selected, setSelected] = useState([]);
@@ -92,12 +93,22 @@ export default function CollectionCapture({
     const run = ++tabsRequest.current;
     try {
       const list = await openWebsites(api);
-      if (run === tabsRequest.current) setTabs(list);
+      if (run !== tabsRequest.current) return;
+      setTabs(list);
+      setTabId((current) =>
+        current === site?.tabId &&
+        !list.some(
+          ({ id, hostname }) =>
+            String(id) === current && hostname === site.hostname,
+        )
+          ? ""
+          : current,
+      );
     } catch {
       if (run === tabsRequest.current)
         setStatus("Open tabs are unavailable. Refresh to try again.");
     }
-  }, []);
+  }, [site?.tabId, site?.hostname]);
   useEffect(() => {
     const updated = (id, change) => {
       if (change.status === "loading") {

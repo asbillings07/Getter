@@ -66,6 +66,19 @@ export function listProjects() {
   });
 }
 
+export function projectCollectionEntries(project, projects) {
+  const link = project.collectionLink;
+  const linked =
+    link &&
+    projects
+      .find(({ id }) => id === link.projectId)
+      ?.collections.find(({ id }) => id === link.collectionId);
+  return [
+    ...(linked ? [{ ...linked, ownerId: link.projectId }] : []),
+    ...project.collections,
+  ];
+}
+
 function newProject(input, collectionName) {
   const name = cleanName(input, 50);
   return {
@@ -83,11 +96,37 @@ function newProject(input, collectionName) {
   };
 }
 
-export function createProject(input) {
+export function createProject(input, { site, collectionLink } = {}) {
   const project = newProject(input);
-  return transact("readwrite", (store, finish) => {
-    store.add(project);
-    finish(project);
+  if (site) project.site = site;
+  if (collectionLink) {
+    project.collectionLink = collectionLink;
+    project.collections = [];
+  }
+  return transact("readwrite", (store, finish, abort) => {
+    const add = () => {
+      store.add(project);
+      finish(project);
+    };
+    if (!collectionLink) {
+      add();
+      return;
+    }
+    const request = store.get(collectionLink.projectId);
+    request.onsuccess = () => {
+      try {
+        if (
+          !request.result ||
+          !upgradeProject(request.result).collections.some(
+            ({ id }) => id === collectionLink.collectionId,
+          )
+        )
+          throw Error("Choose a collection that is still available.");
+        add();
+      } catch (error) {
+        abort(error);
+      }
+    };
   });
 }
 
@@ -109,6 +148,12 @@ function changeProject(id, mutate) {
         abort(error);
       }
     };
+  });
+}
+
+export function saveProjectSite(id, site) {
+  return changeProject(id, (project) => {
+    project.site = site;
   });
 }
 

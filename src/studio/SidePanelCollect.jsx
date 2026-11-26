@@ -4,7 +4,11 @@ import { verifyDocument } from "../core/workspace.js";
 import { fontStyleKey } from "../core/usage.js";
 import { assetKinds, cleanName, collectionLabels } from "./library.js";
 import { EXPORT_LIMITS } from "../core/downloads.js";
-import { listProjects, saveFromPage } from "./projects.js";
+import {
+  listProjects,
+  projectCollectionEntries,
+  saveFromPage,
+} from "./projects.js";
 import { websiteImages } from "./images.js";
 import AssetPreview, { Properties } from "./AssetPreview.jsx";
 import { motionAssets } from "./inspect.js";
@@ -143,10 +147,12 @@ export default function SidePanelCollect({
     ])
       .then(([records, { studioDestination }]) => {
         if (!live) return;
-        const values = records.map(({ id, name, collections }) => ({
-          id,
-          name,
-          collections: collections.map(({ id, name }) => ({ id, name })),
+        const values = records.map((record) => ({
+          id: record.id,
+          name: record.name,
+          collections: projectCollectionEntries(record, records).map(
+            ({ id, name, ownerId }) => ({ id, name, ownerId }),
+          ),
         }));
         const remembered =
           values.find(({ id }) => id === studioDestination?.projectId) ||
@@ -185,8 +191,11 @@ export default function SidePanelCollect({
       task.signal.throwIfAborted();
     };
     try {
+      const ownerId = project?.collections.find(
+        ({ id }) => id === collectionId,
+      )?.ownerId;
       const destination = {
-        projectId,
+        projectId: ownerId || projectId,
         collectionId,
         projectName: projectId ? undefined : cleanName(projectName, 50),
         collectionName:
@@ -286,15 +295,16 @@ export default function SidePanelCollect({
         items: [...savedItems, ...images],
       });
       if (task.signal.aborted) return;
+      const target = ownerId ? { ...saved, projectId } : saved;
       api.storage.session
         .set({
           studioDestination: {
-            projectId: saved.projectId,
+            projectId: target.projectId,
             collectionId: saved.collectionId,
           },
         })
         .catch(() => {});
-      setSaved(saved);
+      setSaved(target);
     } catch (error) {
       if (!task.signal.aborted) {
         if (bulk === "images" && error.unavailableImages?.length) {

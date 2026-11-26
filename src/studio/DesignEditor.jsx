@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
+import { CreativeExport } from "./CreativeExport.jsx";
+import { WorkspaceSteps } from "./Workspace.jsx";
 import { DownloadTracker } from "../core/downloads.js";
 import { colorLabel } from "../core/extract.js";
 import { assetKinds, cleanName } from "./library.js";
@@ -7,8 +9,12 @@ import { safeStyleValue } from "./inspect.js";
 import {
   addFromAsset,
   applyFromAsset,
+  changeArtworkFormat,
   changeComposition,
+  changeCreativeColor,
   changeDesignLayer,
+  changeSpacing,
+  creativeColors,
   checkColor,
   compositionOptions,
   draftSlide,
@@ -96,6 +102,7 @@ function LayerProperties({
   changeDraft,
   onError,
   carousel,
+  compact = false,
 }) {
   const number = (name, label, min, max, step) => (
     <NumberField
@@ -122,7 +129,7 @@ function LayerProperties({
   return (
     <aside
       className="studio-card studio-fields design-properties"
-      aria-label="Design properties"
+      aria-label={compact ? "Advanced layer properties" : "Design properties"}
     >
       <h2>{selected ? "Layer properties" : "Design settings"}</h2>
       {selected ? (
@@ -263,7 +270,7 @@ function LayerProperties({
               </select>
             </Control>
           )}
-          {compositions && (
+          {compositions && !compact && (
             <Control label="Composition">
               <select
                 value={draft.composition}
@@ -287,6 +294,204 @@ function LayerProperties({
           />
         </>
       )}
+    </aside>
+  );
+}
+
+const artworkFormats = [
+  ["portrait", "Portrait post · 4:5"],
+  ["square", "Square post · 1:1"],
+  ["story", "Story / cover · 9:16"],
+  ["carousel", "Carousel · 3 slides"],
+];
+
+function CreativeProperties({
+  selected,
+  draft,
+  assets,
+  onLayer,
+  onFamily,
+  onColor,
+  onError,
+  onDesign,
+  showPalette,
+  onPalette,
+  onAsset,
+  advanced,
+}) {
+  const compositions = compositionOptions(draft);
+  const colors = creativeColors(draft);
+  const fonts = [
+    ...new Set([
+      "Georgia, serif",
+      "Arial, sans-serif",
+      ...assets
+        .filter(({ value }) => value.type === "font")
+        .map(({ value }) => value.fontFamily),
+      ...(selected?.fontFamily ? [selected.fontFamily] : []),
+    ]),
+  ];
+  const art = selected?.type === "image" || selected?.placeholder === "artwork";
+  const images = assets.filter(({ value }) => value.type === "image");
+  const text = ["text", "button"].includes(selected?.type);
+  return (
+    <aside
+      className="studio-fields workspace-inspector"
+      aria-label="Design properties"
+    >
+      <h2>
+        {showPalette
+          ? "Shared brand colors"
+          : art
+            ? "Artwork"
+            : selected?.name || "Canvas"}
+      </h2>
+      {showPalette ? (
+        <>
+          {Object.entries(colors).map(([role, value]) => (
+            <ColorField
+              key={role}
+              label={role[0].toUpperCase() + role.slice(1)}
+              value={value}
+              onChange={(next) => onColor(role, next)}
+              onError={onError}
+            />
+          ))}
+          <p>Updates the elements that use these colors.</p>
+        </>
+      ) : art ? (
+        <>
+          <Control label="Image">
+            <select
+              value={selected.assetId || ""}
+              onChange={(event) => {
+                const asset = images.find(
+                  ({ id }) => id === event.target.value,
+                );
+                if (asset) onAsset(asset);
+              }}
+            >
+              <option value="" disabled>
+                Choose collection artwork
+              </option>
+              {images.map(({ id, name }) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </Control>
+          <Control label={`Corner radius · ${selected.radius} px`}>
+            <input
+              type="range"
+              min="0"
+              max={Math.max(120, selected.radius)}
+              value={selected.radius}
+              onChange={(event) =>
+                onLayer({ radius: Number(event.target.value) }, "radius")
+              }
+            />
+          </Control>
+        </>
+      ) : text ? (
+        <>
+          <Control label="Text">
+            <textarea
+              value={selected.text}
+              maxLength={600}
+              rows={3}
+              onChange={(event) =>
+                onLayer({ text: event.target.value }, "text")
+              }
+            />
+          </Control>
+          <Control label="Typeface">
+            <select
+              value={selected.fontFamily}
+              onChange={(event) => onFamily(event.target.value)}
+            >
+              {fonts.map((font) => (
+                <option key={font} value={font}>
+                  {font}
+                </option>
+              ))}
+            </select>
+          </Control>
+          <Control label={`Type size · ${selected.fontSize} px`}>
+            <input
+              type="range"
+              min="6"
+              max="160"
+              value={selected.fontSize}
+              onChange={(event) =>
+                onLayer({ fontSize: Number(event.target.value) }, "font-size")
+              }
+            />
+          </Control>
+          <Control label="Alignment">
+            <select
+              value={selected.align}
+              onChange={(event) => onLayer({ align: event.target.value })}
+            >
+              <option value="start">Left</option>
+              <option value="middle">Center</option>
+              <option value="end">Right</option>
+            </select>
+          </Control>
+        </>
+      ) : selected?.type === "shape" ? (
+        <ColorField
+          label="Fill"
+          value={selected.fill}
+          onError={onError}
+          onChange={(fill) => onLayer({ fill })}
+        />
+      ) : null}
+      <div className="workspace-design-controls">
+        <h2>Design</h2>
+        <button
+          className="secondary"
+          type="button"
+          aria-pressed={showPalette}
+          onClick={onPalette}
+        >
+          Brand colors
+        </button>
+        {compositions && (
+          <Control label="Composition">
+            <select
+              value={draft.composition}
+              onChange={(event) =>
+                onDesign(changeComposition(draft, event.target.value))
+              }
+            >
+              {compositions.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </Control>
+        )}
+        <Control label={`Spacing · ${draft.spacing ?? 20} px`}>
+          <input
+            type="range"
+            min="12"
+            max="36"
+            value={draft.spacing ?? 20}
+            onChange={(event) =>
+              onDesign(
+                changeSpacing(draft, Number(event.target.value)),
+                "spacing",
+              )
+            }
+          />
+        </Control>
+      </div>
+      <details className="workspace-advanced">
+        <summary>Layer details</summary>
+        {advanced}
+      </details>
     </aside>
   );
 }
@@ -373,7 +578,21 @@ export default function DesignEditor({
   const [design, setDesign] = useState(initial);
   const [slide, setSlide] = useState(0);
   const [saved, setSaved] = useState(initial);
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(() =>
+    ["brand", "portrait", "square", "story"].includes(initial.format)
+      ? initial.layers.find(({ name }) =>
+          ["Headline", "Brand headline"].includes(name),
+        )?.id || null
+      : null,
+  );
+  const [showPalette, setShowPalette] = useState(false);
+  const [inlineText, setInlineText] = useState(null);
+  const [exportFormat, setExportFormat] = useState("svg");
+  const [substituteFont, setSubstituteFont] = useState("");
+  const [exportTarget, setExportTarget] = useState(
+    initial.format === "brand" ? "Figma" : "Canva",
+  );
+  const [continued, setContinued] = useState(false);
   const [query, setQuery] = useState(startingAsset?.name || "");
   const [typeFilter, setTypeFilter] = useState("");
   const [colorTarget, setColorTarget] = useState("");
@@ -394,12 +613,19 @@ export default function DesignEditor({
   const otherStages = useRef([]);
   const drag = useRef(null);
   const draft = draftSlide(design, slide);
-  const carousel = Boolean(design.additionalSlides?.length);
+  const artworkFormat =
+    design.artworkFormat ||
+    (design.additionalSlides?.length ? "carousel" : design.format);
+  const carousel = artworkFormat === "carousel";
   const slides = [
     0,
-    ...(design.additionalSlides || []).map((_, index) => index + 1),
+    ...(carousel ? design.additionalSlides || [] : []).map(
+      (_, index) => index + 1,
+    ),
   ];
   const campaign = ["portrait", "square", "story"].includes(draft.format);
+  const creative = campaign || draft.format === "brand";
+  const kind = campaign ? "Campaign artwork" : "Brand board";
   const dirty = design !== saved;
   const selected = draft.layers.find(({ id }) => id === selectedId);
   const chosenColorTarget =
@@ -435,7 +661,7 @@ export default function DesignEditor({
     return () => window.removeEventListener("beforeunload", confirm);
   }, [dirty]);
 
-  function change(next, field) {
+  function change(next, field, wholeDesign = false) {
     if (savingTask.current) return;
     const time = Date.now();
     if (
@@ -448,7 +674,7 @@ export default function DesignEditor({
     }
     group.current = field ? { field, time } : null;
     redo.current = [];
-    setDesign(replaceDraftSlide(design, slide, next));
+    setDesign(wholeDesign ? next : replaceDraftSlide(design, slide, next));
     setStatus("");
   }
 
@@ -461,6 +687,8 @@ export default function DesignEditor({
   }
 
   function select(id) {
+    setInlineText(null);
+    setShowPalette(false);
     setSelectedId(id);
     setColorTarget("");
     group.current = null;
@@ -558,8 +786,54 @@ export default function DesignEditor({
     return work;
   }
 
-  async function leave() {
-    if (await save()) onBack();
+  async function leave(next = "assets") {
+    if (await save()) onBack(next);
+  }
+
+  function openExport() {
+    setInlineText(null);
+    setExportStatus("");
+    setContinued(false);
+    setExportOpen(true);
+  }
+
+  function selectFormat(format) {
+    if (format === artworkFormat) return;
+    change(changeArtworkFormat(design, format), undefined, true);
+    openSlide(0);
+  }
+
+  function changeFamily(fontFamily) {
+    if (!selected?.typeRole) {
+      changeLayer({ fontFamily });
+      return;
+    }
+    const role = selected.typeRole;
+    const apply = (view) => ({
+      ...view,
+      layers: view.layers.map((item) =>
+        item.typeRole === role ? { ...item, fontFamily } : item,
+      ),
+    });
+    const updated = apply(design);
+    if (design.additionalSlides)
+      updated.additionalSlides = design.additionalSlides.map(apply);
+    change(updated, undefined, true);
+  }
+
+  function changePalette(role, value) {
+    const updated = changeCreativeColor(design, role, value);
+    if (design.additionalSlides) {
+      updated.additionalSlides = design.additionalSlides.map((item, index) => {
+        const { background, layers } = changeCreativeColor(
+          draftSlide(design, index + 1),
+          role,
+          value,
+        );
+        return { ...item, background, layers };
+      });
+    }
+    change(updated, `color-${role}`, true);
   }
 
   async function download(format) {
@@ -646,296 +920,486 @@ export default function DesignEditor({
     : draft;
   const canvasSelected = canvas.layers.find(({ id }) => id === selectedId);
   const layerIndex = draft.layers.findIndex(({ id }) => id === selectedId);
-  return (
-    <section aria-label="Studio editor" className="design-editor">
-      <div className="design-edit-head">
-        <div>
-          <button className="text-button" disabled={saving} onClick={leave}>
-            ← Back to collection
-          </button>
-          <h1>{draft.name || "Untitled design"}</h1>
-          <small role="status">
-            {status ||
-              (saving
-                ? "Saving…"
-                : dirty
-                  ? "Unsaved changes"
-                  : "Draft saved to collection")}
-          </small>
-        </div>
-        <div className="studio-row">
-          <button
-            className="secondary"
-            disabled={saving || !history.current.length}
-            onClick={undo}
-          >
-            Undo
-          </button>
-          <button
-            className="secondary"
-            disabled={saving || !redo.current.length}
-            onClick={redoEdit}
-          >
-            Redo
-          </button>
-          <button
-            className="secondary"
-            disabled={saving || !dirty}
-            onClick={save}
-          >
-            Save draft
-          </button>
-          <button
-            className="primary"
-            onClick={() => {
-              setExportStatus("");
-              setExportOpen(true);
-            }}
-          >
-            Export draft
-          </button>
-        </div>
-      </div>
-      <div className="design-editor-grid">
-        <aside
-          className="studio-card studio-fields design-sidebar"
-          aria-label="Layers and collection assets"
+  function exportView(view) {
+    if (!creative || !exportOpen || exportFormat !== "svg" || !substituteFont)
+      return view;
+    return {
+      ...view,
+      layers: view.layers.map((item) =>
+        item.typeRole === "heading"
+          ? { ...item, fontFamily: substituteFont }
+          : item,
+      ),
+    };
+  }
+  const artwork = (
+    <DesignCanvas
+      ref={stage}
+      draft={exportView(canvas)}
+      selected={exportOpen ? null : canvasSelected}
+      onStart={exportOpen && creative ? undefined : startDrag}
+      onMove={dragAt}
+      onEnd={finishDrag}
+      onCancel={(event) => finishDrag(event, true)}
+      inlineText={creative && !exportOpen ? inlineText : null}
+      onInlineEdit={(item) => {
+        select(item.id);
+        setInlineText(item.id);
+      }}
+      onTextChange={(text) => changeLayer({ text }, "text")}
+      onTextEnd={() => setInlineText(null)}
+    />
+  );
+  const slidesControls = carousel && (
+    <div
+      className="studio-row design-slides"
+      role="group"
+      aria-label="Carousel slides"
+    >
+      {slides.map((index) => (
+        <button
+          key={index}
+          type="button"
+          className="secondary"
+          aria-pressed={slide === index}
+          disabled={saving || exporting}
+          onClick={() => openSlide(index)}
         >
-          <h2>Layers</h2>
-          <div className="design-layer-list">
-            <button
-              className="secondary"
-              aria-pressed={!selected}
-              onClick={() => select(null)}
-            >
-              Canvas
-            </button>
-            {draft.layers.toReversed().map((item) => (
+          Slide {index + 1}
+        </button>
+      ))}
+    </div>
+  );
+  const layerProperties = (
+    <LayerProperties
+      key={selected?.id || "canvas"}
+      selected={selected}
+      draft={draft}
+      changeLayer={changeLayer}
+      changeDraft={changeCanvas}
+      onError={setStatus}
+      carousel={carousel}
+      compact={creative}
+    />
+  );
+  const showEditor = !creative || !exportOpen;
+  const canContinue = exportStatus === "Download completed.";
+  const primaryLayers = campaign
+    ? ["Wordmark", "Headline", "Product artwork", "Supporting copy"]
+    : [
+        "Brand headline",
+        "Brand description",
+        "Palette",
+        "Typography",
+        "Button",
+        "Artwork",
+      ];
+  function selectPrimary(name) {
+    if (name === "Palette") {
+      setShowPalette(true);
+      return;
+    }
+    const item = ["Product artwork", "Artwork"].includes(name)
+      ? draft.layers.find(({ fills }) => fills === "artwork") ||
+        draft.layers.find(
+          ({ type, placeholder }) =>
+            type === "shape" && placeholder === "artwork",
+        )
+      : draft.layers.find(
+          (item) =>
+            item.name ===
+            ({ Typography: "Heading sample", Button: "Button sample" }[name] ||
+              name),
+        );
+    if (item) select(item.id);
+  }
+  return (
+    <section
+      aria-label="Studio editor"
+      className={`design-editor${creative ? " workspace-creative" : ""}`}
+      data-artwork={campaign ? artworkFormat : creative ? "brand" : undefined}
+    >
+      {creative && (
+        <WorkspaceSteps
+          active={exportOpen ? (continued ? "continue" : "export") : "designs"}
+          actions={{
+            collect: () => leave("collect"),
+            assets: () => leave(),
+            designs: () => {
+              if (!exporting) setExportOpen(false);
+            },
+            export: openExport,
+            continue: canContinue
+              ? () => {
+                  setExportOpen(true);
+                  setContinued(true);
+                }
+              : undefined,
+          }}
+        />
+      )}
+      {showEditor && (
+        <>
+          <div className="design-edit-head">
+            <div>
+              {!creative && (
+                <button
+                  className="text-button"
+                  disabled={saving}
+                  onClick={() => leave()}
+                >
+                  ← Back to collection
+                </button>
+              )}
+              <h1>{draft.name || "Untitled design"}</h1>
+              <small role="status">
+                {status ||
+                  (saving
+                    ? "Saving…"
+                    : dirty
+                      ? "Unsaved changes"
+                      : "Draft saved to collection")}
+              </small>
+            </div>
+            <div className="studio-row">
               <button
                 className="secondary"
-                key={item.id}
-                aria-pressed={selectedId === item.id}
-                onClick={() => select(item.id)}
+                disabled={saving || !history.current.length}
+                onClick={undo}
               >
-                {item.name || layerLabels[item.type]}
-                {item.hidden ? " · hidden" : ""}
-              </button>
-            ))}
-          </div>
-          <div className="studio-row design-layer-actions">
-            <button className="secondary" onClick={() => add(layer("text"))}>
-              Add text
-            </button>
-            <button className="secondary" onClick={() => add(layer("shape"))}>
-              Add shape
-            </button>
-            <button className="secondary" onClick={() => add(layer("button"))}>
-              Add button
-            </button>
-          </div>
-          {selected && (
-            <div className="studio-row design-layer-actions">
-              <button
-                className="text-button"
-                disabled={layerIndex === draft.layers.length - 1}
-                onClick={() =>
-                  change({
-                    ...draft,
-                    layers: moveLayer(draft.layers, selected.id, 1),
-                  })
-                }
-              >
-                Bring forward
+                Undo
               </button>
               <button
-                className="text-button"
-                disabled={layerIndex === 0}
-                onClick={() =>
-                  change({
-                    ...draft,
-                    layers: moveLayer(draft.layers, selected.id, -1),
-                  })
-                }
+                className="secondary"
+                disabled={saving || !redo.current.length}
+                onClick={redoEdit}
               >
-                Send backward
+                Redo
               </button>
               <button
-                className="text-button"
-                onClick={() => changeLayer({ hidden: !selected.hidden })}
+                className="secondary"
+                disabled={saving || !dirty}
+                onClick={save}
               >
-                {selected.hidden ? "Show layer" : "Hide layer"}
+                Save draft
               </button>
-              <button
-                className="text-button"
-                onClick={() =>
-                  add({
-                    ...selected,
-                    id: crypto.randomUUID(),
-                    name: `${selected.name.slice(0, 55)} copy`,
-                    x: selected.x + 16,
-                    y: selected.y + 16,
-                  })
-                }
-              >
-                Duplicate
-              </button>
-              <button
-                className="text-button"
-                onClick={() => {
-                  change({
-                    ...draft,
-                    layers: draft.layers.filter(({ id }) => id !== selected.id),
-                  });
-                  select(null);
-                }}
-              >
-                Remove
+              <button className="primary" onClick={openExport}>
+                <span aria-hidden="true">
+                  {creative ? "↗ Export" : "Export draft"}
+                </span>
+                <span className="workspace-sr-only">Export draft</span>
               </button>
             </div>
-          )}
-          <h2 className="design-assets-title">Collection assets</h2>
-          <Control label="Find collection assets">
-            <input
-              type="search"
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setVisible(30);
-              }}
-            />
-          </Control>
-          <Control label="Asset type">
-            <select
-              value={typeFilter}
-              onChange={(event) => {
-                setTypeFilter(event.target.value);
-                setVisible(30);
-              }}
+          </div>
+          <div className="design-editor-grid">
+            <aside
+              className="studio-card studio-fields design-sidebar"
+              aria-label="Layers and collection assets"
             >
-              <option value="">All types</option>
-              {Object.entries(assetKinds)
-                .filter(([key]) => key !== "motion")
-                .map(([type, label]) => (
-                  <option key={type} value={type}>
-                    {label}
-                  </option>
-                ))}
-            </select>
-          </Control>
-          <Control label="Apply color to">
-            <select
-              value={chosenColorTarget}
-              onChange={(event) => setColorTarget(event.target.value)}
-            >
-              <option value="background">Canvas background</option>
-              {selected && ["button", "text"].includes(selected.type) && (
-                <option value="textColor">Selected text</option>
+              <h2>Layers</h2>
+              {creative && (
+                <div className="workspace-layer-groups">
+                  {primaryLayers.map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      aria-pressed={
+                        name === "Palette"
+                          ? showPalette
+                          : selected?.name === name ||
+                            (name === "Typography" &&
+                              selected?.name === "Heading sample") ||
+                            (name === "Button" &&
+                              selected?.name === "Button sample") ||
+                            (["Product artwork", "Artwork"].includes(name) &&
+                              (selected?.fills === "artwork" ||
+                                selected?.placeholder === "artwork"))
+                      }
+                      onClick={() => selectPrimary(name)}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
               )}
-              {selected && ["button", "shape"].includes(selected.type) && (
-                <option value="fill">Selected fill</option>
-              )}
-            </select>
-          </Control>
-          <div className="design-asset-list">
-            {assets.slice(0, visible).map((asset) => {
-              const kind = asset.value.type;
-              const action =
-                ["component", "text"].includes(kind) ||
-                (kind === "image" && selected?.type !== "image")
-                  ? "Insert"
-                  : kind === "image"
-                    ? "Replace"
-                    : "Apply";
-              return (
-                <div key={asset.id}>
-                  {kind === "color" && (
-                    <span
-                      className="studio-side-swatch"
-                      style={{
-                        backgroundColor: asset.color || asset.value.value,
-                      }}
-                      aria-hidden="true"
-                    />
-                  )}
-                  <span>
-                    {asset.name}
-                    <small>
-                      {kind === "color"
-                        ? colorLabel(asset.color || asset.value.value)
-                        : assetKinds[kind]}
-                    </small>
-                  </span>
+              <details
+                className="workspace-layer-tools"
+                open={creative ? undefined : true}
+              >
+                <summary hidden={!creative}>All layers</summary>
+                <div className="design-layer-list">
                   <button
                     className="secondary"
-                    aria-label={`${action} ${asset.name}`}
-                    disabled={
-                      saving ||
-                      (!["image", "component", "text"].includes(kind) &&
-                        !supported(selected, asset))
-                    }
-                    onClick={() => useAsset(asset)}
+                    aria-pressed={!selected}
+                    onClick={() => select(null)}
                   >
-                    {action}
+                    Canvas
+                  </button>
+                  {draft.layers.toReversed().map((item) => (
+                    <button
+                      className="secondary"
+                      key={item.id}
+                      aria-pressed={selectedId === item.id}
+                      onClick={() => select(item.id)}
+                    >
+                      {item.name || layerLabels[item.type]}
+                      {item.hidden ? " · hidden" : ""}
+                    </button>
+                  ))}
+                </div>
+                <div className="studio-row design-layer-actions">
+                  <button
+                    className="secondary"
+                    onClick={() => add(layer("text"))}
+                  >
+                    Add text
+                  </button>
+                  <button
+                    className="secondary"
+                    onClick={() => add(layer("shape"))}
+                  >
+                    Add shape
+                  </button>
+                  <button
+                    className="secondary"
+                    onClick={() => add(layer("button"))}
+                  >
+                    Add button
                   </button>
                 </div>
-              );
-            })}
-            {!assets.length && <p>No matching collection assets.</p>}
-            {assets.length > visible && (
-              <button
-                className="secondary"
-                onClick={() => setVisible((count) => count + 30)}
+                {selected && (
+                  <div className="studio-row design-layer-actions">
+                    <button
+                      className="text-button"
+                      disabled={layerIndex === draft.layers.length - 1}
+                      onClick={() =>
+                        change({
+                          ...draft,
+                          layers: moveLayer(draft.layers, selected.id, 1),
+                        })
+                      }
+                    >
+                      Bring forward
+                    </button>
+                    <button
+                      className="text-button"
+                      disabled={layerIndex === 0}
+                      onClick={() =>
+                        change({
+                          ...draft,
+                          layers: moveLayer(draft.layers, selected.id, -1),
+                        })
+                      }
+                    >
+                      Send backward
+                    </button>
+                    <button
+                      className="text-button"
+                      onClick={() => changeLayer({ hidden: !selected.hidden })}
+                    >
+                      {selected.hidden ? "Show layer" : "Hide layer"}
+                    </button>
+                    <button
+                      className="text-button"
+                      onClick={() =>
+                        add({
+                          ...selected,
+                          id: crypto.randomUUID(),
+                          name: `${selected.name.slice(0, 55)} copy`,
+                          x: selected.x + 16,
+                          y: selected.y + 16,
+                        })
+                      }
+                    >
+                      Duplicate
+                    </button>
+                    <button
+                      className="text-button"
+                      onClick={() => {
+                        change({
+                          ...draft,
+                          layers: draft.layers.filter(
+                            ({ id }) => id !== selected.id,
+                          ),
+                        });
+                        select(null);
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </details>
+              <h2 className="design-assets-title">Collection assets</h2>
+              <details
+                className="workspace-asset-tools"
+                open={creative ? undefined : true}
               >
-                Show more assets
-              </button>
+                <summary hidden={!creative}>Filter or apply to</summary>
+                <Control label="Find collection assets">
+                  <input
+                    type="search"
+                    value={query}
+                    onChange={(event) => {
+                      setQuery(event.target.value);
+                      setVisible(30);
+                    }}
+                  />
+                </Control>
+                <Control label="Asset type">
+                  <select
+                    value={typeFilter}
+                    onChange={(event) => {
+                      setTypeFilter(event.target.value);
+                      setVisible(30);
+                    }}
+                  >
+                    <option value="">All types</option>
+                    {Object.entries(assetKinds)
+                      .filter(([key]) => key !== "motion")
+                      .map(([type, label]) => (
+                        <option key={type} value={type}>
+                          {label}
+                        </option>
+                      ))}
+                  </select>
+                </Control>
+                <Control label="Apply color to">
+                  <select
+                    value={chosenColorTarget}
+                    onChange={(event) => setColorTarget(event.target.value)}
+                  >
+                    <option value="background">Canvas background</option>
+                    {selected && ["button", "text"].includes(selected.type) && (
+                      <option value="textColor">Selected text</option>
+                    )}
+                    {selected &&
+                      ["button", "shape"].includes(selected.type) && (
+                        <option value="fill">Selected fill</option>
+                      )}
+                  </select>
+                </Control>
+              </details>
+              <div className="design-asset-list">
+                {assets.slice(0, visible).map((asset) => {
+                  const kind = asset.value.type;
+                  const action =
+                    ["component", "text"].includes(kind) ||
+                    (kind === "image" && selected?.type !== "image")
+                      ? "Insert"
+                      : kind === "image"
+                        ? "Replace"
+                        : "Apply";
+                  return (
+                    <div
+                      key={asset.id}
+                      className={creative ? "workspace-asset-row" : undefined}
+                    >
+                      {kind === "color" && (
+                        <span
+                          className="studio-side-swatch"
+                          style={{
+                            backgroundColor: asset.color || asset.value.value,
+                          }}
+                          aria-hidden="true"
+                        />
+                      )}
+                      <span>
+                        {asset.name}
+                        <small>
+                          {kind === "color"
+                            ? colorLabel(asset.color || asset.value.value)
+                            : assetKinds[kind]}
+                        </small>
+                      </span>
+                      <button
+                        className="secondary"
+                        aria-label={`${action} ${asset.name}`}
+                        disabled={
+                          saving ||
+                          (!["image", "component", "text"].includes(kind) &&
+                            !supported(selected, asset))
+                        }
+                        onClick={() => useAsset(asset)}
+                      >
+                        {creative ? <span aria-hidden="true">＋</span> : action}
+                      </button>
+                    </div>
+                  );
+                })}
+                {!assets.length && <p>No matching collection assets.</p>}
+                {assets.length > visible && (
+                  <button
+                    className="secondary"
+                    onClick={() => setVisible((count) => count + 30)}
+                  >
+                    Show more assets
+                  </button>
+                )}
+              </div>
+              {creative && (
+                <button
+                  className="text-button workspace-back-collection"
+                  aria-label="Back to collection"
+                  onClick={() => leave()}
+                >
+                  View collection ↗
+                </button>
+              )}
+            </aside>
+            <section className="design-stage" aria-label="Canvas workspace">
+              {creative && (
+                <div className="workspace-artboard-toolbar">
+                  <strong>{kind}</strong>
+                  {campaign ? (
+                    <select
+                      aria-label="Artwork format"
+                      value={artworkFormat}
+                      onChange={(event) => selectFormat(event.target.value)}
+                    >
+                      {artworkFormats.map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <small>Fit to canvas</small>
+                  )}
+                </div>
+              )}
+              {artwork}
+              {slidesControls}
+              <small>
+                {campaign
+                  ? "Static artwork · text and images are editable"
+                  : creative
+                    ? "Select a layer to edit · double-click text to type"
+                    : `${draft.width} × ${draft.height}`}
+              </small>
+            </section>
+            {creative ? (
+              <CreativeProperties
+                key={selected?.id || "canvas"}
+                selected={selected}
+                draft={draft}
+                assets={collection.assets.filter(({ removedAt }) => !removedAt)}
+                onLayer={changeLayer}
+                onFamily={changeFamily}
+                onColor={changePalette}
+                onError={setStatus}
+                onDesign={changeCanvas}
+                onPalette={() => setShowPalette(!showPalette)}
+                showPalette={showPalette}
+                onAsset={useAsset}
+                advanced={layerProperties}
+              />
+            ) : (
+              layerProperties
             )}
           </div>
-        </aside>
-        <section className="design-stage" aria-label="Canvas workspace">
-          <DesignCanvas
-            ref={stage}
-            draft={canvas}
-            selected={canvasSelected}
-            onStart={startDrag}
-            onMove={dragAt}
-            onEnd={finishDrag}
-            onCancel={(event) => finishDrag(event, true)}
-          />
-          {carousel && (
-            <div
-              className="studio-row design-slides"
-              role="group"
-              aria-label="Carousel slides"
-            >
-              {slides.map((index) => (
-                <button
-                  key={index}
-                  type="button"
-                  className="secondary"
-                  aria-pressed={slide === index}
-                  disabled={saving}
-                  onClick={() => openSlide(index)}
-                >
-                  Slide {index + 1}
-                </button>
-              ))}
-            </div>
-          )}
-          <small>
-            {draft.width} × {draft.height}
-            {campaign && " · Static artwork"}
-          </small>
-        </section>
-        <LayerProperties
-          key={selected?.id || "canvas"}
-          selected={selected}
-          draft={draft}
-          changeLayer={changeLayer}
-          changeDraft={changeCanvas}
-          onError={setStatus}
-          carousel={carousel}
-        />
-      </div>
+        </>
+      )}
       {exportOpen && (
         <>
           {carousel && (
@@ -948,19 +1412,41 @@ export default function DesignEditor({
                     ref={(node) => {
                       otherStages.current[index] = node;
                     }}
-                    draft={draftSlide(design, index)}
+                    draft={exportView(draftSlide(design, index))}
                     exportOnly
                   />
                 ))}
             </div>
           )}
-          <ExportDialog
-            pending={exporting}
-            onClose={() => setExportOpen(false)}
-            status={exportStatus}
-            onDownload={download}
-            carousel={carousel}
-          />
+          {creative ? (
+            <CreativeExport
+              name={draft.name}
+              kind={kind}
+              target={exportTarget}
+              onTarget={setExportTarget}
+              format={exportFormat}
+              onFormat={setExportFormat}
+              carousel={carousel}
+              exporting={exporting}
+              status={exportStatus}
+              continued={continued}
+              substituteFont={substituteFont}
+              onSubstituteFont={setSubstituteFont}
+              onBack={() => setExportOpen(false)}
+              onDownload={() => download(exportFormat)}
+            >
+              {artwork}
+              {slidesControls}
+            </CreativeExport>
+          ) : (
+            <ExportDialog
+              pending={exporting}
+              onClose={() => setExportOpen(false)}
+              status={exportStatus}
+              onDownload={download}
+              carousel={carousel}
+            />
+          )}
         </>
       )}
     </section>

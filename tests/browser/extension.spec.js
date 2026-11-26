@@ -633,6 +633,9 @@ test("Studio collections save selected styles from multiple sites and reopen aft
       .fill("Fieldwork");
     await studio.keyboard.press("Enter");
     await expect(
+      studio.getByRole("dialog", { name: "Create a project" }),
+    ).toBeHidden();
+    await expect(
       studio.getByRole("heading", { name: "Fieldwork collection" }),
     ).toBeVisible();
     await studio
@@ -681,7 +684,9 @@ test("Studio collections save selected styles from multiple sites and reopen aft
       studio.getByText("Saved to the collection on this device."),
     ).toBeVisible();
     const views = studio.getByRole("navigation", { name: "Collection views" });
-    await views.getByRole("button", { name: "Assets", exact: true }).click();
+    await views
+      .getByRole("button", { name: "Collection", exact: true })
+      .click();
     const assets = studio.getByRole("region", { name: /Collection assets/ });
     await expect(assets.getByRole("article")).toHaveCount(4);
     await expect(
@@ -732,11 +737,15 @@ test("Studio collections save selected styles from multiple sites and reopen aft
     await studio
       .getByRole("textbox", { name: "Project name" })
       .fill("Second brand");
-    await studio.getByRole("button", { name: "Create project" }).click();
+    await studio
+      .getByRole("button", { name: "Create project", exact: true })
+      .click();
     await expect(
       studio.getByRole("heading", { name: "Second brand collection" }),
     ).toBeVisible();
-    await views.getByRole("button", { name: "Assets", exact: true }).click();
+    await views
+      .getByRole("button", { name: "Collection", exact: true })
+      .click();
     await expect(assets.getByRole("article")).toHaveCount(0);
 
     await app.context.close();
@@ -780,7 +789,9 @@ test("Studio lists ungranted tabs without reading them and asks only for the sel
     await studio
       .getByRole("textbox", { name: "Project name" })
       .fill("Local project");
-    await studio.getByRole("button", { name: "Create project" }).click();
+    await studio
+      .getByRole("button", { name: "Create project", exact: true })
+      .click();
     const option = await studio
       .getByRole("option", { name: /127\.0\.0\.1/ })
       .getAttribute("value");
@@ -799,7 +810,7 @@ test("Studio lists ungranted tabs without reading them and asks only for the sel
     ]);
     await studio
       .getByRole("navigation", { name: "Collection views" })
-      .getByRole("button", { name: "Assets", exact: true })
+      .getByRole("button", { name: "Collection", exact: true })
       .click();
     await expect(
       studio
@@ -902,9 +913,7 @@ test("Studio curates upgraded collections, captures component assets, and export
     await studio.getByText("View captured values", { exact: true }).click();
     await expect(studio.getByText("#234567", { exact: true })).toBeVisible();
 
-    await views
-      .getByRole("button", { name: "Add assets", exact: true })
-      .click();
+    await views.getByRole("button", { name: "Collect", exact: true }).click();
     await studio
       .getByLabel("Open tabs")
       .selectOption({ label: "Studio component fixture · 127.0.0.1" });
@@ -955,18 +964,20 @@ test("Studio curates upgraded collections, captures component assets, and export
     await studio.getByRole("button", { name: "Save capture" }).click();
     await expect(saved).toBeVisible();
 
-    await views.getByRole("button", { name: "Assets", exact: true }).click();
+    await views
+      .getByRole("button", { name: "Collection", exact: true })
+      .click();
     await expect(assets.getByRole("article")).toHaveCount(6);
     await expect(
       assets.getByRole("article", { name: "Feature card" }),
     ).toContainText("button");
     await expect(studio.getByText(/Private fixture/)).toHaveCount(0);
     await expect(assets.getByRole("img", { name: "Logo.png" })).toBeVisible();
-    await assets.getByLabel("Type").selectOption("image");
+    await assets.getByRole("button", { name: "Images", exact: true }).click();
     await expect(assets.getByRole("article")).toHaveCount(2);
     await assets.getByLabel("Find assets").fill("logo");
     await expect(assets.getByRole("article")).toHaveCount(1);
-    await assets.getByLabel("Type").selectOption("all");
+    await assets.getByRole("button", { name: "All", exact: true }).click();
     await assets.getByLabel("Find assets").clear();
     await studio.screenshot({
       path: info.outputPath("getter-studio-curated-assets.png"),
@@ -979,7 +990,9 @@ test("Studio curates upgraded collections, captures component assets, and export
     await expect(
       studio.getByText("Design kit saved on this device."),
     ).toBeVisible();
-    await views.getByRole("button", { name: "Assets", exact: true }).click();
+    await views
+      .getByRole("button", { name: "Collection", exact: true })
+      .click();
     await color.getByRole("button", { name: "Remove", exact: true }).click();
     await expect(color).toHaveCount(0);
     await views
@@ -1054,10 +1067,13 @@ test("Studio curates upgraded collections, captures component assets, and export
     const guide = await studio.pdf({ format: "Letter", printBackground: true });
     expect(guide.toString("ascii", 0, 4)).toBe("%PDF");
     await studio.emulateMedia({ media: "screen" });
-    await views.getByRole("button", { name: "Assets", exact: true }).click();
+    await views
+      .getByRole("button", { name: "Collection", exact: true })
+      .click();
     await studio.getByText("Recently removed (1)", { exact: true }).click();
     await studio.getByRole("button", { name: "Restore Brand blue" }).click();
     await expect(color).toBeVisible();
+    await studio.getByText("Manage collections", { exact: true }).click();
     await studio
       .getByRole("button", { name: "New collection", exact: true })
       .click();
@@ -1071,6 +1087,7 @@ test("Studio curates upgraded collections, captures component assets, and export
       .getByRole("combobox", { name: "Collection", exact: true })
       .selectOption({ label: "Fieldwork identity" });
     await expect(assets.getByRole("article")).toHaveCount(6);
+    await color.getByText("More actions", { exact: true }).click();
     await color.getByRole("button", { name: "Copy to collection" }).click();
     await dialog
       .getByRole("button", { name: "Copy item", exact: true })
@@ -1084,9 +1101,7 @@ test("Studio curates upgraded collections, captures component assets, and export
     await expect(
       color.getByText("origin.example", { exact: true }),
     ).toBeVisible();
-    await views
-      .getByRole("button", { name: "Add assets", exact: true })
-      .click();
+    await views.getByRole("button", { name: "Collect", exact: true }).click();
     await studio
       .getByLabel("Open tabs")
       .selectOption({ label: "Studio component fixture · 127.0.0.1" });
@@ -2529,6 +2544,9 @@ test("Studio campaign and brand board drafts keep collection assets through reop
       .getByRole("textbox", { name: "Project name" })
       .fill("Fieldwork");
     await studio.keyboard.press("Enter");
+    await expect(
+      studio.getByRole("dialog", { name: "Create a project" }),
+    ).toBeHidden();
     await studio.getByLabel("Open tabs").selectOption({
       label: "Getter workspace fixture · 127.0.0.1",
     });
@@ -2557,7 +2575,47 @@ test("Studio campaign and brand board drafts keep collection assets through reop
         .setInputFiles({ name, mimeType: "image/png", buffer });
       await expect(saved).toBeVisible();
     }
-    await studio.getByRole("button", { name: "Assets", exact: true }).click();
+    await studio
+      .getByRole("button", { name: "Collection", exact: true })
+      .click();
+    await studio.setViewportSize({ width: 1280, height: 1024 });
+    await studio.getByRole("button", { name: "Projects", exact: true }).click();
+    await expect(
+      studio.getByRole("heading", { name: "Your projects" }),
+    ).toBeVisible();
+    await studio.screenshot({
+      path: info.outputPath("getter-studio-projects.png"),
+    });
+    await studio
+      .getByRole("button", {
+        name: "Create project from collection",
+        exact: true,
+      })
+      .click();
+    const start = studio.getByRole("dialog", { name: "Create a project" });
+    await start
+      .getByRole("textbox", { name: "Project name" })
+      .fill("Summer campaign");
+    await expect(
+      start.getByRole("combobox", { name: "Collection", exact: true }),
+    ).toHaveValue(/\|/);
+    await start
+      .getByRole("combobox", { name: "Open tabs", exact: true })
+      .selectOption({ label: "Getter workspace fixture · 127.0.0.1" });
+    await start
+      .getByRole("button", { name: "Create project", exact: true })
+      .click();
+    await expect(
+      studio.getByText("Linked collection", { exact: true }),
+    ).toBeVisible();
+    await studio.getByRole("button", { name: /Open collection/ }).click();
+    await expect(
+      studio.getByText("Starting with Fieldwork collection.", { exact: true }),
+    ).toBeVisible();
+    await studio.screenshot({
+      path: info.outputPath("getter-campaign-collection.png"),
+    });
+    await studio.setViewportSize({ width: 360, height: 860 });
     const assets = studio.getByRole("region", { name: /Collection assets/ });
     const editor = studio.getByRole("region", { name: "Studio editor" });
     const canvas = editor
@@ -2566,7 +2624,7 @@ test("Studio campaign and brand board drafts keep collection assets through reop
     const layerButton = (name) =>
       editor.getByRole("button", { name, exact: true });
     const textField = editor.getByRole("textbox", {
-      name: "Layer text",
+      name: "Text",
       exact: true,
     });
     const goToSlide = (number) => layerButton(`Slide ${number}`).press("Enter");
@@ -2590,9 +2648,16 @@ test("Studio campaign and brand board drafts keep collection assets through reop
         editor.getByRole("heading", { name, exact: true }),
       ).toBeVisible();
     };
-    const reopen = async (name) => {
+    const reopen = async (name, projectName = "Summer campaign") => {
       await studio.reload();
       await studio
+        .getByRole("article")
+        .filter({
+          has: studio.getByRole("heading", {
+            name: projectName,
+            exact: true,
+          }),
+        })
         .getByRole("button", { name: "Fieldwork collection", exact: true })
         .click();
       await studio.getByRole("button", { name: "Editor", exact: true }).click();
@@ -2602,7 +2667,7 @@ test("Studio campaign and brand board drafts keep collection assets through reop
     };
     const showExport = async () => {
       await layerButton("Export draft").click();
-      return studio.getByRole("dialog", { name: "Export draft" });
+      return studio.getByRole("region", { name: "Export draft" });
     };
     const download = async (dialog, name) => {
       const next = studio.waitForEvent("download");
@@ -2611,21 +2676,33 @@ test("Studio campaign and brand board drafts keep collection assets through reop
       return readFile(await downloaded.path());
     };
 
-    await create("Summer carousel", "carousel");
+    await assets
+      .getByRole("button", { name: "Create campaign", exact: true })
+      .click();
+    const campaignStart = studio.getByRole("dialog", {
+      name: "Create campaign",
+    });
+    await campaignStart
+      .getByRole("textbox", { name: "Design name" })
+      .fill("Summer carousel");
+    await expect(
+      campaignStart.getByRole("checkbox", { name: "Apply saved brand styles" }),
+    ).toBeChecked();
+    await campaignStart.getByRole("button", { name: "Open editor" }).click();
+    await editor.getByLabel("Artwork format").selectOption("carousel");
     expect(
       await studio.evaluate(() => document.documentElement.scrollWidth),
     ).toBe(360);
     await layerButton("Headline").click();
     await textField.fill("Fresh for summer");
-    await layerButton("Insert Cover artwork.png").click();
+
     await expect(canvas.locator("image")).toHaveAttribute(
       "href",
       /^data:image\/png;base64,/,
     );
-    await layerButton("Canvas").click();
     await editor.getByLabel("Composition").selectOption("image-first");
     await expect(
-      canvas.locator('g[transform="translate(68 132)"] image'),
+      canvas.locator('g[transform="translate(64 106)"] image'),
     ).toHaveCount(1);
     await goToSlide(2);
     await expect(editor.getByLabel("Composition")).toHaveValue(
@@ -2648,6 +2725,18 @@ test("Studio campaign and brand board drafts keep collection assets through reop
     await expect(
       canvas.getByText("Find your favorite", { exact: true }),
     ).toBeVisible();
+    await layerButton("Brand colors").click();
+    const background = editor.getByRole("textbox", {
+      name: "Background",
+      exact: true,
+    });
+    await background.fill("#F2E8D5");
+    await background.press("Enter");
+    await goToSlide(1);
+    await expect(canvas.locator("rect").first()).toHaveAttribute(
+      "fill",
+      "#F2E8D5",
+    );
     await back();
     await expect(assets.getByRole("article")).toHaveCount(4);
     await reopen("Summer carousel");
@@ -2661,6 +2750,27 @@ test("Studio campaign and brand board drafts keep collection assets through reop
     ).toBeVisible();
 
     const campaignExport = await showExport();
+    await expect(
+      campaignExport.getByRole("button", { name: "Canva", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await studio.setViewportSize({ width: 1280, height: 1024 });
+    await studio.screenshot({
+      path: info.outputPath("getter-campaign-export.png"),
+    });
+    await campaignExport
+      .getByRole("button", { name: "Figma", exact: true })
+      .click();
+    await campaignExport
+      .getByText("Preview a font substitution", { exact: true })
+      .click();
+    await campaignExport
+      .getByLabel("Heading font in this export")
+      .selectOption("Arial, sans-serif");
+    await expect(
+      campaignExport.getByText(
+        "Download the files and import them into Figma.",
+      ),
+    ).toBeVisible();
     const svgZip = await JSZip.loadAsync(
       await download(campaignExport, "Download SVG ZIP"),
     );
@@ -2671,6 +2781,8 @@ test("Studio campaign and brand board drafts keep collection assets through reop
     ]);
     const cover = await svgZip.file("slide-01.svg").async("string");
     expect(cover).toContain("Fresh for summer");
+    expect(cover).toContain('fill="#F2E8D5"');
+    expect(cover).toContain('font-family="Arial, sans-serif"');
     expect(cover).toContain("data:image/png;base64,");
     expect(await svgZip.file("slide-02.svg").async("string")).toContain(
       "Made with care",
@@ -2693,7 +2805,9 @@ test("Studio campaign and brand board drafts keep collection assets through reop
       expect(image.readUInt32BE(16)).toBe(1080);
       expect(image.readUInt32BE(20)).toBe(1350);
     }
-    await campaignExport.getByRole("button", { name: "Done" }).click();
+    await campaignExport
+      .getByRole("button", { name: /Back to editor/ })
+      .click();
     await studio.setViewportSize({ width: 1280, height: 900 });
     await goToSlide(1);
     await studio.screenshot({
@@ -2707,56 +2821,89 @@ test("Studio campaign and brand board drafts keep collection assets through reop
     await storyExport.getByLabel("File format").selectOption("png");
     const story = await download(storyExport, "Download PNG");
     expect(story.readUInt32BE(20)).toBe(1920);
-    await storyExport.getByRole("button", { name: "Done" }).click();
+    await storyExport.getByRole("button", { name: /Back to editor/ }).click();
     await back();
 
+    await studio.getByRole("button", { name: "Projects", exact: true }).click();
+    await studio
+      .getByRole("article")
+      .filter({
+        has: studio.getByRole("heading", { name: "Fieldwork", exact: true }),
+      })
+      .getByRole("button", { name: "Fieldwork collection", exact: true })
+      .click();
+    await studio.screenshot({
+      path: info.outputPath("getter-brand-collection.png"),
+    });
     await studio.setViewportSize({ width: 360, height: 860 });
-    await create("Fieldwork brand board", "brand");
+    await assets
+      .getByRole("button", { name: "Create brand board", exact: true })
+      .click();
+    const boardStart = studio.getByRole("dialog", {
+      name: "Create brand board",
+    });
+    await boardStart
+      .getByRole("textbox", { name: "Design name" })
+      .fill("Fieldwork brand board");
+    await boardStart.getByRole("button", { name: "Open editor" }).click();
     expect(
       await studio.evaluate(() => document.documentElement.scrollWidth),
     ).toBe(360);
-    await layerButton("Primary").click();
-    await layerButton("Apply #123456").click();
+    await layerButton("Palette").click();
+    const primary = editor.getByRole("textbox", {
+      name: "Primary",
+      exact: true,
+    });
+    await primary.fill("#123456");
+    await primary.press("Enter");
     await expect(canvas.getByText("#123456", { exact: true })).toBeVisible();
     const brandButton = canvas
-      .locator('g[transform="translate(60 667)"] > rect')
+      .locator('g[transform="translate(54 940)"] > rect')
       .first();
-    await expect(brandButton).toHaveAttribute("fill", "rgb(18, 52, 86)");
-    await layerButton("Heading sample").click();
+    await expect(brandButton).toHaveAttribute("fill", "#123456");
+    await layerButton("Typography").click();
     await textField.fill("A quieter kind of good");
     await layerButton("Apply Arial · body").click();
     await expect(
-      editor.getByRole("textbox", { name: "Font family" }),
+      editor.getByRole("combobox", { name: "Typeface" }),
     ).toHaveValue("Arial");
-    const typeSize = editor.getByRole("spinbutton", { name: "Type size" });
-    await typeSize.fill("40");
-    await typeSize.press("Enter");
-    await layerButton("Insert Cover artwork.png").click();
-    await layerButton("Replace Alternate artwork.png").click();
+    await editor.getByRole("slider", { name: /Type size/ }).fill("40");
+    await layerButton("Artwork").click();
+    await editor
+      .getByRole("combobox", { name: "Image", exact: true })
+      .selectOption({ label: "Alternate artwork.png" });
     const artwork = canvas.locator("image");
     await expect(artwork).toHaveAttribute(
       "href",
       `data:image/png;base64,${alternate}`,
     );
-    await layerButton("Canvas").click();
     await editor.getByLabel("Composition").selectOption("airy");
     await expect(
-      canvas.locator('g[transform="translate(620 598)"] image'),
+      canvas.locator('g[transform="translate(620 844)"] image'),
     ).toHaveCount(1);
     await back();
-    await reopen("Fieldwork brand board");
+    await reopen("Fieldwork brand board", "Fieldwork");
     await expect(editor.getByLabel("Composition")).toHaveValue("airy");
     await expect(
       canvas.getByText("A quieter kind of good", { exact: true }),
     ).toBeVisible();
     await expect(
-      canvas.locator('g[transform="translate(60 695)"] > rect').first(),
-    ).toHaveAttribute("fill", "rgb(18, 52, 86)");
+      canvas.locator('g[transform="translate(54 969)"] > rect').first(),
+    ).toHaveAttribute("fill", "#123456");
     await studio.setViewportSize({ width: 1280, height: 900 });
     await studio.screenshot({
       path: info.outputPath("getter-brand-board.png"),
     });
     const boardExport = await showExport();
+    await expect(
+      boardExport.getByRole("button", { name: "Figma", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await boardExport
+      .getByRole("button", { name: "Illustrator", exact: true })
+      .click();
+    await studio.screenshot({
+      path: info.outputPath("getter-brand-board-export.png"),
+    });
     const board = (await download(boardExport, "Download SVG")).toString(
       "utf8",
     );

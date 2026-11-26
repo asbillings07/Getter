@@ -704,3 +704,575 @@
     max-height: none;
   }
 }
+
+/* The project and artwork workspace shares a header and workflow bar. */
+.workspace-shell {
+  min-height: 100dvh;
+  height: auto;
+}
+.workspace-shell .primary:not(:disabled) {
+  background: var(--accent);
+  color: var(--paper);
+}
+.workspace-shell .primary:not(:disabled):hover {
+  filter: brightness(0.92);
+}
+.workspace-header {
+  min-height: 62px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px clamp(14px, 2vw, 24px);
+}
+.workspace-header .brand strong {
+  font-size: 19px;
+}
+.workspace-sections button[aria-current="page"] {
+  background: var(--active);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+.workspace-context {
+  position: relative;
+  color: var(--dim);
+  font-size: 13px;
+}
+.workspace-appearance {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 3;
+  display: grid;
+  gap: 5px;
+  min-width: 150px;
+}
+.workspace-page {
+  max-width: 1440px;
+  padding: 22px clamp(14px, 2vw, 24px);
+}
+.workspace-page .studio-heading h1 {
+  font-size: 24px;
+  margin: 3px 0;
+}
+.workspace-page .studio-heading p {
+  font-size: 13px;
+}
+.workspace-kicker {
+  display: block;
+  color: var(--dim);
+  font-weight: 650;
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.workspace-project-launch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.workspace-project-launch .studio-card {
+  border-radius: 9px;
+  padding: 17px;
+}
+.workspace-project-launch h2 {
+  margin: 8px 0;
+}
+.workspace-project-launch button {
+  margin-top: 12px;
+}
+.workspace-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0;
+}
+.workspace-swatches span {
+  width: 27px;
+  height: 27px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+.workspace-project-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+.workspace-project-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.workspace-project-row small {
+  color: var(--dim);
+}
+.workspace-project-row .text-button {
+  padding: 0;
+  font-size: 12px;
+}
+.workspace-footer {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px clamp(14px, 2vw, 24px);
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--dim);
+  font-size: 11px;
+  margin-top: auto;
+}
+.workspace-navigation {
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+.workspace-steps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding-inline: 14px;
+}
+.workspace-steps button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--dim);
+  padding: 8px 4px;
+  min-height: 46px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+}
+.workspace-steps button span {
+  display: grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: var(--bg);
+  font-size: 11px;
+}
+.workspace-steps button[aria-current="step"] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 650;
+}
+.workspace-collection-tools {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 3px 14px;
+}
+.workspace-collection-tools button {
+  font-size: 12px;
+}
+.workspace-collection-tools button[aria-current] {
+  text-decoration: underline;
+}
+.workspace-collection-origin {
+  background: var(--active);
+  border-radius: 7px;
+  padding: 12px;
+  margin: 0 0 13px;
+}
+.workspace-collection-switcher {
+  color: var(--dim);
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+.workspace-collection-switcher .studio-row {
+  margin-top: 8px;
+  align-items: end;
+}
+.workspace-collection-switcher label {
+  display: grid;
+  gap: 4px;
+}
+.workspace-asset-filters {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.workspace-asset-tabs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.workspace-asset-tabs button,
+.workspace-layer-groups button {
+  border: 0;
+  border-radius: 7px;
+  padding: 7px 12px;
+  min-height: 34px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+}
+.workspace-asset-tabs button[aria-pressed="true"],
+.workspace-layer-groups button[aria-pressed="true"] {
+  background: var(--active);
+  color: var(--accent);
+}
+.workspace-asset-search {
+  width: min(100%, 180px);
+}
+.workspace-shell .studio-asset {
+  padding: 0 12px 12px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.workspace-shell .studio-asset-color,
+.workspace-shell .studio-type-sample,
+.workspace-shell .studio-asset > .studio-image-preview {
+  width: calc(100% + 24px);
+  margin: 0 -12px 12px;
+  border-radius: 0;
+}
+.workspace-shell .studio-asset > .studio-image-preview {
+  display: block;
+  height: 124px;
+  max-width: none;
+  object-fit: contain;
+  background: var(--bg);
+}
+.workspace-shell .studio-asset-color {
+  height: 76px;
+}
+.workspace-shell .studio-type-sample {
+  min-height: 64px;
+  padding: 12px;
+}
+.workspace-shell .studio-asset > h3 {
+  margin-top: 10px;
+}
+.workspace-asset-actions {
+  font-size: 12px;
+  color: var(--dim);
+}
+.workspace-create {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  margin-top: 20px;
+}
+.workspace-create p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--dim);
+}
+.workspace-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.workspace-shell .workspace-editor-content {
+  max-width: none;
+  width: 100%;
+  padding: 0;
+}
+.workspace-creative .design-edit-head {
+  margin: 0;
+  padding: 12px 16px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+.workspace-creative .design-edit-head h1 {
+  font-size: 17px;
+}
+.workspace-creative .design-editor-grid {
+  grid-template-columns: minmax(160px, 180px) minmax(0, 1fr) minmax(
+      195px,
+      222px
+    );
+  gap: 0;
+  align-items: stretch;
+}
+.workspace-creative .design-sidebar,
+.workspace-inspector {
+  min-width: 0;
+  max-height: none;
+  padding: 14px 12px;
+  border: 0;
+  border-radius: 0;
+  background: var(--paper);
+  overflow-wrap: anywhere;
+}
+.workspace-creative .design-sidebar {
+  border-right: 1px solid var(--line);
+  padding-top: 24px;
+}
+.workspace-inspector {
+  border-left: 1px solid var(--line);
+}
+.workspace-creative .design-sidebar h2 {
+  margin: 5px 0 12px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+}
+.workspace-layer-groups {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+.workspace-layer-groups button {
+  text-align: left;
+}
+.workspace-layer-tools,
+.workspace-advanced,
+.workspace-asset-tools {
+  color: var(--dim);
+  font-size: 12px;
+}
+.workspace-creative .design-asset-list {
+  max-height: 315px;
+}
+.workspace-creative .workspace-asset-row {
+  border: 0;
+  padding: 5px 0;
+  font-size: 12px;
+}
+.workspace-creative .workspace-asset-row small {
+  display: none;
+}
+.workspace-creative .workspace-asset-row button {
+  min-width: 25px;
+  background: var(--paper);
+  padding: 2px;
+  min-height: 24px;
+}
+.workspace-back-collection {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--accent);
+}
+.workspace-creative .design-stage {
+  align-content: start;
+  background: var(--bg);
+  border: 0;
+  border-radius: 0;
+  padding: 16px clamp(10px, 2vw, 20px);
+}
+.workspace-artboard-toolbar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.workspace-artboard-toolbar select {
+  max-width: 180px;
+}
+.workspace-creative .design-artboard {
+  width: min(100%, 368px);
+  max-height: none;
+  box-shadow: 0 10px 25px #1420301c;
+}
+.workspace-creative[data-artwork="brand"] .design-artboard {
+  width: min(100%, 660px);
+}
+.workspace-creative[data-artwork="story"] .design-artboard {
+  width: min(100%, 270px);
+}
+.workspace-creative .design-stage > small {
+  text-align: center;
+  font-size: 12px;
+}
+.workspace-inspector h2 {
+  font-size: 15px;
+  margin: 3px 0 10px;
+}
+.workspace-inspector p {
+  color: var(--dim);
+  margin: 6px 0;
+  font-size: 12px;
+}
+.workspace-inspector > label,
+.workspace-design-controls label {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+.workspace-inspector textarea {
+  width: 100%;
+  min-height: 66px;
+}
+.workspace-shell .workspace-inspector input[type="range"] {
+  min-height: 25px;
+  padding: 0;
+  border: 0;
+  accent-color: var(--accent);
+}
+.workspace-design-controls {
+  margin: 13px 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.workspace-design-controls button {
+  width: 100%;
+  margin-bottom: 10px;
+}
+.workspace-advanced .design-properties {
+  max-height: none;
+  padding: 4px 0 0;
+  border: 0;
+}
+.workspace-inline-text {
+  width: 100%;
+  height: 100%;
+  resize: none;
+  border: 1px solid var(--accent);
+  background: var(--paper);
+}
+
+.workspace-export {
+  padding: 20px clamp(14px, 2vw, 24px);
+}
+.workspace-export-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: clamp(14px, 2vw, 24px);
+}
+.workspace-export-options h2,
+.workspace-export-preview h2 {
+  margin: 2px 0 12px;
+  font-size: 17px;
+}
+.workspace-destinations {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.workspace-destinations button {
+  min-height: 42px;
+}
+.workspace-destinations button[aria-pressed="true"] {
+  background: var(--active);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.workspace-delivery {
+  margin: 0 0 14px;
+}
+.workspace-delivery > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: 2px;
+  border-bottom: 1px solid var(--line);
+  padding-block: 10px;
+}
+.workspace-delivery dt {
+  display: contents;
+  font-weight: 650;
+}
+.workspace-delivery dt span {
+  color: var(--accent);
+  width: 16px;
+  text-align: center;
+}
+.workspace-delivery dd {
+  grid-column: 2;
+  color: var(--dim);
+  font-size: 13px;
+}
+.workspace-export-note {
+  font-size: 13px;
+  color: var(--dim);
+  margin-block: 10px;
+}
+.workspace-export-format {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 9px;
+}
+.workspace-export-options details {
+  margin: 14px 0;
+  font-size: 12px;
+}
+.workspace-export-preview {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+.workspace-export-preview .design-artboard {
+  width: min(100%, 365px);
+  margin-inline: auto;
+}
+.workspace-creative[data-artwork="brand"]
+  .workspace-export-preview
+  .design-artboard {
+  width: 100%;
+}
+.workspace-export-preview small {
+  color: var(--dim);
+}
+@media (max-width: 860px) {
+  .workspace-creative .design-editor-grid {
+    grid-template-columns: minmax(132px, 172px) minmax(0, 1fr);
+  }
+  .workspace-inspector {
+    grid-column: 1 / -1;
+    border: 0;
+    border-top: 1px solid var(--line);
+  }
+}
+@media (max-width: 570px) {
+  .workspace-project-launch,
+  .workspace-export-grid,
+  .workspace-creative .design-editor-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workspace-steps {
+    padding-inline: 4px;
+  }
+  .workspace-steps button {
+    gap: 2px;
+    flex-direction: column;
+    font-size: 11px;
+  }
+  .workspace-header .brand strong {
+    font-size: 16px;
+  }
+  .workspace-context span {
+    max-width: 100px;
+    overflow-wrap: anywhere;
+  }
+  .workspace-sections {
+    gap: 3px;
+  }
+  .workspace-sections button {
+    font-size: 11px;
+    padding-inline: 4px;
+  }
+  .workspace-creative .design-sidebar {
+    border-right: 0;
+    border-top: 1px solid var(--line);
+  }
+}
