@@ -66,17 +66,18 @@ site and requests access only if Getter needs it for that page.
 
 - Select a component on the page. The component preview stays above the
   property tabs. **Parts** lists the captured hierarchy and highlights the
-  selected part in its page position. The surrounding component stays visible,
-  and a tall preview scrolls to the selected part. **Select parent** moves up one level. **Styles**,
-  **Layout**, **Effects**, and **Element** organize the selected element’s
+  selected part in its page position. The preview scrolls horizontally or
+  vertically to keep offscreen parts in view. **Select parent** moves up one
+  level. **Styles**, **Layout**, **Effects**, and **Element** organize the selected element’s
   values. **Copy CSS** and property search are available.
 - **Effects** previews supported animations and transitions on reconstructed
   styling, or plays a reference clip for readable canvas and video motion.
   Native animation previews support replay, speed, and scrubbing. The
   reconstructed view uses artwork already loaded on the page. When a thumbnail
   cannot be copied, the preview can load its HTTPS source without cookies or a
-  referrer if the image host allows the request. Images and video frames that
-  still cannot be displayed are shown as placeholders. An
+  referrer. Cross-origin images can display even when their host does not grant
+  access to read their pixels. Images and video frames that still cannot be
+  displayed are shown as placeholders. An
   embedded frame can be selected at its boundary, with its interior unavailable.
   A visual reference is
   available only when Getter can read the motion. The component preview can

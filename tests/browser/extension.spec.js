@@ -1851,15 +1851,31 @@ test("Inspect Pro keeps nested media and text in place while selecting or saving
   const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
   try {
     const thumbnailRequests = [];
+    await app.context.addCookies([
+      {
+        name: "preview_session",
+        value: "fixture-only",
+        url: imageOrigin,
+        secure: true,
+        sameSite: "None",
+      },
+    ]);
     await app.context.route(
       `${imageOrigin}/component-thumb-*.png`,
       async (route) => {
         const request = route.request();
         const headers = await request.allHeaders();
         const filename = new URL(request.url()).pathname.split("/").at(-1);
-        const preview = headers.origin?.startsWith("chrome-extension://");
+        const displayOnly = Boolean(request.serviceWorker());
+        const preview =
+          displayOnly || headers.origin?.startsWith("chrome-extension://");
         if (preview)
-          thumbnailRequests.push({ filename, referrer: headers.referer });
+          thumbnailRequests.push({
+            filename,
+            displayOnly,
+            referrer: headers.referer,
+            cookie: headers.cookie,
+          });
         if (preview && filename.includes("blocked")) {
           await route.fulfill({ status: 403, body: "Image unavailable" });
           return;
@@ -1868,7 +1884,10 @@ test("Inspect Pro keeps nested media and text in place while selecting or saving
           status: 200,
           headers: {
             "content-type": "image/png",
-            "access-control-allow-origin": "*",
+            "access-control-allow-origin":
+              filename === "component-thumb-10.png"
+                ? "https://unrelated.fixture.test"
+                : "*",
           },
           body: studioPng,
         });
@@ -1880,13 +1899,20 @@ test("Inspect Pro keeps nested media and text in place while selecting or saving
       .evaluate(async (component, imageOrigin) => {
         const row = document.createElement("div");
         row.id = "thumbnail-row";
+        Object.assign(row.style, {
+          display: "flex",
+          width: "420px",
+          overflow: "hidden",
+        });
         component.append(row);
         const images = Array.from({ length: 11 }, (_, index) => {
           const image = document.createElement("img");
           const name = index === 10 ? "blocked" : String(index + 1);
+          image.id = `thumbnail-${name}`;
           image.alt = `Component thumbnail ${name}`;
-          image.width = 42;
-          image.height = 28;
+          image.width = 140;
+          image.height = 90;
+          image.style.flexShrink = "0";
           image.src = `${imageOrigin}/component-thumb-${name}.png`;
           row.append(image);
           return image.decode();
@@ -1939,21 +1965,40 @@ test("Inspect Pro keeps nested media and text in place while selecting or saving
         ),
       )
       .toBe(10);
+    const displayOnly = preview.getByRole("img", {
+      name: "Component thumbnail 10",
+      exact: true,
+    });
+    await expect(displayOnly).toHaveAttribute(
+      "src",
+      /\/inspect-preview-image\?/,
+    );
     expect(
-      await thumbnails.evaluateAll((images) =>
-        images.every(
-          (image) =>
-            image.crossOrigin === "anonymous" &&
-            image.referrerPolicy === "no-referrer",
-        ),
-      ),
+      await displayOnly.evaluate((image) => {
+        const context = document.createElement("canvas").getContext("2d");
+        context.drawImage(image, 0, 0);
+        try {
+          context.getImageData(0, 0, 1, 1);
+          return false;
+        } catch (error) {
+          return error.name === "SecurityError";
+        }
+      }),
     ).toBe(true);
     await expect(
       preview.getByText("Image unavailable", { exact: true }),
     ).toHaveCount(1);
-    expect(thumbnailRequests).toHaveLength(11);
     expect(
-      thumbnailRequests.every(({ referrer }) => referrer === undefined),
+      new Set(thumbnailRequests.map(({ filename }) => filename)).size,
+    ).toBe(11);
+    expect(
+      thumbnailRequests.some(
+        ({ filename, displayOnly }) =>
+          filename === "component-thumb-10.png" && displayOnly,
+      ),
+    ).toBe(true);
+    expect(
+      thumbnailRequests.every(({ referrer, cookie }) => !referrer && !cookie),
     ).toBe(true);
     await expect(
       preview.getByText("Embedded frame", { exact: true }),
@@ -1984,8 +2029,7 @@ test("Inspect Pro keeps nested media and text in place while selecting or saving
     );
 
     const rootRect = await feature.boundingBox();
-    async function expectPart(name, selector) {
-      const button = parts.getByRole("button", { name, exact: true });
+    async function expectPart(button, selector) {
       await button.click();
       await expect(button).toHaveAttribute("aria-pressed", "true");
       await expect(selection).toHaveText(selector);
@@ -2007,10 +2051,33 @@ test("Inspect Pro keeps nested media and text in place while selecting or saving
       await expect(first).toBeVisible();
       await expect(second).toBeVisible();
     }
-    await expectPart("video", "video#video");
-    await expectPart("button · Player controls", "button#play");
-    await expectPart("h3 · First headline", "h3#first-headline");
-    await expectPart("h3 · Second headline", "h3#second-headline");
+    const part = (name) => parts.getByRole("button", { name, exact: true });
+    await expectPart(part("video"), "video#video");
+    await expectPart(part("button · Player controls"), "button#play");
+    await expectPart(part("h3 · First headline"), "h3#first-headline");
+    await expectPart(part("img").nth(9), "img#thumbnail-10");
+    const previewFrame = preview.locator(".inspect-pro-preview-frame");
+    const scrollLeft = () =>
+      previewFrame.evaluate((element) => element.scrollLeft);
+    const visibleFraction = () =>
+      outline.evaluate((mark) => {
+        const part = mark.getBoundingClientRect();
+        const viewport = mark.closest(".inspect-pro-preview-frame");
+        const frame = viewport.getBoundingClientRect();
+        return (
+          Math.max(
+            0,
+            Math.min(part.right, frame.left + viewport.clientWidth) -
+              Math.max(part.left, frame.left),
+          ) / part.width
+        );
+      });
+    const afterRight = await scrollLeft();
+    expect(afterRight).toBeGreaterThan(0);
+    await expect.poll(visibleFraction).toBeGreaterThan(0.9);
+    await expectPart(part("h3 · Second headline"), "h3#second-headline");
+    await expect.poll(scrollLeft).toBeLessThan(afterRight);
+    await expect.poll(visibleFraction).toBeGreaterThan(0.9);
     expect(
       await panel.evaluate(() => document.documentElement.scrollWidth),
     ).toBe(320);

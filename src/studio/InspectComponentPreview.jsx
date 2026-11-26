@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { styleObject } from "./AssetPreview.jsx";
+import { inspectPreviewImagePath } from "./inspect-workspace.js";
 
 const mediaPlaceholders = {
   img: "Image unavailable",
@@ -11,8 +12,54 @@ const mediaPlaceholders = {
 
 const place = ({ x, y, width, height }) => ({ left: x, top: y, width, height });
 
+function horizontalBounds(root) {
+  if (!root) return { left: 0, right: 0 };
+  let left = root.bounds.x;
+  let right = left + root.bounds.width;
+  function include({ bounds, children }) {
+    if (bounds.width > 1 && bounds.height > 1) {
+      left = Math.min(left, bounds.x);
+      right = Math.max(right, bounds.x + bounds.width);
+    }
+    children.forEach(include);
+  }
+  include(root);
+  return { left, right };
+}
+
+function PartThumbnail({
+  src,
+  alt,
+  raster,
+  objectFit,
+  objectPosition,
+  unavailable,
+}) {
+  const [mode, setMode] = useState("image");
+  if (mode === "unavailable")
+    return <span className="inspect-pro-media-placeholder">{unavailable}</span>;
+  const displayOnly = mode === "display-only";
+  const imageSrc = displayOnly
+    ? `${chrome.runtime.getURL(inspectPreviewImagePath)}?${new URLSearchParams({ src })}`
+    : src;
+  return (
+    <img
+      key={mode}
+      className="studio-component-thumbnail"
+      crossOrigin={raster || displayOnly ? undefined : "anonymous"}
+      referrerPolicy="no-referrer"
+      loading={raster ? undefined : "lazy"}
+      src={imageSrc}
+      alt={alt}
+      onError={() =>
+        setMode(raster || displayOnly ? "unavailable" : "display-only")
+      }
+      style={{ objectFit, objectPosition }}
+    />
+  );
+}
+
 function PreviewPart({ node }) {
-  const [failedImage, setFailedImage] = useState(null);
   const css = styleObject(node.css);
   const thumbnail = node.thumbnail;
   const raster = thumbnail?.data.startsWith("data:image/webp;base64,")
@@ -44,19 +91,15 @@ function PreviewPart({ node }) {
             boxShadow: css.boxShadow,
           }}
         >
-          {imageSrc && imageSrc !== failedImage ? (
-            <img
-              className="studio-component-thumbnail"
-              crossOrigin={raster ? undefined : "anonymous"}
-              referrerPolicy="no-referrer"
-              loading={raster ? undefined : "lazy"}
+          {imageSrc ? (
+            <PartThumbnail
+              key={imageSrc}
               src={imageSrc}
               alt={raster?.alt ?? remote.alt}
-              onError={() => setFailedImage(imageSrc)}
-              style={{
-                objectFit: node.objectFit,
-                objectPosition: node.objectPosition,
-              }}
+              raster={Boolean(raster)}
+              objectFit={node.objectFit}
+              objectPosition={node.objectPosition}
+              unavailable={mediaPlaceholders[node.media]}
             />
           ) : mediaPlaceholders[node.media] ? (
             <span className="inspect-pro-media-placeholder">
@@ -103,11 +146,23 @@ export default function InspectComponentPreview({
 
   const node = component?.component;
   const { x = 0, y = 0, width = 0, height = 0 } = node?.bounds || {};
+  const { left, right } = useMemo(() => horizontalBounds(node), [node]);
   const scale = width ? Math.min(1, availableWidth / width) : 0;
   const selected = component?.selected;
   useEffect(() => {
     const viewport = frame.current;
-    if (!viewport || !selected || selected.id === node.id) return;
+    if (!viewport) return;
+    if (!selected || selected.id === node.id) {
+      viewport.scrollLeft = (x - left) * scale;
+      return;
+    }
+    const partLeft = (selected.bounds.x - left) * scale;
+    const partRight = partLeft + selected.bounds.width * scale;
+    if (
+      partLeft < viewport.scrollLeft ||
+      partRight > viewport.scrollLeft + viewport.clientWidth
+    )
+      viewport.scrollLeft = Math.max(0, partLeft - viewport.clientWidth / 4);
     const top = (selected.bounds.y - y) * scale;
     const bottom = top + selected.bounds.height * scale;
     if (
@@ -115,7 +170,7 @@ export default function InspectComponentPreview({
       bottom > viewport.scrollTop + viewport.clientHeight
     )
       viewport.scrollTop = Math.max(0, top - viewport.clientHeight / 4);
-  }, [node, selected, scale, y]);
+  }, [node, selected, scale, left, x, y]);
   const background = node?.css["background-color"];
   const canRender =
     node &&
@@ -158,21 +213,24 @@ export default function InspectComponentPreview({
             ref={frame}
             style={{
               width: width * scale,
-              height: Math.min(220, height * scale),
               backgroundColor: component.background,
             }}
           >
             <div
               className="inspect-pro-preview-sheet"
-              style={{ height: height * scale }}
+              style={{ width: (right - left) * scale, height: height * scale }}
             >
               <div
                 className="inspect-pro-preview-canvas"
-                style={{ width, height, transform: `scale(${scale})` }}
+                style={{
+                  width: right - left,
+                  height,
+                  transform: `scale(${scale})`,
+                }}
               >
                 <div
                   className="inspect-pro-preview-origin"
-                  style={{ left: -x, top: -y }}
+                  style={{ left: -left, top: -y }}
                 >
                   <PreviewPart node={node} />
                   {selected && (

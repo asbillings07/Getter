@@ -1,5 +1,7 @@
 import { supportedPage } from "../core/access.js";
 
+export const inspectPreviewImagePath = "/inspect-preview-image";
+
 export const inspectProKey = (windowId) => `getter.inspectPro.${windowId}`;
 
 async function loadedWebsite(api, tabId) {

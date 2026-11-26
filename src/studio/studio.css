@@ -1329,7 +1329,8 @@
   background: var(--bg);
 }
 .inspect-pro-preview-frame {
-  overflow: hidden auto;
+  max-height: 220px;
+  overflow: auto;
   outline: 1px solid var(--line);
   border-radius: 6px;
 }

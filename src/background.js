@@ -1,5 +1,44 @@
 import { legacyKeys } from "./core/preferences.js";
-import { inspectProKey } from "./studio/inspect-workspace.js";
+import {
+  inspectPreviewImagePath,
+  inspectProKey,
+} from "./studio/inspect-workspace.js";
+
+if (GETTER_STUDIO_WORKSPACE_QA) {
+  self.addEventListener("fetch", (event) => {
+    const { request } = event;
+    const route = new URL(request.url);
+    if (
+      route.origin !== self.location.origin ||
+      route.pathname !== inspectPreviewImagePath
+    )
+      return;
+    event.respondWith(
+      (async () => {
+        const client = await clients.get(event.clientId);
+        if (
+          client?.url !== chrome.runtime.getURL("sidepanel.html") ||
+          request.destination !== "image" ||
+          request.mode !== "no-cors"
+        )
+          return Response.error();
+        const source = URL.parse(route.searchParams.get("src") || "");
+        if (source?.protocol !== "https:" || source.username || source.password)
+          return Response.error();
+
+        // Keep cross-origin thumbnails display-only, including after CDN
+        // redirects. Do not forward the panel request's cookies or referrer.
+        const preview = await fetch(source, {
+          mode: "no-cors",
+          credentials: "omit",
+          referrerPolicy: "no-referrer",
+        });
+        return preview.type === "opaque" ? preview : Response.error();
+      })().catch(() => Response.error()),
+    );
+  });
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   chrome.action
     .enable()
