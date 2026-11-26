@@ -1329,7 +1329,7 @@
   background: var(--bg);
 }
 .inspect-pro-preview-frame {
-  overflow: hidden;
+  overflow: hidden auto;
   outline: 1px solid var(--line);
   border-radius: 6px;
 }
@@ -1340,17 +1340,44 @@
   background: #f2f5f9;
   outline: 1px solid var(--line);
 }
-.inspect-pro-preview-frame > div {
+.inspect-pro-preview-sheet {
+  position: relative;
+  overflow: hidden;
+}
+.inspect-pro-preview-canvas {
+  position: absolute;
+  inset: 0 auto auto 0;
   transform-origin: top left;
 }
-.inspect-pro-preview-frame [data-highlighted-part] {
-  position: relative;
-}
-.inspect-pro-preview-frame [data-highlighted-part]::after {
-  content: "";
+.inspect-pro-preview-origin,
+.inspect-pro-part,
+.inspect-pro-part-outline,
+.inspect-pro-text-run {
   position: absolute;
-  inset: 0;
-  border-radius: inherit;
+}
+.inspect-pro-part {
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.inspect-pro-text-run {
+  line-height: normal;
+}
+.inspect-pro-media-placeholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+  color: var(--dim);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  font-size: 14px;
+  text-align: center;
+}
+.inspect-pro-placeholder {
+  padding-inline: 4px;
+}
+.inspect-pro-part-outline {
   box-shadow:
     inset 0 0 0 2px #fff,
     inset 0 0 0 5px #2059be;

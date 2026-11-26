@@ -7,6 +7,14 @@ import InspectComponentPreview from "../studio/InspectComponentPreview.jsx";
 import InspectorIcon from "../studio/InspectorIcon.jsx";
 import { capturableEffects } from "../studio/inspect.js";
 
+function findPart(node, id) {
+  if (!node || node.id === id) return node;
+  for (const child of node.children) {
+    const result = findPart(child, id);
+    if (result) return result;
+  }
+}
+
 function ComponentParts({ node, selectedId, onSelect }) {
   const mark =
     node.tag === "img"
@@ -228,6 +236,7 @@ export default function InspectView({
     onCopy(value, label, scan);
   }
   const selectionId = model.snapshot?.selectionId;
+  const componentRootId = model.snapshot?.componentRootId;
   const matchesSelection = (result) =>
     !!result &&
     selectionId !== undefined &&
@@ -252,15 +261,15 @@ export default function InspectView({
   }, [scan.documentId, selectionId, model.section, model.picking, !!onCollect]);
 
   useEffect(() => {
-    if (!pro || selectionId === undefined) return;
+    if (!pro || componentRootId === undefined) return;
     let live = true;
     request({ type: "component-parts", selectionId }).then((result) => {
-      if (live) setParts({ result, selectionId });
+      if (live) setParts({ result, componentRootId });
     });
     return () => {
       live = false;
     };
-  }, [scan.documentId, selectionId, pro]);
+  }, [scan.documentId, componentRootId, pro]);
 
   async function selectPart(partId) {
     if (!(await verifyDocument(chrome, scan))) {
@@ -310,8 +319,16 @@ export default function InspectView({
   }
   const snapshot = model.snapshot,
     groups = inspectGroups(snapshot, model.section, model.all, model.query);
-  const partsReady = parts !== null && parts.selectionId === selectionId;
-  const component = partsReady ? parts.result : null;
+  const partsReady =
+    parts !== null && parts.componentRootId === componentRootId;
+  const tree = partsReady ? parts.result : null;
+  const component = tree && {
+    ...tree,
+    selected:
+      snapshot?.partId === undefined
+        ? tree.selected
+        : findPart(tree.component, snapshot.partId),
+  };
   const observedSelection = matchesSelection(observed) ? observed : null;
   const sectionButtons = pro ? [["parts", "Parts"], ...sections] : sections;
   const hasEffect =

@@ -41,6 +41,43 @@ test.beforeAll(async () => {
       );
       return;
     }
+    if (req.url === "/component-selection") {
+      res.setHeader("Content-Type", "text/html");
+      const headline = (id, text) =>
+        `<div class="card">${"<div>".repeat(6)}<h3 id="${id}">${text}</h3>${"</div>".repeat(6)}</div>`;
+      res.end(`<!doctype html><title>Component selection fixture</title>
+        <style>
+          body { margin: 80px 30px; font: 16px system-ui; }
+          #feature { display: grid; gap: 14px; width: 720px; padding: 22px; background: #eee; }
+          #headlines { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+          .card { background: #fff; border: 1px solid #888; padding: 16px; }
+          h3 { margin: 0; font: 600 18px/1.25 system-ui; }
+          #player { position: relative; width: 420px; }
+          #video { display: block; width: 420px; height: 210px; }
+          #player button { position: absolute; bottom: 12px; left: 12px; }
+          iframe { width: 260px; height: 80px; border: 0; }
+        </style>
+        <article id="feature">
+          <div id="player"><div><div><video id="video" muted autoplay playsinline></video></div></div>
+            <button id="play">Player controls</button></div>
+          <section id="headlines">${headline("first-headline", "First headline")}${headline("second-headline", "Second headline")}</section>
+          <iframe src="${origin.replace("127.0.0.1", "localhost")}/frame" title="Embedded video"></iframe>
+        </article>
+        <script>
+          const source = document.createElement("canvas");
+          source.width = 160;
+          source.height = 80;
+          const paint = source.getContext("2d");
+          document.getElementById("video").srcObject = source.captureStream(15);
+          setInterval(() => {
+            paint.fillStyle = "#254862";
+            paint.fillRect(0, 0, 160, 80);
+            paint.fillStyle = "#f4d128";
+            paint.fillRect(20, 18, 40, 40);
+          }, 65);
+        </script>`);
+      return;
+    }
     if (req.url === "/frame") {
       res.setHeader("Content-Type", "text/html");
       res.end('<p style="color:rgb(10,20,30)">Frame text</p>');
@@ -1611,10 +1648,16 @@ test("Inspect Pro opens the native panel, previews and saves the whole selected 
       .getByRole("group", { name: "Inspect sections" })
       .boundingBox();
     expect(previewTop.y).toBeLessThan(tabs.y);
-    await expect(highlight).toContainText("Shop blend");
+    const rootHighlight = await highlight.boundingBox();
     await parts.getByRole("button", { name: /h2 · Juniper blend/ }).click();
     await expect(selection).toHaveText("article#promo > h2");
-    await expect(highlight).toHaveText("Juniper blend");
+    await expect(highlight).not.toHaveAttribute("data-highlighted-part", "");
+    expect((await highlight.boundingBox()).height).toBeLessThan(
+      rootHighlight.height,
+    );
+    await expect(
+      componentPreview.getByText("Juniper blend", { exact: true }),
+    ).toBeVisible();
     await expect(
       componentPreview.getByText("Shop blend", { exact: true }),
     ).toBeVisible();
@@ -1783,6 +1826,131 @@ test("Inspect Pro opens the native panel, previews and saves the whole selected 
     await expect(panel.locator(".code-preview")).toContainText(
       "article#promo > h2",
     );
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("Inspect Pro keeps nested media and text in place while selecting or saving component parts", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
+  try {
+    await app.page.goto(`${origin}/component-selection`);
+    await app.page.locator("#video").evaluate(async (video) => {
+      await video.play();
+    });
+    const studio = await openStudioOptions(app);
+    await studio
+      .getByRole("button", { name: "Inspect Pro", exact: true })
+      .click();
+    const picker = studio.getByRole("dialog", {
+      name: /Inspect Pro.*Choose a site/,
+    });
+    await picker.getByRole("combobox", { name: "Open tabs" }).selectOption({
+      label: "Component selection fixture · 127.0.0.1",
+    });
+    await picker.getByRole("button", { name: "Open Inspect Pro" }).click();
+    await expect(picker).toBeHidden();
+    await app.worker.evaluate(async () => {
+      const window = await chrome.windows.getCurrent();
+      await chrome.sidePanel.close({ windowId: window.id });
+    });
+    const panel = await app.openPanel();
+    await panel.setViewportSize({ width: 320, height: 900 });
+    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    const feature = app.page.locator("#feature");
+    await feature.click({ position: { x: 5, y: 5 } });
+
+    const selection = panel.locator(".element-title code");
+    const preview = panel.getByRole("region", { name: "Component preview" });
+    const parts = panel.getByRole("region", { name: "Component hierarchy" });
+    const outline = preview.locator("[data-highlighted-part]");
+    const frame = preview.getByRole("img", {
+      name: "Video frame",
+      exact: true,
+    });
+    await expect(selection).toHaveText("article#feature");
+    await expect(frame).toHaveAttribute("src", /^data:image\/webp;base64,/);
+    await expect(
+      preview.getByText("Embedded frame", { exact: true }),
+    ).toBeVisible();
+    await expect(preview.getByText("Frame text", { exact: true })).toHaveCount(
+      0,
+    );
+
+    const first = preview.getByText("First headline", { exact: true });
+    const second = preview.getByText("Second headline", { exact: true });
+    await expect(first).toBeVisible();
+    await expect(second).toBeVisible();
+    expect((await second.boundingBox()).x).toBeGreaterThan(
+      (await first.boundingBox()).x + 40,
+    );
+
+    const rootRect = await feature.boundingBox();
+    async function expectPart(name, selector) {
+      const button = parts.getByRole("button", { name, exact: true });
+      await button.click();
+      await expect(button).toHaveAttribute("aria-pressed", "true");
+      await expect(selection).toHaveText(selector);
+      const source = await app.page.locator(selector).boundingBox();
+      const bounds = await outline.evaluate((element) =>
+        ["left", "top", "width", "height"].map((dimension) =>
+          parseFloat(element.style[dimension]),
+        ),
+      );
+      expect(bounds).toEqual(
+        [
+          source.x - rootRect.x,
+          source.y - rootRect.y,
+          source.width,
+          source.height,
+        ].map(Math.round),
+      );
+      await expect(frame).toBeVisible();
+      await expect(first).toBeVisible();
+      await expect(second).toBeVisible();
+    }
+    await expectPart("video", "video#video");
+    await expectPart("button · Player controls", "button#play");
+    await expectPart("h3 · First headline", "h3#first-headline");
+    await expectPart("h3 · Second headline", "h3#second-headline");
+    expect(
+      await panel.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(320);
+    await preview.screenshot({
+      path: info.outputPath("component-preview-second-headline.png"),
+    });
+
+    await panel.getByRole("button", { name: /Save to collection/ }).click();
+    const destination = panel.getByRole("dialog", {
+      name: "Save component to collection",
+    });
+    await expect(
+      destination.getByRole("heading", { name: "article component" }),
+    ).toBeVisible();
+    await destination
+      .getByRole("textbox", { name: "Project name" })
+      .fill("Full component QA");
+    await destination.getByRole("button", { name: "Create and save" }).click();
+    await expect(destination.getByRole("status")).toContainText(
+      "Saved to Assets",
+    );
+    const opened = app.context.waitForEvent("page");
+    await destination.getByRole("button", { name: "Open collection" }).click();
+    const collection = await opened;
+    const saved = collection.getByRole("article", {
+      name: "article component",
+      exact: true,
+    });
+    await expect(
+      saved.getByText("First headline", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      saved.getByText("Second headline", { exact: true }),
+    ).toBeVisible();
   } finally {
     await app.context.close();
   }

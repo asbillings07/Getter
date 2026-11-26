@@ -66,19 +66,23 @@ site and requests access only if Getter needs it for that page.
 
 - Select a component on the page. The component preview stays above the
   property tabs. **Parts** lists the captured hierarchy and highlights the
-  selected part in the preview. **Select parent** moves up one level. **Styles**,
+  selected part in its page position. The surrounding component stays visible,
+  and a tall preview scrolls to the selected part. **Select parent** moves up one level. **Styles**,
   **Layout**, **Effects**, and **Element** organize the selected element’s
   values. **Copy CSS** and property search are available.
 - **Effects** previews supported animations and transitions on reconstructed
   styling, or plays a reference clip for readable canvas and video motion.
   Native animation previews support replay, speed, and scrubbing. The
   reconstructed view uses artwork already loaded and readable on the page.
-  Images the browser blocks are shown as placeholders. A visual reference is
+  Images and video frames the browser blocks are shown as placeholders. An
+  embedded frame can be selected at its boundary, with its interior unavailable.
+  A visual reference is
   available only when Getter can read the motion. The component preview can
   show a still of matched canvas artwork or an entire scene when the page's
   click target does not render the artwork itself.
 - **Save to collection** opens the destination for the whole selected component
-  with its supported descendants, styles, and detected motion. **Individual
+  with its supported descendants, styles, and detected motion, including when
+  a child is highlighted in **Parts**. **Individual
   assets** is the separate action for a single item. **Keep inspecting** closes
   the save dialog and keeps the selection while the same document is open.
 - Inspect Pro follows the active tab in its Chrome window. Reloading, navigating

@@ -1,6 +1,7 @@
 import { snapshotElement } from "./core/inspect.js";
 import {
   captureComponent,
+  componentParent,
   readActiveMotion,
   readMotion,
 } from "./studio/inspect.js";
@@ -23,6 +24,8 @@ if (!globalThis.__getterInspector) {
   const transitions = new WeakMap();
   let sampler, observed, visualPreview, samplingStatus, motionSelection;
   let proRoot,
+    proRootId,
+    proRootMotion,
     proParts = [],
     partsRevision = 0;
   const selectionCursor = new CSSStyleSheet();
@@ -100,6 +103,8 @@ if (!globalThis.__getterInspector) {
           }
           samplingStatus = result.status;
           observed = result.asset;
+          if (state.pro && element === proRoot?.deref())
+            proRootMotion = observed;
           if (observed) sampleId++;
           send({
             type: "studio-sampled-motion",
@@ -158,10 +163,16 @@ if (!globalThis.__getterInspector) {
   function setSelection(element, requestId, point, keepRoot = false) {
     if (GETTER_STUDIO_WORKSPACE_QA && state.pro && !keepRoot) {
       proRoot = new WeakRef(element);
+      proRootId = state.selectionId + 1;
+      proRootMotion = undefined;
       proParts = [];
     }
     state.selected = new WeakRef(element);
     state.selectionId++;
+    if (state.picking) {
+      state.hovered = element;
+      position();
+    }
     if (GETTER_STUDIO_WORKSPACE_QA) visualPreview = undefined;
     snapshot(requestId);
     if (GETTER_STUDIO_WORKSPACE_QA) {
@@ -187,9 +198,14 @@ if (!globalThis.__getterInspector) {
       const result = snapshotElement(node);
       if (GETTER_STUDIO_WORKSPACE_QA) {
         result.selectionId = state.selectionId;
+        const parent = state.pro ? componentParent(node) : node.parentElement;
         result.hasParent =
-          !!node.parentElement &&
-          !["body", "html"].includes(node.parentElement.localName);
+          !!parent && !["body", "html"].includes(parent.localName);
+        if (state.pro) {
+          result.componentRootId = proRootId;
+          const partId = proParts.findIndex((ref) => ref.deref() === node);
+          if (partId !== -1) result.partId = partId;
+        }
       }
       send({ type: "snapshot", snapshot: result, requestId });
     } catch {
@@ -279,7 +295,7 @@ if (!globalThis.__getterInspector) {
     if (!element) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (["iframe", "frame"].includes(element.localName)) {
+    if (["iframe", "frame"].includes(element.localName) && !state.pro) {
       send({
         type: "unavailable",
         message:
@@ -331,6 +347,10 @@ if (!globalThis.__getterInspector) {
     box.onclick = (event) => {
       event.preventDefault();
       event.stopPropagation();
+      if (state.pro && state.hovered?.isConnected) {
+        setSelection(state.hovered);
+        return;
+      }
       send({
         type: "unavailable",
         message:
@@ -359,25 +379,45 @@ if (!globalThis.__getterInspector) {
     window.addEventListener("scroll", position, true);
     window.addEventListener("resize", position);
   }
-  function previewImage(node) {
-    if (!node.complete || !node.naturalWidth || !node.naturalHeight) return;
-    const scale = Math.min(
-      1,
-      160 / Math.max(node.naturalWidth, node.naturalHeight),
-    );
+  function previewThumbnail(node) {
+    const [width, height, alt] =
+      node.localName === "video"
+        ? [node.videoWidth, node.videoHeight, "Video frame"]
+        : node.localName === "canvas"
+          ? [node.width, node.height, "Canvas artwork"]
+          : [node.naturalWidth, node.naturalHeight, node.alt.slice(0, 100)];
+    if (
+      !width ||
+      !height ||
+      (node.localName === "video" && node.readyState < 2)
+    )
+      return;
+    const scale = Math.min(1, 320 / Math.max(width, height));
     const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(node.naturalWidth * scale));
-    canvas.height = Math.max(1, Math.round(node.naturalHeight * scale));
+    canvas.width = Math.max(1, Math.round(width * scale));
+    canvas.height = Math.max(1, Math.round(height * scale));
     try {
-      canvas
-        .getContext("2d")
-        .drawImage(node, 0, 0, canvas.width, canvas.height);
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      context.drawImage(node, 0, 0, canvas.width, canvas.height);
+      if (
+        node.localName !== "img" &&
+        !context
+          .getImageData(0, 0, canvas.width, canvas.height)
+          .data.some((alpha, index) => index % 4 === 3 && alpha)
+      )
+        return;
       const data = canvas.toDataURL("image/webp", 0.8);
-      if (data.startsWith("data:image/webp;base64,"))
-        return { data, alt: node.alt.slice(0, 100) };
+      if (data.startsWith("data:image/webp;base64,")) return { data, alt };
     } catch {
       // The browser can block reading an image on the page. Use a placeholder.
     }
+  }
+
+  function inComponent(root, node) {
+    for (let part = node; part; part = componentParent(part)) {
+      if (part === root) return true;
+    }
+    return false;
   }
 
   function previewBackground(root) {
@@ -415,7 +455,7 @@ if (!globalThis.__getterInspector) {
         pause();
         state.selected = null;
         state.selectionId++;
-        motionSelection = proRoot = undefined;
+        motionSelection = proRoot = proRootId = proRootMotion = undefined;
         proParts = [];
       }
     }
@@ -440,11 +480,8 @@ if (!globalThis.__getterInspector) {
           if (!node?.isConnected || message.selectionId !== state.selectionId)
             throw Error();
           if (message.type === "component-parts") {
-            let root = proRoot?.deref();
-            if (!root?.isConnected || !root.contains(node)) {
-              root = node;
-              proRoot = new WeakRef(root);
-            }
+            const root = proRoot?.deref();
+            if (!root?.isConnected || !inComponent(root, node)) throw Error();
             const refs = [];
             const images = [];
             let selected;
@@ -455,12 +492,15 @@ if (!globalThis.__getterInspector) {
                 part.id = refs.length;
                 refs.push(new WeakRef(element));
                 if (element === node) selected = part;
-                if (element.localName === "img" && images.length < 4)
+                if (
+                  ["img", "video", "canvas"].includes(element.localName) &&
+                  images.length < 8
+                )
                   images.push({ element, part });
               },
             });
             for (const { element, part } of images)
-              part.thumbnail = previewImage(element);
+              part.thumbnail = previewThumbnail(element);
             proParts = refs;
             send({
               type: "studio-component-parts",
@@ -478,13 +518,13 @@ if (!globalThis.__getterInspector) {
               Number.isInteger(message.partId) &&
               message.revision === partsRevision &&
               proParts[message.partId]?.deref();
-            if (!part?.isConnected || !proRoot?.deref()?.contains(part))
+            if (!part?.isConnected || !inComponent(proRoot?.deref(), part))
               throw Error();
             setSelection(part, message.requestId, undefined, true);
-            state.hovered = part;
-            position();
           } else if (message.type === "select-parent") {
-            const parent = node.parentElement;
+            const parent = state.pro
+              ? componentParent(node)
+              : node.parentElement;
             if (!parent || ["body", "html"].includes(parent.localName))
               throw Error();
             setSelection(parent, message.requestId);
@@ -496,6 +536,10 @@ if (!globalThis.__getterInspector) {
             });
           } else {
             const motionOnly = ["visual", "scripted"].includes(message.scope);
+            const entire = state.pro && message.scope === "component";
+            const root = entire ? proRoot?.deref() : node;
+            if (!root?.isConnected || (entire && !inComponent(root, node)))
+              throw Error();
             if (
               motionOnly &&
               (observed?.kind !== message.scope ||
@@ -510,11 +554,12 @@ if (!globalThis.__getterInspector) {
                     viewport: { width: innerWidth, height: innerHeight },
                   }
                 : {
-                    ...captureComponent(node, {
+                    ...captureComponent(root, {
                       withAssets: true,
+                      expanded: entire,
                       transitions: recorded,
                     }),
-                    observedMotion: observed,
+                    observedMotion: entire ? proRootMotion : observed,
                   },
               requestId: message.requestId,
             });

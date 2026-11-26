@@ -4,7 +4,7 @@ import { safeStyleValue } from "./inspect.js";
 const camel = (name) =>
   name.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
 
-function styleObject(css) {
+export function styleObject(css) {
   return Object.fromEntries(
     Object.entries(css)
       .filter(([, value]) => safeStyleValue(value))
@@ -12,24 +12,14 @@ function styleObject(css) {
   );
 }
 
-export function ComponentShape({
-  node,
-  images,
-  previewRef,
-  selectedId,
-  previewRoot = false,
-}) {
+export function ComponentShape({ node, images, previewRef }) {
   const style = styleObject(node.css);
   return (
     <div
       className="studio-node"
       ref={previewRef}
-      data-highlighted-part={
-        selectedId !== undefined && node.id === selectedId ? "" : undefined
-      }
       style={{
         ...style,
-        ...(previewRoot ? { margin: 0, transform: "none" } : {}),
         boxSizing: "border-box",
         minWidth: 0,
         maxWidth: "100%",
@@ -53,12 +43,7 @@ export function ComponentShape({
             : node.tag)
       )}
       {node.children.map((child, index) => (
-        <ComponentShape
-          key={index}
-          node={child}
-          images={images}
-          selectedId={selectedId}
-        />
+        <ComponentShape key={index} node={child} images={images} />
       ))}
     </div>
   );

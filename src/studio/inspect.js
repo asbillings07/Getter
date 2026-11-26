@@ -88,6 +88,19 @@ const skippedNodes = new Set([
   "embed",
 ]);
 
+const previewMedia = new Set(["img", "video", "iframe", "frame", "canvas"]);
+
+export const componentParent = (node) =>
+  node.assignedSlot || node.parentElement || node.getRootNode().host;
+
+function componentChildren(node) {
+  if (node.localName === "slot") {
+    const assigned = node.assignedElements();
+    if (assigned.length) return assigned;
+  }
+  return (node.shadowRoot || node).children;
+}
+
 export function safeStyleValue(value) {
   return (
     typeof value === "string" &&
@@ -310,12 +323,29 @@ export function motionAssets({ css, animations }) {
 
 export function captureComponent(
   root,
-  { withAssets = false, transitions = () => [], preview = false, onNode } = {},
+  {
+    withAssets = false,
+    transitions = () => [],
+    preview = false,
+    expanded = preview,
+    onNode,
+  } = {},
 ) {
   const doc = root.ownerDocument;
   const win = doc.defaultView;
   const started = performance.now();
   const rootBounds = root.getBoundingClientRect();
+  const maxNodes = expanded ? 160 : 32;
+  const maxDepth = expanded ? 18 : 5;
+  const maxMs = expanded ? 220 : 100;
+  const exhausted = () =>
+    visited >= maxNodes || performance.now() - started >= maxMs;
+  const measure = (rect) => ({
+    x: Math.round(rect.x - rootBounds.x),
+    y: Math.round(rect.y - rootBounds.y),
+    width: Math.round(rect.width),
+    height: Math.round(rect.height),
+  });
   let visited = 0;
   let limited = false;
   let resourcesOmitted = false;
@@ -325,28 +355,19 @@ export function captureComponent(
     resourcesOmitted = true;
   };
   if (withAssets) {
-    for (
-      let ancestor = root;
-      ancestor;
-      ancestor =
-        ancestor.assignedSlot ||
-        ancestor.parentElement ||
-        ancestor.getRootNode().host
-    ) {
+    for (let ancestor = root; ancestor; ancestor = componentParent(ancestor)) {
       if (Number(win.getComputedStyle(ancestor).opacity) === 0)
         throw Error("This element is unavailable.");
     }
   }
   function captureNode(node, depth) {
-    if (visited >= 32 || depth >= 5 || performance.now() - started >= 100) {
+    if (exhausted() || depth >= maxDepth) {
       limited = true;
       return null;
     }
-    visited++;
-    const css = properties(node, designProperties, markOmitted);
-    if (css.display === "none") return null;
+    const style = win.getComputedStyle(node);
+    if (style.display === "none") return null;
     if (withAssets) {
-      const style = win.getComputedStyle(node);
       if (
         node.hidden ||
         style.visibility !== "visible" ||
@@ -354,18 +375,27 @@ export function captureComponent(
       )
         return null;
     }
+    visited++;
+    const css = properties(node, designProperties, markOmitted);
     const children = [];
-    for (const child of node.children) {
+    const media = preview && previewMedia.has(node.localName);
+    const descendants = media
+      ? []
+      : expanded
+        ? componentChildren(node)
+        : node.children;
+    for (const child of descendants) {
       if (
         skippedNodes.has(child.localName) &&
-        !(withAssets && child.localName === "input")
+        !(withAssets && child.localName === "input") &&
+        !(preview && previewMedia.has(child.localName))
       ) {
         resourcesOmitted = true;
         continue;
       }
       const captured = captureNode(child, depth + 1);
       if (captured) children.push(captured);
-      if (visited >= 32 || performance.now() - started >= 100) {
+      if (exhausted()) {
         limited = true;
         break;
       }
@@ -375,26 +405,60 @@ export function captureComponent(
       tag: node.localName.slice(0, 60),
       css,
       children,
-      bounds: {
-        x: Math.round(rect.x - rootBounds.x),
-        y: Math.round(rect.y - rootBounds.y),
-        width: Math.round(rect.width),
-        height: Math.round(rect.height),
-      },
+      bounds: measure(rect),
     };
+    if (preview) {
+      if (media) captured.media = node.localName;
+      if (!captured.bounds.width || !captured.bounds.height) {
+        captured.unboxed = true;
+        const bounds = children
+          .map((child) => child.bounds)
+          .filter((part) => part.width && part.height);
+        if (bounds.length) {
+          const x = Math.min(...bounds.map((part) => part.x));
+          const y = Math.min(...bounds.map((part) => part.y));
+          captured.bounds = {
+            x,
+            y,
+            width: Math.max(...bounds.map((part) => part.x + part.width)) - x,
+            height: Math.max(...bounds.map((part) => part.y + part.height)) - y,
+          };
+        }
+      }
+      captured.objectFit = style.objectFit;
+      captured.objectPosition = style.objectPosition;
+    }
     if (withAssets) {
-      const content =
-        node.isContentEditable || node.closest(textField)
-          ? ""
-          : [...node.childNodes]
-              .filter((child) => child.nodeType === 3)
-              .map((child) => child.nodeValue)
-              .join("")
-              .replace(/\s+/g, " ")
-              .trim();
+      const directText =
+        media || node.isContentEditable || node.closest(textField)
+          ? []
+          : [...node.childNodes].filter((child) => child.nodeType === 3);
+      const content = directText
+        .map((child) => child.nodeValue)
+        .join("")
+        .replace(/\s+/g, " ")
+        .trim();
       if (content) {
         captured.text = content.slice(0, 1000);
         limited ||= content.length > captured.text.length;
+        if (preview) {
+          const range = doc.createRange();
+          captured.textRuns = directText.slice(0, 12).flatMap((child) => {
+            const text = child.nodeValue.replace(/\s+/g, " ").trim();
+            if (!text) return [];
+            range.selectNodeContents(child);
+            const bounds = measure(range.getBoundingClientRect());
+            return bounds.width && bounds.height
+              ? [
+                  {
+                    text: text.slice(0, 1000),
+                    bounds,
+                    multiline: range.getClientRects().length > 1,
+                  },
+                ]
+              : [];
+          });
+        }
         const font = {
           type: "font",
           tag: node.localName.slice(0, 60),
