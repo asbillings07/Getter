@@ -17,10 +17,14 @@ if (!globalThis.__getterInspector) {
     hovered: null,
     observer: null,
     studio: false,
+    pro: false,
     selectionId: 0,
   };
   const transitions = new WeakMap();
   let sampler, observed, samplingStatus, motionSelection;
+  let proRoot,
+    proParts = [],
+    partsRevision = 0;
   let sampleId = 0;
   const widestFrame = (clip) =>
     Math.max(...clip.frames.map(({ width }) => (width / 100) * clip.width));
@@ -137,7 +141,11 @@ if (!globalThis.__getterInspector) {
           startSampling(node, refresh);
       }
     : null;
-  function setSelection(element, requestId, point) {
+  function setSelection(element, requestId, point, keepRoot = false) {
+    if (GETTER_STUDIO_WORKSPACE_QA && state.pro && !keepRoot) {
+      proRoot = new WeakRef(element);
+      proParts = [];
+    }
     state.selected = new WeakRef(element);
     state.selectionId++;
     snapshot(requestId);
@@ -314,15 +322,27 @@ if (!globalThis.__getterInspector) {
   chrome.runtime.onConnect.addListener((port) => {
     const studio =
       GETTER_STUDIO_WORKSPACE_QA && port.name === "getter-studio-inspect";
+    const pro =
+      GETTER_STUDIO_WORKSPACE_QA && port.name === "getter-inspect-pro";
     if (
-      (!studio && port.name !== "getter-inspect") ||
+      (!studio && !pro && port.name !== "getter-inspect") ||
       port.sender?.id !== chrome.runtime.id
     )
       return;
     state.port?.disconnect();
-    if (GETTER_STUDIO_WORKSPACE_QA) stopSampling();
+    if (GETTER_STUDIO_WORKSPACE_QA) {
+      stopSampling();
+      if (pro !== state.pro) {
+        pause();
+        state.selected = null;
+        state.selectionId++;
+        motionSelection = proRoot = undefined;
+        proParts = [];
+      }
+    }
     state.port = port;
     state.studio = studio;
+    state.pro = pro;
     port.onMessage.addListener((message) => {
       if (port !== state.port) return;
       if (message.type === "start") start();
@@ -333,15 +353,55 @@ if (!globalThis.__getterInspector) {
       if (message.type === "refresh") snapshot(message.requestId);
       if (
         GETTER_STUDIO_WORKSPACE_QA &&
-        ["collect-selection", "inspect-motion", "select-parent"].includes(
+        (["collect-selection", "inspect-motion", "select-parent"].includes(
           message.type,
-        )
+        ) ||
+          (state.pro &&
+            ["component-parts", "select-part"].includes(message.type)))
       ) {
         const node = state.selected?.deref();
         try {
           if (!node?.isConnected || message.selectionId !== state.selectionId)
             throw Error();
-          if (message.type === "select-parent") {
+          if (message.type === "component-parts") {
+            let root = proRoot?.deref();
+            if (!root?.isConnected || !root.contains(node)) {
+              root = node;
+              proRoot = new WeakRef(root);
+            }
+            const refs = [];
+            let selected;
+            const result = captureComponent(root, {
+              withAssets: true,
+              preview: true,
+              onNode(element, part) {
+                part.id = refs.length;
+                refs.push(new WeakRef(element));
+                if (element === node) selected = part;
+              },
+            });
+            proParts = refs;
+            send({
+              type: "studio-component-parts",
+              parts: {
+                ...result,
+                selected,
+                selectionId: state.selectionId,
+                revision: ++partsRevision,
+              },
+              requestId: message.requestId,
+            });
+          } else if (message.type === "select-part") {
+            const part =
+              Number.isInteger(message.partId) &&
+              message.revision === partsRevision &&
+              proParts[message.partId]?.deref();
+            if (!part?.isConnected || !proRoot?.deref()?.contains(part))
+              throw Error();
+            setSelection(part, message.requestId, undefined, true);
+            state.hovered = part;
+            position();
+          } else if (message.type === "select-parent") {
             const parent = node.parentElement;
             if (!parent || ["body", "html"].includes(parent.localName))
               throw Error();

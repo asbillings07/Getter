@@ -28,7 +28,7 @@ function labelFor(asset) {
   return asset.name || "Website image";
 }
 
-function inspectionItems(capture) {
+function inspectionItems(capture, includeObservedMotion) {
   const tree = capture.component;
   if (!tree) return capture.observedMotion ? [capture.observedMotion] : [];
   const text = capture.text;
@@ -38,6 +38,9 @@ function inspectionItems(capture) {
       name: `${tree.tag} component`,
       tree,
       imageCandidates: capture.images || [],
+      ...(includeObservedMotion && capture.observedMotion
+        ? { observedMotion: capture.observedMotion }
+        : {}),
     },
     ...(capture.fonts || []),
     ...(capture.images || []),
@@ -80,7 +83,10 @@ export default function SidePanelCollect({
   inspection,
   captureScope,
   bulk,
+  preferredDestination,
+  includeObservedMotion,
   isCurrent,
+  onSaved,
   onClose,
 }) {
   const id = React.useId();
@@ -99,14 +105,12 @@ export default function SidePanelCollect({
         : "Assets";
   const [collectionName, setCollectionName] = useState(defaultCollection);
   const [choices] = useState(() =>
-    inspection ? inspectionItems(inspection) : [],
+    inspection ? inspectionItems(inspection, includeObservedMotion) : [],
   );
   const [choice, setChoice] = useState(
     () =>
-      choices.find((item) =>
-        captureScope === "component"
-          ? item.type === "component"
-          : item.kind === captureScope && captureScope,
+      choices.find(
+        (item) => captureScope && (item.kind || item.type) === captureScope,
       ) || null,
   );
   const [itemName, setItemName] = useState("");
@@ -154,15 +158,14 @@ export default function SidePanelCollect({
             ({ id, name, ownerId }) => ({ id, name, ownerId }),
           ),
         }));
+        const target = preferredDestination || studioDestination;
         const remembered =
-          values.find(({ id }) => id === studioDestination?.projectId) ||
-          values[0];
+          values.find(({ id }) => id === target?.projectId) || values[0];
         setProjects(values);
         setProjectId(remembered?.id || "");
         setCollectionId(
-          remembered?.collections.find(
-            ({ id }) => id === studioDestination?.collectionId,
-          )?.id ||
+          remembered?.collections.find(({ id }) => id === target?.collectionId)
+            ?.id ||
             remembered?.collections[0]?.id ||
             "",
         );
@@ -305,6 +308,7 @@ export default function SidePanelCollect({
         })
         .catch(() => {});
       setSaved(target);
+      onSaved?.(target);
     } catch (error) {
       if (!task.signal.aborted) {
         if (bulk === "images" && error.unavailableImages?.length) {

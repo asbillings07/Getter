@@ -56,6 +56,32 @@ The capture checks the active document before storage. Saved sources identify
 the site without the page URL. Website images reuse Getter's bounded HTTPS
 fetch path and have the same format and size limits as Studio Collections.
 
+## Inspect Pro
+
+In **Open Studio QA**, choose **Inspect Pro**, then pick an open tab or enter a
+website address. A project can launch Inspect Pro with its collection already
+selected for saving. Inspect Pro opens in Chrome’s side panel beside the chosen
+site and requests access only if Getter needs it for that page.
+
+- Select a component on the page. **Parts** lists the captured hierarchy and
+  lets you inspect its parts. **Select parent** moves up one level. **Styles**,
+  **Layout**, **Effects**, and **Element** organize the selected element’s
+  values. **Copy CSS** and property search are available.
+- **Effects** previews supported animations and transitions on reconstructed
+  styling, or plays a reference clip for readable canvas and video motion.
+  Native animation previews support replay, speed, and scrubbing. The
+  reconstructed view uses placeholders for images. A visual reference is
+  available only when Getter can read the motion.
+- **Save to collection** opens the destination for the whole selected component
+  with its supported descendants, styles, and detected motion. **Individual
+  assets** is the separate action for a single item. **Keep inspecting** closes
+  the save dialog and keeps the selection while the same document is open.
+- Reloading or navigating the chosen tab requires starting a fresh inspection.
+  **Back to Getter** returns to the extension tools, including Quick Inspect.
+
+The Inspect Pro entry is part of the Studio workspace QA package. Live
+subscription enforcement and starting from Design Review are separate work.
+
 ## Use the collection in the editor
 
 1. In **Projects**, start a new project, choose a website, or create a project

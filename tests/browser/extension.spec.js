@@ -1402,6 +1402,223 @@ test("Studio Inspect keeps the existing tools and saves motion, text, and reusab
   }
 });
 
+test("Inspect Pro opens the native panel, previews and saves the whole selected component", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
+  try {
+    await app.page.goto(`${origin}/studio-motion`);
+    const studio = await openStudioOptions(app);
+    await studio
+      .getByRole("button", { name: "Inspect Pro", exact: true })
+      .click();
+    const sitePicker = studio.getByRole("dialog", {
+      name: /Inspect Pro.*Choose a site/,
+    });
+    const tabChoice = sitePicker.getByRole("combobox", {
+      name: "Open tabs",
+      exact: true,
+    });
+    await tabChoice.selectOption({
+      label: "Studio motion fixture · 127.0.0.1",
+    });
+    await sitePicker.getByRole("button", { name: "Open Inspect Pro" }).click();
+    await expect(sitePicker).toBeHidden();
+    await expect
+      .poll(() =>
+        studio.evaluate(() =>
+          chrome.extension
+            .getViews()
+            .some(
+              (view) =>
+                view.location.pathname === "/sidepanel.html" &&
+                view.document.querySelector("h1")?.textContent ===
+                  "Inspect Pro" &&
+                view.document.body.innerText.includes("Choose an element"),
+            ),
+        ),
+      )
+      .toBe(true);
+    await app.worker.evaluate(async () => {
+      const window = await chrome.windows.getCurrent();
+      await chrome.sidePanel.close({ windowId: window.id });
+    });
+
+    const panel = await app.openPanel();
+    await panel.setViewportSize({ width: 320, height: 880 });
+    await expect(
+      panel.getByRole("heading", { name: "Inspect Pro", exact: true }),
+    ).toBeVisible();
+    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    await app.page.locator("#promo h2").dispatchEvent("click");
+    await panel
+      .getByRole("button", { name: "Select parent", exact: true })
+      .click();
+    const selection = panel.locator(".element-title code");
+    await expect(selection).toHaveText("article#promo");
+    const parts = panel.getByRole("region", { name: "Component hierarchy" });
+    await parts.getByRole("button", { name: /h2 · Juniper blend/ }).click();
+    await expect(selection).toHaveText("article#promo > h2");
+    await parts.getByRole("button", { name: "article", exact: true }).click();
+    await expect(selection).toHaveText("article#promo");
+
+    await panel.getByRole("button", { name: "Effects", exact: true }).click();
+    const componentPreview = panel.getByRole("region", {
+      name: "Component preview",
+    });
+    await expect(
+      componentPreview.getByText("Juniper blend", { exact: true }),
+    ).toBeVisible();
+    const animation = panel.getByRole("region", { name: "Studio animation" });
+    await animation
+      .getByRole("combobox", { name: "Playback speed" })
+      .selectOption("0.25");
+    await animation
+      .getByRole("button", { name: "Preview animation", exact: true })
+      .click();
+    await expect(
+      animation.getByRole("slider", {
+        name: "Animation timeline in milliseconds",
+      }),
+    ).toBeVisible();
+    expect(
+      await animation
+        .locator(".studio-sample")
+        .evaluate((node) =>
+          node.getAnimations().some((item) => item.playbackRate === 0.25),
+        ),
+    ).toBe(true);
+    expect(
+      await panel.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(320);
+    await panel.screenshot({
+      path: info.outputPath("getter-inspect-pro-effects.png"),
+    });
+
+    await panel
+      .getByRole("button", { name: "＋ Save to collection", exact: true })
+      .click();
+    const dialog = panel.getByRole("dialog", {
+      name: "Save component to collection",
+    });
+    await expect(
+      dialog.getByRole("heading", { name: "article component" }),
+    ).toBeVisible();
+    await expect(
+      dialog.getByRole("region", { name: "Capture choices" }),
+    ).toHaveCount(0);
+    await dialog
+      .getByRole("textbox", { name: "Project name" })
+      .fill("Inspect Pro QA");
+    await dialog.getByRole("button", { name: "Create and save" }).click();
+    await expect(dialog.getByRole("status")).toContainText("Saved to Assets");
+    await dialog.getByRole("button", { name: "Keep inspecting" }).click();
+    await expect(selection).toHaveText("article#promo");
+    await panel
+      .getByRole("button", { name: "Individual assets", exact: true })
+      .click();
+    await expect(
+      panel.getByRole("dialog", { name: "Save an individual asset" }),
+    ).toBeVisible();
+    await panel.getByRole("button", { name: "Cancel", exact: true }).click();
+
+    const opened = app.context.waitForEvent("page");
+    await panel
+      .getByRole("button", { name: "Open collection", exact: true })
+      .click();
+    const collection = await opened;
+    const component = collection.getByRole("article", {
+      name: "article component",
+      exact: true,
+    });
+    await expect(
+      component.getByText("Juniper blend", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      component.getByRole("img", { name: "Blend artwork" }),
+    ).toBeVisible();
+    await expect(component.getByText(/Captured motion/)).toBeVisible();
+    await expect(collection.getByText("private-field-value")).toHaveCount(0);
+    await collection.close();
+
+    await app.page.bringToFront();
+    await expect(
+      panel.getByRole("heading", { name: "Inspect Pro", exact: true }),
+    ).toBeVisible();
+    await app.page.reload();
+    await expect(
+      panel.getByRole("heading", { name: "The page changed" }),
+    ).toBeVisible();
+    await expect(
+      panel.getByRole("button", { name: "＋ Save to collection" }),
+    ).toHaveCount(0);
+    await panel.getByRole("button", { name: "Back to Getter" }).click();
+    await panel
+      .getByRole("button", { name: "Quick Inspect", exact: true })
+      .click();
+    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    await app.page.locator("#promo h2").dispatchEvent("click");
+    await panel.getByRole("button", { name: /Copy CSS/ }).click();
+    await expect(panel.locator(".code-preview")).toContainText(
+      "article#promo > h2",
+    );
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("Inspect Pro accepts a typed site and requests only that site when asked", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, {
+    buildDir: "dist-studio-workspace-qa",
+    fixtureHostGrants: false,
+    denyPermissionRequests: true,
+  });
+  try {
+    const studio = await openStudioOptions(app);
+    await studio
+      .getByRole("button", { name: "Inspect Pro", exact: true })
+      .click();
+    const picker = studio.getByRole("dialog", {
+      name: /Inspect Pro.*Choose a site/,
+    });
+    await picker.getByLabel("Website address").fill(`${origin}/studio-motion`);
+    const opened = app.context.waitForEvent("page");
+    await picker.getByRole("button", { name: "Open Inspect Pro" }).click();
+    const site = await opened;
+    await expect(picker).toBeHidden();
+    await expect(site).toHaveURL(`${origin}/studio-motion`);
+    await app.worker.evaluate(async () => {
+      const window = await chrome.windows.getCurrent();
+      await chrome.sidePanel.close({ windowId: window.id });
+    });
+    const panel = await app.openPanel();
+    await expect(
+      panel.getByRole("heading", { name: "Allow Inspect Pro on this site" }),
+    ).toBeVisible();
+    expect(await panel.evaluate(() => websiteAccessFixture.requests)).toEqual(
+      [],
+    );
+    await panel
+      .getByRole("button", { name: "Allow site access", exact: true })
+      .click();
+    await expect(panel.getByRole("status")).toContainText(
+      "Site access wasn’t allowed",
+    );
+    expect(await panel.evaluate(() => websiteAccessFixture.requests)).toEqual([
+      { origins: ["http://127.0.0.1/*"] },
+    ]);
+    await expect(site.locator("getter-inspection-overlay")).toHaveCount(0);
+  } finally {
+    await app.context.close();
+  }
+});
+
 test("Studio detects and replays selected canvas and scroll motion without a recording step", async ({}, info) => {
   execFileSync(process.execPath, [
     "scripts/build.mjs",

@@ -310,7 +310,7 @@ export function motionAssets({ css, animations }) {
 
 export function captureComponent(
   root,
-  { withAssets = false, transitions = () => [] } = {},
+  { withAssets = false, transitions = () => [], preview = false, onNode } = {},
 ) {
   const doc = root.ownerDocument;
   const win = doc.defaultView;
@@ -438,15 +438,19 @@ export function captureComponent(
           captured.imageIndex = images.get(src).index;
         } else resourcesOmitted = true;
       }
-      const assets = motionAssets(
-        readMotion(node, transitions(node), node === root),
-      );
-      if (assets.length) captured.motions = assets;
+      if (!preview) {
+        const assets = motionAssets(
+          readMotion(node, transitions(node), node === root),
+        );
+        if (assets.length) captured.motions = assets;
+      }
     }
+    onNode?.(node, captured);
     return captured;
   }
   const component = captureNode(root, 0);
   if (!component) throw Error("This element is unavailable.");
+  if (preview) return { component, limited };
   const extracted = withAssets
     ? extractText({
         rootElement: root,
@@ -458,17 +462,9 @@ export function captureComponent(
     : null;
   limited ||= Boolean(extracted?.limited);
   const { css: motion, animations } = readMotion(root, transitions(root));
-  const effects = Object.fromEntries(
-    effectProperties.flatMap((name) => {
-      const value = component.css[name];
-      return value && !["none", "normal", "auto", "1"].includes(value)
-        ? [[name, value]]
-        : [];
-    }),
-  );
   return {
     component,
-    effects,
+    effects: capturableEffects(component.css),
     motion,
     animations,
     ...(withAssets
@@ -484,4 +480,15 @@ export function captureComponent(
     viewport: { width: win.innerWidth, height: win.innerHeight },
     title: doc.title.trim().slice(0, 120),
   };
+}
+
+export function capturableEffects(css) {
+  return Object.fromEntries(
+    effectProperties.flatMap((name) => {
+      const value = css[name];
+      return value && !["none", "normal", "auto", "1"].includes(value)
+        ? [[name, value]]
+        : [];
+    }),
+  );
 }

@@ -1276,3 +1276,59 @@
     border-top: 1px solid var(--line);
   }
 }
+
+.inspect-pro-header,
+.inspect-pro-context {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.inspect-pro-header h1 {
+  margin: 0;
+  font-size: 16px;
+}
+.inspect-pro-context > span {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.inspect-pro-footer {
+  justify-content: space-between;
+  gap: 8px;
+}
+.inspect-pro-preview {
+  margin: 0 0 12px;
+}
+.inspect-pro-preview > small {
+  color: var(--dim);
+}
+.inspect-pro-parts {
+  display: grid;
+  gap: 4px;
+}
+.inspect-pro-parts button {
+  text-align: left;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.inspect-pro-parts button[aria-pressed="true"] {
+  background: var(--active);
+  color: var(--accent);
+}
+.inspect-pro-window .segments {
+  flex-wrap: wrap;
+}
+.inspect-pro-window .segments > button {
+  flex: 1 0 auto;
+}
+.inspect-pro-playback {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+}
+.inspect-pro-playback input[type="range"] {
+  min-width: 0;
+  width: 100%;
+}

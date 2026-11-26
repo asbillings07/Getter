@@ -3,6 +3,36 @@ import { sections, inspectGroups, cssSnippet } from "../core/inspect.js";
 import { verifyDocument } from "../core/workspace.js";
 import Info from "./Info.jsx";
 import InspectMotion from "../studio/InspectMotion.jsx";
+import { ComponentShape } from "../studio/AssetPreview.jsx";
+import { capturableEffects } from "../studio/inspect.js";
+
+function ComponentParts({ node, selectedId, onSelect }) {
+  return (
+    <li>
+      <button
+        type="button"
+        className="text-button"
+        aria-pressed={node.id === selectedId}
+        onClick={() => onSelect(node.id)}
+      >
+        <code>{node.tag}</code>
+        {node.text && <span> · {node.text.slice(0, 60)}</span>}
+      </button>
+      {!!node.children.length && (
+        <ul>
+          {node.children.map((child) => (
+            <ComponentParts
+              key={child.id}
+              node={child}
+              selectedId={selectedId}
+              onSelect={onSelect}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
 export default function InspectView({
   scan,
   model,
@@ -10,11 +40,14 @@ export default function InspectView({
   onCopy,
   onNotice,
   onCollect,
+  pro: proWorkspace = false,
 }) {
+  const pro = GETTER_STUDIO_WORKSPACE_QA && proWorkspace;
   const [status, setStatus] = useState("connecting"),
     [note, setNote] = useState("");
   const [motion, setMotion] = useState(null);
   const [observed, setObserved] = useState(null);
+  const [parts, setParts] = useState(null);
   const connection = useRef(),
     latest = useRef(),
     waiters = useRef(new Map()),
@@ -33,7 +66,7 @@ export default function InspectView({
         });
         if (!live) return;
         port = chrome.tabs.connect(scan.tabId, {
-          name: "getter-inspect",
+          name: pro ? "getter-inspect-pro" : "getter-inspect",
           documentId: scan.documentId,
         });
         connection.current = port;
@@ -64,7 +97,9 @@ export default function InspectView({
                   : GETTER_STUDIO_WORKSPACE_QA &&
                       message.type === "studio-motion"
                     ? message.motion
-                    : null,
+                    : pro && message.type === "studio-component-parts"
+                      ? message.parts
+                      : null,
             );
             waiters.current.delete(message.requestId);
           }
@@ -116,7 +151,7 @@ export default function InspectView({
       for (const resolve of waiters.current.values()) resolve(null);
       waiters.current.clear();
     };
-  }, [scan.tabId, scan.documentId]);
+  }, [scan.tabId, scan.documentId, pro]);
   useEffect(() => {
     try {
       connection.current?.postMessage({
@@ -204,6 +239,33 @@ export default function InspectView({
     };
   }, [scan.documentId, selectionId, model.section, model.picking, !!onCollect]);
 
+  useEffect(() => {
+    if (!pro || selectionId === undefined) return;
+    let live = true;
+    request({ type: "component-parts", selectionId }).then((result) => {
+      if (live) setParts(result);
+    });
+    return () => {
+      live = false;
+    };
+  }, [scan.documentId, selectionId, pro]);
+
+  async function selectPart(partId) {
+    if (!(await verifyDocument(chrome, scan))) {
+      onNotice("The page changed. Choose the current page before selecting.");
+      return;
+    }
+    if (
+      !(await request({
+        type: "select-part",
+        selectionId,
+        partId,
+        revision: parts?.revision,
+      }))
+    )
+      onNotice("This part is no longer available. Choose the component again.");
+  }
+
   async function selectParent() {
     if (!(await verifyDocument(chrome, scan))) {
       onNotice("The page changed. Scan again before selecting.");
@@ -232,10 +294,14 @@ export default function InspectView({
       onNotice("Choose the element again before saving.");
       return;
     }
-    onCollect(capture, scope);
+    onCollect(capture, scope, selectionId);
   }
   const snapshot = model.snapshot,
     groups = inspectGroups(snapshot, model.section, model.all, model.query);
+  const component = parts?.selectionId === selectionId ? parts : null;
+  const sectionButtons = pro ? [["parts", "Parts"], ...sections] : sections;
+  const hasEffect =
+    pro && snapshot && Object.keys(capturableEffects(snapshot.css)).length > 0;
   const toggle = (key, value) => onChange({ ...model, [key]: value });
   const controls = (
     <div className="inspect-mode-row">
@@ -393,7 +459,7 @@ export default function InspectView({
                     role="group"
                     aria-label="Inspect sections"
                   >
-                    {sections.map(([id, label]) => (
+                    {sectionButtons.map(([id, label]) => (
                       <button
                         key={id}
                         aria-pressed={model.section === id}
@@ -410,24 +476,26 @@ export default function InspectView({
                     additional values and attributes.
                   </Info>
                 </div>
-                <label className="search-field">
-                  <span aria-hidden="true">⌕</span>
-                  <input
-                    type="search"
-                    aria-label={
-                      model.section === "element"
-                        ? "Find element detail"
-                        : "Find CSS property"
-                    }
-                    placeholder={
-                      model.section === "element"
-                        ? "Find a detail"
-                        : "Find a property"
-                    }
-                    value={model.query}
-                    onChange={(e) => toggle("query", e.target.value)}
-                  />
-                </label>
+                {model.section !== "parts" && (
+                  <label className="search-field">
+                    <span aria-hidden="true">⌕</span>
+                    <input
+                      type="search"
+                      aria-label={
+                        model.section === "element"
+                          ? "Find element detail"
+                          : "Find CSS property"
+                      }
+                      placeholder={
+                        model.section === "element"
+                          ? "Find a detail"
+                          : "Find a property"
+                      }
+                      value={model.query}
+                      onChange={(e) => toggle("query", e.target.value)}
+                    />
+                  </label>
+                )}
               </>
             )}
           </>
@@ -481,8 +549,57 @@ export default function InspectView({
                 Copy snippet
               </button>
             </>
+          ) : model.section === "parts" && pro ? (
+            component ? (
+              <section aria-label="Component hierarchy">
+                <h2>Component parts</h2>
+                {component.limited && (
+                  <p className="scan-note">
+                    Large components may have additional parts. Select a smaller
+                    section to inspect them.
+                  </p>
+                )}
+                <ul className="inspect-pro-parts">
+                  <ComponentParts
+                    node={component.component}
+                    selectedId={component.selected?.id}
+                    onSelect={selectPart}
+                  />
+                </ul>
+              </section>
+            ) : (
+              <p className="scan-note">
+                Select a visible component on the page to see its parts.
+              </p>
+            )
           ) : (
             <>
+              {pro &&
+                model.section === "effects" &&
+                !model.query &&
+                component?.selected && (
+                  <section
+                    className="inspect-pro-preview"
+                    aria-label="Component preview"
+                  >
+                    <h2>Component preview</h2>
+                    <small>
+                      Reconstructed styles · images shown as placeholders
+                    </small>
+                    <div className="studio-component-preview">
+                      <ComponentShape node={component.selected} />
+                    </div>
+                    {hasEffect && (
+                      <button
+                        className="secondary"
+                        type="button"
+                        onClick={() => collect("effect")}
+                      >
+                        Save effect
+                      </button>
+                    )}
+                  </section>
+                )}
               {GETTER_STUDIO_WORKSPACE_QA &&
                 onCollect &&
                 model.section === "effects" && (
@@ -491,6 +608,8 @@ export default function InspectView({
                     motion={matchesSelection(motion) ? motion.value : null}
                     observed={matchesSelection(observed) ? observed : null}
                     snapshot={snapshot}
+                    component={pro ? component?.selected : undefined}
+                    playback={pro}
                     query={model.query}
                     onSave={collect}
                   />
@@ -572,7 +691,9 @@ export default function InspectView({
                     {model.query
                       ? "No matching properties"
                       : model.section === "effects"
-                        ? "No effects applied"
+                        ? pro
+                          ? "No additional CSS effects"
+                          : "No effects applied"
                         : "No details available"}
                   </h2>
                   <p>

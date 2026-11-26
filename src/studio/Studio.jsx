@@ -16,6 +16,7 @@ import {
   WorkspaceSteps,
 } from "./Workspace.jsx";
 import { openWebsites, websiteAddress } from "./sources.js";
+import { launchInspectPro } from "./inspect-workspace.js";
 import { cleanName, mergeAssets, moveAsset, savedAsset } from "./library.js";
 import {
   changeCollection,
@@ -36,6 +37,7 @@ const collectionTools = [
 function Studio() {
   const [projects, setProjects] = useState(null);
   const [siteOptions, setSiteOptions] = useState([]);
+  const [inspectWindow, setInspectWindow] = useState(null);
   const [selection, setSelection] = useState(null);
   const [section, setSection] = useState("assets");
   const [version, setVersion] = useState(null);
@@ -70,8 +72,15 @@ function Studio() {
 
   async function openProjectDialog(next) {
     setDialog(next);
+    setSiteOptions([]);
+    setInspectWindow(null);
     try {
-      setSiteOptions(await openWebsites(chrome));
+      const [options, window] = await Promise.all([
+        openWebsites(chrome),
+        next === "inspect-pro" ? chrome.windows.getCurrent() : null,
+      ]);
+      setSiteOptions(options);
+      setInspectWindow(window?.id ?? null);
     } catch {
       setSiteOptions([]);
     }
@@ -219,6 +228,7 @@ function Studio() {
 
   const projectDialog = ["project", "reuse"].includes(dialog);
   const siteDialog = ["choose-site", "change-site"].includes(dialog);
+  const inspectDialog = dialog === "inspect-pro";
   const editDialog = dialog === "edit-collection";
   const reusable = (projects || []).flatMap((project) =>
     project.collections.map((item) => ({
@@ -258,6 +268,31 @@ function Studio() {
         ? { ...source.item, ownerId: source.ownerId }
         : project.collections[0];
       openCollection(project, target, source || site ? "project" : "collect");
+    } else if (inspectDialog) {
+      if (!Number.isInteger(inspectWindow))
+        throw Error("The sites are still loading. Try again in a moment.");
+      let address;
+      if (fields.address.trim()) {
+        try {
+          address = websiteAddress(fields.address.trim()).href;
+        } catch {
+          throw Error(
+            "Enter an HTTP or HTTPS website address without credentials.",
+          );
+        }
+      }
+      const source =
+        !address && siteOptions.find(({ id }) => String(id) === fields.tab);
+      if (!address && !source)
+        throw Error("Choose an open tab or enter a website address.");
+      await launchInspectPro(chrome, {
+        windowId: inspectWindow,
+        address,
+        source,
+        destination: collection
+          ? { projectId: currentProject.id, collectionId: collection.id }
+          : undefined,
+      });
     } else if (siteDialog) {
       const site = siteFromFields(fields);
       if (!site) throw Error("Choose an open tab or enter a website address.");
@@ -326,11 +361,7 @@ function Studio() {
       <WorkspaceHeader
         project={collection && !projectOverview ? currentProject : null}
         onProjects={showProjects}
-        onInspect={() =>
-          reusable.length
-            ? openProjectDialog("choose-site")
-            : openProjectDialog("project")
-        }
+        onInspect={() => openProjectDialog("inspect-pro")}
         onReview={() =>
           setNotice("Design Review requires a separate QA build.")
         }
@@ -388,6 +419,12 @@ function Studio() {
                   onClick={() => openProjectDialog("change-site")}
                 >
                   Change site
+                </button>
+                <button
+                  className="secondary"
+                  onClick={() => openProjectDialog("inspect-pro")}
+                >
+                  Inspect Pro
                 </button>
                 <button
                   className="primary"
@@ -590,11 +627,18 @@ function Studio() {
           title={
             projectDialog
               ? "Create a project"
-              : siteDialog
-                ? "Choose a site"
-                : editDialog
-                  ? "Edit collection"
-                  : "New collection"
+              : inspectDialog
+                ? "Inspect Pro · Choose a site"
+                : siteDialog
+                  ? "Choose a site"
+                  : editDialog
+                    ? "Edit collection"
+                    : "New collection"
+          }
+          description={
+            inspectDialog
+              ? "Open the inspection side panel beside the site you choose."
+              : undefined
           }
           initial={{
             name: editDialog ? collection.name : "",
@@ -630,31 +674,35 @@ function Studio() {
                     ],
                   },
                 ]
-              : siteDialog
-                ? [
-                    ...siteFields,
-                    ...(dialog === "choose-site"
-                      ? [
-                          {
-                            key: "collection",
-                            label: "Collection",
-                            options: reusable,
-                          },
-                        ]
-                      : []),
-                  ]
-                : editDialog
-                  ? collectionFields
-                  : collectionFields.slice(0, 1)
+              : inspectDialog
+                ? siteFields
+                : siteDialog
+                  ? [
+                      ...siteFields,
+                      ...(dialog === "choose-site"
+                        ? [
+                            {
+                              key: "collection",
+                              label: "Collection",
+                              options: reusable,
+                            },
+                          ]
+                        : []),
+                    ]
+                  : editDialog
+                    ? collectionFields
+                    : collectionFields.slice(0, 1)
           }
           action={
             projectDialog
               ? "Create project"
-              : siteDialog
-                ? "Collect assets"
-                : editDialog
-                  ? "Save collection"
-                  : "Create collection"
+              : inspectDialog
+                ? "Open Inspect Pro"
+                : siteDialog
+                  ? "Collect assets"
+                  : editDialog
+                    ? "Save collection"
+                    : "Create collection"
           }
           onSubmit={submitDialog}
           onClose={() => setDialog("")}
