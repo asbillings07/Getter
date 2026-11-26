@@ -5,6 +5,7 @@ const interval = 160;
 const maxSide = 256;
 const maxEncodedBytes = 512 * 1024;
 const maxNearbyCanvases = 12;
+const artworkLeftView = Symbol("artwork left view");
 
 function wait(ms, signal) {
   return new Promise((resolve, reject) => {
@@ -447,6 +448,13 @@ function canvasFrameWithinSelection(root, canvas, win) {
   return mediaFrame(canvas, win, true);
 }
 
+function visibleHitTarget(root) {
+  return root.checkVisibility({
+    opacityProperty: true,
+    visibilityProperty: true,
+  });
+}
+
 function transparentHitTarget(root, scope, win) {
   if (
     root.localName !== "div" ||
@@ -457,7 +465,7 @@ function transparentHitTarget(root, scope, win) {
         (child.nodeType === win.Node.ELEMENT_NODE &&
           win.getComputedStyle(child).display !== "none"),
     ) ||
-    !root.checkVisibility({ opacityProperty: true, visibilityProperty: true })
+    !visibleHitTarget(root)
   )
     return false;
   const hitStyle = win.getComputedStyle(root);
@@ -653,10 +661,11 @@ function bindArtworkSelection(root, point) {
           !matchedScope.contains(root) ||
           !matchedScope.contains(node) ||
           win.getComputedStyle(node).pointerEvents !== "none" ||
-          matchedScope.getElementsByTagName("canvas").length !== 1 ||
-          !transparentHitTarget(root, matchedScope, win)
+          matchedScope.getElementsByTagName("canvas").length !== 1
         )
           return null;
+        if (!transparentHitTarget(root, matchedScope, win))
+          return !scene && !visibleHitTarget(root) ? artworkLeftView : null;
         if (
           win.scrollX !== initialScroll[0] ||
           win.scrollY !== initialScroll[1]
@@ -676,6 +685,15 @@ function bindArtworkSelection(root, point) {
         const media = mediaFrame(node, win, true);
         const hit = geometry(root, win);
         const crop = scene ? clipMediaToHit(media, hit) : hitCrop(media, hit);
+        // The selected book can leave a fixed canvas while the page scrolls.
+        // Finish at the last verified frame without sampling the next item.
+        if (
+          !scene &&
+          !crop &&
+          media?.axisAligned &&
+          !intersection(media.rect, hit)
+        )
+          return artworkLeftView;
         // Some pages reuse a shelf layer across states. Keep later samples
         // within the original scene's scale and recheck the visible regions.
         // Input can be disabled while the artwork itself is still turning.
@@ -745,7 +763,7 @@ function clipAsset(samples, sources, name, useGeometry) {
     css: {},
     animations: [],
     clip: {
-      duration,
+      duration: samples.at(-1).at,
       width,
       height,
       sources,
@@ -828,6 +846,7 @@ function mediaObserver(node, readFrame) {
   const sources = [];
   const samples = [];
   let failed = !ctx;
+  let ended = false;
   let hasPixels = false;
   let bytes = 0;
   let firstCrop;
@@ -835,8 +854,12 @@ function mediaObserver(node, readFrame) {
   let projected = false;
 
   function sample(at) {
-    if (failed) return;
+    if (failed || ended) return;
     const frame = readFrame();
+    if (frame === artworkLeftView) {
+      ended = true;
+      return;
+    }
     if (!frame) {
       failed = true;
       return;
@@ -897,7 +920,10 @@ function mediaObserver(node, readFrame) {
   return {
     sample,
     get unavailable() {
-      return failed || !hasPixels;
+      return failed || !hasPixels || (ended && samples.length < 2);
+    },
+    get ended() {
+      return ended;
     },
     asset(useGeometry) {
       if (
@@ -952,6 +978,7 @@ export async function sampleMotion(root, signal, { artwork, canvas } = {}) {
       signal.throwIfAborted();
       if (!root.isConnected || doc.hidden) return { status: "none" };
       for (const observer of media) observer.sample(at);
+      if (artwork && media[0].ended) break;
       if (!artwork) {
         const rect = geometry(root, win);
         const css = win.getComputedStyle(root);

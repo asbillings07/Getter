@@ -18,14 +18,15 @@
    **Preview transition** when playable frames are available. Hover the
    source element to detect its transition. The preview plays
    in Getter. You can save motion separately or keep it with a component.
-   Getter also checks the selected element for two seconds. When it detects
+   Getter also checks the selected element for up to two seconds. When it detects
    supported scripted changes or readable canvas or video motion, **Preview
    motion** and **Save motion** appear in **Effects**. Canvas and video save
    as silent visual references that replay in the collection. For a supported
    2D-rotated canvas, the reference preserves the tilt and crops to the visible
    bounds. **Selected artwork** can also indicate a canvas matched to a click
    on a transparent hit target. That reference follows the same target's
-   visible canvas bounds as its artwork turns. A shelf selection with
+   visible canvas bounds as its artwork turns. If the selected artwork leaves
+   view, the preview ends at the last verified frame. A shelf selection with
    multiple distinct artwork targets on one canvas can show **Entire scene**
    and save the visible shelf as one motion reference. Selecting a book
    still follows that book. A light preview background keeps dark artwork

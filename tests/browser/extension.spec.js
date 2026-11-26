@@ -2138,6 +2138,90 @@ test("Studio previews clicked artwork within its hitbox and preserves a visible 
   }
 });
 
+test("Inspect Pro preserves the verified motion when a clicked book leaves view at 1440 px", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
+  try {
+    await app.page.setViewportSize({ width: 1440, height: 850 });
+    await app.page.goto(`${origin}/direct-artwork-motion`);
+    const studio = await openStudioOptions(app);
+    await studio
+      .getByRole("button", { name: "Inspect Pro", exact: true })
+      .click();
+    const picker = studio.getByRole("dialog", {
+      name: /Inspect Pro.*Choose a site/,
+    });
+    await picker
+      .getByRole("combobox", { name: "Open tabs", exact: true })
+      .selectOption({ label: "Direct artwork motion fixture · 127.0.0.1" });
+    await picker.getByRole("button", { name: "Open Inspect Pro" }).click();
+    await expect(picker).toBeHidden();
+    await app.worker.evaluate(async () => {
+      const window = await chrome.windows.getCurrent();
+      await chrome.sidePanel.close({ windowId: window.id });
+    });
+    const panel = await app.openPanel();
+    await expect(
+      panel.getByRole("heading", { name: "Inspect Pro" }),
+    ).toBeVisible();
+    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    const book = app.page.locator("#book-target");
+    await book.click();
+    await expect(panel.locator(".element-title code")).toHaveText(
+      "div#book-target",
+    );
+    await book.evaluate((node) => {
+      window.setTimeout(() => {
+        node.style.visibility = "hidden";
+      }, 640);
+    });
+    await panel.getByRole("button", { name: "Effects", exact: true }).click();
+    const motion = panel.getByRole("region", {
+      name: "Studio observed motion",
+    });
+    await expect(
+      motion.getByText(/Selected artwork · [01]\.[0-9]+s visual reference/),
+    ).toBeVisible();
+    const image = motion.getByRole("img").locator("img");
+    const firstFrame = await image.getAttribute("src");
+    await motion.getByRole("button", { name: "Preview motion" }).click();
+    await expect(motion.getByText("Preview complete.")).toBeVisible();
+    const lastFrame = await image.getAttribute("src");
+    expect(lastFrame).not.toBe(firstFrame);
+
+    await motion
+      .getByRole("button", { name: "Save motion", exact: true })
+      .click();
+    const destination = panel.getByRole("dialog", {
+      name: "Save motion to collection",
+    });
+    await destination
+      .getByRole("textbox", { name: "Project name" })
+      .fill("Wide book QA");
+    await destination.getByRole("button", { name: "Create and save" }).click();
+    await expect(destination.getByRole("status")).toContainText(
+      "Saved to Assets",
+    );
+    const opened = app.context.waitForEvent("page");
+    await destination.getByRole("button", { name: "Open collection" }).click();
+    const collection = await opened;
+    const saved = collection.getByRole("article", {
+      name: "Canvas motion",
+      exact: true,
+    });
+    const savedImage = saved.getByRole("img").locator("img");
+    await expect(savedImage).toHaveAttribute("src", firstFrame);
+    await saved.getByRole("button", { name: "Preview motion" }).click();
+    await expect(saved.getByText("Preview complete.")).toBeVisible();
+    await expect(savedImage).toHaveAttribute("src", lastFrame);
+  } finally {
+    await app.context.close();
+  }
+});
+
 test("Studio previews and saves the whole shelf without capturing artwork outside the selected row", async ({}, info) => {
   execFileSync(process.execPath, [
     "scripts/build.mjs",

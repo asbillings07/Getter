@@ -143,7 +143,12 @@ export default function InspectMotion({
                 : observed.canvasWithinSelection
                   ? "Canvas in selection"
                   : "Motion detected"}{" "}
-            · {captured.clip ? "2-second visual reference" : "2-second sample"}
+            ·{" "}
+            {captured.clip
+              ? captured.clip.duration === 2000
+                ? "2-second visual reference"
+                : `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(captured.clip.duration / 1000)}s visual reference`
+              : "2-second sample"}
           </p>
           {captured.clip ? (
             <VisualMotionPreview
