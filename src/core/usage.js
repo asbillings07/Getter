@@ -4,6 +4,7 @@ export function fontStyleKey(font) {
     font.tag,
     font.fontSize,
     font.fontWeight,
+    font.fontStyle || "",
     font.letterSpacing,
     font.lineHeight,
   ]);

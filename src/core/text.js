@@ -5,6 +5,7 @@ export function extractText({
   maxChars = 150000,
   maxBlocks = 1000,
   maxMs = 180,
+  rootElement = null,
 } = {}) {
   const start = performance.now(),
     blocks = [],
@@ -52,7 +53,7 @@ export function extractText({
       : null;
   if (scope === "selection" && (!range || range.collapsed))
     return { blocks: [], scope, limited: false, omitted: 0, fallback: false };
-  let root = document.body || document.documentElement;
+  let root = rootElement || document.body || document.documentElement;
   if (scope === "main") {
     const main = document.querySelector('main,[role="main"],article');
     if (main) root = main;
@@ -164,6 +165,7 @@ export function extractText({
     if (node.nodeType !== 1) continue;
     if (
       excluded.has(node.localName) ||
+      (rootElement && node.isContentEditable) ||
       node.hidden ||
       style(node).display === "none" ||
       Number(style(node).opacity) === 0
@@ -175,6 +177,7 @@ export function extractText({
     }
     if (node.localName === "iframe" || node.localName === "frame") {
       if (
+        rootElement ||
         range ||
         style(node).visibility === "hidden" ||
         style(node).visibility === "collapse"

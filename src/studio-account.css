@@ -1,0 +1,154 @@
+.studio-account-qa .top {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+.studio-account-qa .product-mark {
+  width: 20px;
+  height: 20px;
+}
+.studio-account-qa .wordmark {
+  font-size: 16px;
+}
+.studio-account-qa .top-actions {
+  gap: 6px;
+}
+.studio-account-qa .top-actions > button {
+  height: 36px;
+}
+.studio-icon-button {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+}
+.studio-entry-button {
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  padding-inline: 10px;
+  white-space: nowrap;
+}
+@media (max-width: 370px) {
+  :root[data-mode="panel"] .studio-account-qa .top-actions {
+    gap: 4px;
+    max-width: 100%;
+  }
+  :root[data-mode="panel"] .studio-account-qa .top-actions .studio-icon-button {
+    width: 32px;
+  }
+  :root[data-mode="panel"] .studio-account-qa .top-actions .mode-button {
+    padding-inline: 6px;
+  }
+  :root[data-mode="panel"] .studio-account-qa .studio-entry-button {
+    font-size: 12px;
+    line-height: 1.15;
+    min-width: 0;
+    padding-inline: 4px;
+    white-space: normal;
+  }
+}
+.studio-account-qa [hidden] {
+  display: none;
+}
+.studio-account-qa .tabs button {
+  min-width: 0;
+}
+:root[data-mode="panel"] .studio-account-qa .tabs button {
+  line-height: 1.15;
+}
+.studio-account-main {
+  border-top: 1px solid var(--line);
+}
+.studio-account {
+  display: grid;
+  gap: 10px;
+  max-width: 550px;
+  margin-inline: auto;
+}
+.studio-account-heading,
+.studio-account-identity,
+.studio-plan-heading,
+.studio-plan-actions,
+.studio-settings-account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.studio-account-heading h1,
+.studio-account-card h2,
+.studio-account-card p {
+  margin: 0;
+}
+.studio-account-card {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--paper);
+  font-size: 14px;
+}
+@media (min-width: 520px) {
+  .studio-account-profile {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+  .studio-account-profile [role="status"] {
+    grid-column: 1 / -1;
+  }
+}
+.studio-account-card h2 {
+  font-size: 16px;
+  font-weight: 650;
+}
+.studio-account-identity svg,
+.studio-settings-account svg {
+  flex: none;
+  color: var(--accent);
+}
+.studio-current-plan {
+  border-color: var(--accent);
+}
+.studio-account-card p,
+.studio-plan-heading span {
+  color: var(--dim);
+}
+.studio-plan-label {
+  font-size: 12px;
+  font-weight: 600;
+}
+.studio-plan-heading,
+.studio-settings-account {
+  justify-content: space-between;
+  width: 100%;
+}
+.studio-plan-actions {
+  flex-wrap: wrap;
+}
+.studio-account-card ul {
+  padding-inline-start: 20px;
+  margin: 0;
+}
+.studio-account-card [role="status"] {
+  color: var(--ink);
+}
+.studio-account-card [role="status"]:empty {
+  position: absolute;
+}
+.studio-settings-account {
+  justify-content: flex-start;
+  margin-bottom: 12px;
+  text-align: left;
+}
+.studio-settings-account small {
+  display: block;
+  color: var(--dim);
+}
+.studio-settings-account > :last-child {
+  margin-inline-start: auto;
+}

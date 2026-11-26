@@ -6,6 +6,9 @@ import TextView from "./components/TextView.jsx";
 import InspectView from "./components/InspectView.jsx";
 import Info from "./components/Info.jsx";
 import WebsiteAccess from "./components/WebsiteAccess.jsx";
+import StudioAccount, { AccountIcon } from "./components/StudioAccount.jsx";
+import SidePanelCollect from "./studio/SidePanelCollect.jsx";
+import { collectionLabels } from "./studio/library.js";
 import { initialWorkspace, takeWorkspace } from "./core/workspace.js";
 import { colorLabel } from "./core/extract.js";
 import {
@@ -57,7 +60,7 @@ function Icon({ name }) {
     </span>
   );
 }
-function ImageCard({ image, options, previews, onDownload }) {
+function ImageCard({ image, options, previews, onDownload, onCollect }) {
   const [broken, setBroken] = useState(false),
     [size, setSize] = useState(null),
     [reading, setReading] = useState(false),
@@ -180,6 +183,15 @@ function ImageCard({ image, options, previews, onDownload }) {
       >
         {downloading ? "Preparing image…" : "Download"}
       </button>
+      {GETTER_STUDIO_WORKSPACE_QA && onCollect && (
+        <button
+          className="secondary studio-card-save studio-collection-button"
+          onClick={onCollect}
+          aria-label={`Save to collection: ${image.name || filename}`}
+        >
+          ＋ Save to collection
+        </button>
+      )}
     </article>
   );
 }
@@ -191,10 +203,12 @@ function Notice({ id, text, onDismiss }) {
   return <p className="notice">{text}</p>;
 }
 function App() {
+  const [collectionDraft, setCollectionDraft] = useState(null);
   const [features, setFeatures] = useState(initialWorkspace),
     [lastTool, setLastTool] = useState("colors"),
     [switching, setSwitching] = useState(false);
   const [view, setView] = useState("colors"),
+    [accountEntry, setAccountEntry] = useState(null),
     [focusWebsiteAccess, setFocusWebsiteAccess] = useState(false),
     [scan, setScan] = useState(empty),
     [options, setOptions] = useState(null),
@@ -213,8 +227,11 @@ function App() {
     noticeId = useRef(0),
     optionsRef = useRef(null),
     workspaceWindow = useRef(null),
+    accountOpener = useRef(null),
+    restoreAccountFocus = useRef(false),
     returnView = useRef("colors");
   optionsRef.current = options;
+  const accountOpen = accountEntry !== null;
   const addNotice = useCallback((text) => {
     const id = noticeId.current++;
     setNotices((current) => [...current, { id, text }].slice(-3));
@@ -247,7 +264,10 @@ function App() {
           setZipConfirm(false);
         }
       },
-      { followTabs: mode === "panel" },
+      {
+        followTabs: mode === "panel",
+        captureMetadata: GETTER_STUDIO_WORKSPACE_QA,
+      },
     );
     scanner.current = session;
     session.start();
@@ -371,6 +391,20 @@ function App() {
   useEffect(() => {
     if (options) setPreviews(options.images.loadPreviews);
   }, [options?.images.loadPreviews]);
+  useEffect(() => {
+    if (!accountOpen && restoreAccountFocus.current) {
+      document.getElementById(accountOpener.current)?.focus();
+      restoreAccountFocus.current = false;
+    }
+  }, [accountOpen]);
+  function openAccount(event) {
+    accountOpener.current = event.currentTarget.id;
+    setAccountEntry(accountOpener.current);
+  }
+  function backFromAccount() {
+    restoreAccountFocus.current = true;
+    setAccountEntry(null);
+  }
   async function switchWorkspace(nextMode, intent = view) {
     if (switching || !workspaceWindow.current) return;
     setSwitching(true);
@@ -390,6 +424,7 @@ function App() {
         },
       });
       if (!result?.ok) throw Error();
+      setAccountEntry(null);
       if (mode === "popup") window.close();
     } catch {
       addNotice(
@@ -410,6 +445,7 @@ function App() {
     setView(next);
   }
   function openSettings(focusAccess = false) {
+    setAccountEntry(null);
     returnView.current = view;
     setFocusWebsiteAccess(focusAccess);
     setView("settings");
@@ -526,10 +562,37 @@ function App() {
     options?.fonts.detailed,
     usageSort.fonts,
   );
+  const bulk = GETTER_STUDIO_WORKSPACE_QA
+    ? {
+        colors: { entries: current, type: "color" },
+        fonts: { entries: shownFonts, type: "font" },
+        images: {
+          entries:
+            view === "images"
+              ? current.filter(({ src }) => isSecureImageUrl(src))
+              : [],
+          type: "image",
+        },
+      }[view]
+    : null;
+  function collectAssets(items, { inspection, captureScope, bulk } = {}) {
+    if (currentScan.current === scan)
+      setCollectionDraft({
+        scan,
+        items,
+        inspection,
+        captureScope,
+        bulk,
+      });
+  }
   const colorTotal = data?.usageTotals?.colors ?? totalUses(data?.colors);
   const fontTotal = data?.usageTotals?.fonts ?? totalUses(data?.fonts);
   return (
-    <div className="window">
+    <div
+      className={
+        GETTER_STUDIO_ACCOUNT_QA ? "window studio-account-qa" : "window"
+      }
+    >
       <header className="top">
         <div className="brand">
           <img
@@ -542,6 +605,18 @@ function App() {
           <div className="wordmark">Getter</div>
         </div>
         <div className="top-actions">
+          {GETTER_STUDIO_ACCOUNT_QA && (
+            <button
+              className="settings-button studio-icon-button"
+              id="getter-account-entry"
+              aria-label="Account"
+              title="Account"
+              aria-pressed={accountOpen}
+              onClick={accountOpen ? backFromAccount : openAccount}
+            >
+              <AccountIcon />
+            </button>
+          )}
           <button
             className="mode-button"
             disabled={
@@ -553,20 +628,52 @@ function App() {
           >
             {mode === "popup" ? "▥ Side panel" : "↗ Popup"}
           </button>
+          {GETTER_STUDIO_WORKSPACE_QA ? (
+            <button
+              className="primary studio-entry-button"
+              onClick={() =>
+                api.runtime.openOptionsPage().catch(() => {
+                  addNotice(
+                    "Could not open Studio QA. Try opening Getter again.",
+                  );
+                })
+              }
+            >
+              Open Studio QA
+            </button>
+          ) : (
+            GETTER_STUDIO_ACCOUNT_QA && (
+              <button
+                id="getter-studio-entry"
+                className="primary studio-entry-button"
+                onClick={openAccount}
+                aria-expanded={accountOpen}
+              >
+                Subscribe to Studio
+              </button>
+            )
+          )}
           <button
-            className="settings-button"
+            className={
+              GETTER_STUDIO_ACCOUNT_QA
+                ? "settings-button studio-icon-button"
+                : "settings-button"
+            }
             onClick={() => {
-              if (view === "settings") chooseView(returnView.current);
+              if (accountOpen && view === "settings") setAccountEntry(null);
+              else if (view === "settings") chooseView(returnView.current);
               else openSettings();
             }}
-            aria-pressed={view === "settings"}
+            aria-pressed={!accountOpen && view === "settings"}
+            aria-label="Settings"
+            title={GETTER_STUDIO_ACCOUNT_QA ? "Settings" : undefined}
           >
             <Icon name="settings" />
-            Settings
+            {!GETTER_STUDIO_ACCOUNT_QA && "Settings"}
           </button>
         </div>
       </header>
-      <div className="context">
+      <div className="context" hidden={accountOpen}>
         <span className="site-identity" title={scan.host}>
           <svg
             width="20"
@@ -595,7 +702,7 @@ function App() {
           <Icon name="refresh" /> Scan again
         </button>
       </div>
-      <nav className="tabs" aria-label="Explore page">
+      <nav className="tabs" aria-label="Explore page" hidden={accountOpen}>
         {["colors", "fonts", "images", "text", "inspect"].map((name) => (
           <button
             key={name}
@@ -609,22 +716,31 @@ function App() {
             }
           >
             <Icon name={name} />
-            {name[0].toUpperCase() + name.slice(1)}
+            {GETTER_STUDIO_ACCOUNT_QA && name === "inspect"
+              ? "Quick Inspect"
+              : name[0].toUpperCase() + name.slice(1)}
           </button>
         ))}
       </nav>
       <main
         className={
-          view === "inspect" && ready
-            ? "inspect-main"
-            : view === "text" && ready
-              ? "text-main"
-              : view === "settings"
-                ? "settings-main"
-                : ""
+          accountOpen
+            ? "studio-account-main"
+            : view === "inspect" && ready
+              ? "inspect-main"
+              : view === "text" && ready
+                ? "text-main"
+                : view === "settings"
+                  ? "settings-main"
+                  : ""
         }
       >
-        {view === "about" ? (
+        {GETTER_STUDIO_ACCOUNT_QA && accountOpen ? (
+          <StudioAccount
+            onBack={backFromAccount}
+            focusOffer={accountEntry === "getter-studio-entry"}
+          />
+        ) : view === "about" ? (
           <>
             <h1>Getter</h1>
             <p className="about-lead">
@@ -672,6 +788,19 @@ function App() {
         ) : view === "settings" ? (
           <>
             <h1>Settings</h1>
+            {GETTER_STUDIO_ACCOUNT_QA && (
+              <button
+                id="getter-settings-account"
+                className="secondary studio-settings-account"
+                onClick={openAccount}
+              >
+                <AccountIcon />
+                <span>
+                  Account &amp; plan <small>Getter Free · Signed out</small>
+                </span>
+                <span aria-hidden="true">›</span>
+              </button>
+            )}
             {options ? (
               <>
                 <section className="workspace-setting">
@@ -776,6 +905,27 @@ function App() {
             onCopy={copy}
             onNotice={addNotice}
             onDownload={(blob, name) => download(blob, name, scan)}
+            onCollect={
+              GETTER_STUDIO_WORKSPACE_QA
+                ? (text, scope) =>
+                    collectAssets(
+                      [
+                        {
+                          type: "text",
+                          text,
+                          scope,
+                          name:
+                            scope === "selection"
+                              ? "Selected text"
+                              : scope === "main"
+                                ? "Main content"
+                                : "Page text",
+                        },
+                      ],
+                      { bulk: "text" },
+                    )
+                : undefined
+            }
           />
         ) : ready && view === "inspect" ? (
           <InspectView
@@ -784,6 +934,12 @@ function App() {
             onChange={(value) => updateFeature("inspect", value)}
             onCopy={copy}
             onNotice={addNotice}
+            onCollect={
+              GETTER_STUDIO_WORKSPACE_QA && mode === "panel"
+                ? (capture, captureScope) =>
+                    collectAssets([], { inspection: capture, captureScope })
+                : undefined
+            }
           />
         ) : !ready ? (
           <section className="state" aria-live="polite">
@@ -858,10 +1014,24 @@ function App() {
                 )}
               </div>
               <span>
-                {view === "fonts" ? shownFonts?.length : current.length}{" "}
+                {view === "fonts" ? shownFonts.length : current.length}{" "}
                 {view === "fonts" ? "styles" : view}
               </span>
             </div>
+            {GETTER_STUDIO_WORKSPACE_QA && bulk?.entries.length > 0 && (
+              <button
+                type="button"
+                className="secondary studio-batch-add studio-collection-button"
+                onClick={() =>
+                  collectAssets(
+                    bulk.entries.map((item) => ({ ...item, type: bulk.type })),
+                    { bulk: view },
+                  )
+                }
+              >
+                {collectionLabels[view]}
+              </button>
+            )}
             {["colors", "fonts"].includes(view) && current.length > 0 && (
               <div className="usage-order">
                 <button
@@ -901,10 +1071,14 @@ function App() {
                     const value = options.colors.hex
                       ? colorLabel(color.value)
                       : color.value;
-                    return (
+                    const card = (
                       <button
                         key={color.value}
-                        className="swatch"
+                        className={
+                          GETTER_STUDIO_WORKSPACE_QA
+                            ? "studio-color-copy"
+                            : "swatch"
+                        }
                         onClick={() => copy(value)}
                         aria-label={`Copy ${value}`}
                         aria-description={`${usagePercentage(color.count, colorTotal)} of color uses`}
@@ -927,6 +1101,25 @@ function App() {
                         </span>
                       </button>
                     );
+                    return GETTER_STUDIO_WORKSPACE_QA ? (
+                      <article
+                        className="swatch studio-color-card"
+                        key={color.value}
+                      >
+                        {card}
+                        <button
+                          className="secondary studio-color-save"
+                          aria-label={`Save to collection: ${value}`}
+                          onClick={() =>
+                            collectAssets([{ ...color, type: "color" }])
+                          }
+                        >
+                          <span aria-hidden="true">＋ </span>Save to collection
+                        </button>
+                      </article>
+                    ) : (
+                      card
+                    );
                   })}
                 </div>
               </>
@@ -945,15 +1138,34 @@ function App() {
                           {usagePercentage(font.count, fontTotal)} of font uses
                         </span>
                       </p>
-                      {options.fonts.fontFamily && (
-                        <a
-                          href={`https://fonts.google.com/?query=${encodeURIComponent(font.fontFamily.split(",")[0].replaceAll('"', "").replaceAll("'", ""))}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Search font family
-                        </a>
-                      )}
+                      <div
+                        className={
+                          GETTER_STUDIO_WORKSPACE_QA
+                            ? "studio-font-actions"
+                            : undefined
+                        }
+                      >
+                        {options.fonts.fontFamily && (
+                          <a
+                            href={`https://fonts.google.com/?query=${encodeURIComponent(font.fontFamily.split(",")[0].replaceAll('"', "").replaceAll("'", ""))}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Search font family
+                          </a>
+                        )}
+                        {GETTER_STUDIO_WORKSPACE_QA && (
+                          <button
+                            className="secondary studio-card-save studio-collection-button"
+                            aria-label={`Save to collection: ${font.fontFamily} ${font.tag}`}
+                            onClick={() =>
+                              collectAssets([{ ...font, type: "font" }])
+                            }
+                          >
+                            ＋ Save to collection
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <dl>
                       {Object.entries(font)
@@ -1073,6 +1285,12 @@ function App() {
                       onDownload={(blob, filename) =>
                         download(blob, filename, scan)
                       }
+                      onCollect={
+                        GETTER_STUDIO_WORKSPACE_QA &&
+                        isSecureImageUrl(image.src)
+                          ? () => collectAssets([{ ...image, type: "image" }])
+                          : undefined
+                      }
                     />
                   ))}
                 </div>
@@ -1081,6 +1299,13 @@ function App() {
           </>
         )}
       </main>
+      {GETTER_STUDIO_WORKSPACE_QA && collectionDraft && (
+        <SidePanelCollect
+          {...collectionDraft}
+          isCurrent={() => currentScan.current === collectionDraft.scan}
+          onClose={() => setCollectionDraft(null)}
+        />
+      )}
       <footer>
         <span>
           <img
@@ -1091,7 +1316,13 @@ function App() {
           />
           Created by Aptelum Labs
         </span>
-        <button className="text-button" onClick={() => setView("about")}>
+        <button
+          className="text-button"
+          onClick={() => {
+            setAccountEntry(null);
+            setView("about");
+          }}
+        >
           About Getter
         </button>
       </footer>

@@ -1,4 +1,10 @@
 import { snapshotElement } from "./core/inspect.js";
+import {
+  captureComponent,
+  readActiveMotion,
+  readMotion,
+} from "./studio/inspect.js";
+import { bindMotionSelection, sampleMotion } from "./studio/sample-motion.js";
 // Runs only after the user opens Inspect. Isolated-world state cannot be read by page scripts.
 if (!globalThis.__getterInspector) {
   const state = {
@@ -10,24 +16,157 @@ if (!globalThis.__getterInspector) {
     raf: 0,
     hovered: null,
     observer: null,
+    studio: false,
+    selectionId: 0,
   };
+  const transitions = new WeakMap();
+  let sampler, observed, samplingStatus, motionSelection;
+  let sampleId = 0;
+  const widestFrame = (clip) =>
+    Math.max(...clip.frames.map(({ width }) => (width / 100) * clip.width));
+  const recorded = (element) => transitions.get(element) || [];
+  const transition = GETTER_STUDIO_WORKSPACE_QA
+    ? (event) => {
+        const node = event.target;
+        if (
+          !(node instanceof Element) ||
+          event.pseudoElement ||
+          state.studio ||
+          (!state.picking && node !== state.selected?.deref()) ||
+          !state.port
+        )
+          return;
+        const active = readActiveMotion(node).filter(
+          ({ kind }) => kind === "transition",
+        );
+        if (!active.length) return;
+        transitions.set(node, active);
+        if (node === state.selected?.deref())
+          send({
+            type: "studio-native-motion",
+            selectionId: state.selectionId,
+            motion: readMotion(node, active),
+          });
+      }
+    : null;
   globalThis.__getterInspector = state;
   const send = (message) => {
     try {
       state.port?.postMessage(message);
     } catch {
       pause();
+      if (GETTER_STUDIO_WORKSPACE_QA) stopSampling();
     }
   };
+  function stopSampling() {
+    sampler?.abort();
+    sampler = observed = samplingStatus = undefined;
+  }
+  const startSampling = GETTER_STUDIO_WORKSPACE_QA
+    ? (element, refresh = false) => {
+        sampler?.abort();
+        if (!refresh) observed = undefined;
+        const controller = new AbortController();
+        const { port, selectionId } = state;
+        const selection = motionSelection;
+        sampler = controller;
+        const publish = (result) => {
+          if (
+            controller.signal.aborted ||
+            port !== state.port ||
+            selectionId !== state.selectionId
+          )
+            return;
+          // A scene can change at the same width. For individual artwork,
+          // retain the existing clip until navigation reveals more of it.
+          if (
+            refresh &&
+            (!result.asset?.clip ||
+              (!selection.artwork.scene &&
+                widestFrame(result.asset.clip) <
+                  widestFrame(observed.clip) + 8))
+          ) {
+            samplingStatus = "ready";
+            return;
+          }
+          samplingStatus = result.status;
+          observed = result.asset;
+          if (observed) sampleId++;
+          send({
+            type: "studio-sampled-motion",
+            selectionId,
+            sampleId,
+            ...result,
+          });
+        };
+        if (refresh) samplingStatus = "checking";
+        else publish({ status: "checking" });
+        sampleMotion(element, controller.signal, selection).then(publish, () =>
+          publish({ status: "unavailable" }),
+        );
+      }
+    : null;
+  const sampleOnInteraction = GETTER_STUDIO_WORKSPACE_QA
+    ? (event) => {
+        const artwork = motionSelection?.artwork;
+        const navigation = event.type === "wheel" || event.type === "keydown";
+        const refresh =
+          navigation &&
+          event.isTrusted &&
+          !!artwork &&
+          samplingStatus === "ready";
+        if ((!refresh && samplingStatus !== "none") || state.studio) return;
+        const node = state.selected?.deref();
+        if (!node?.isConnected || !state.port || document.hidden) return;
+        if (event.type === "keydown") {
+          if (
+            !artwork ||
+            !event.isTrusted ||
+            !["ArrowLeft", "ArrowRight"].includes(event.key)
+          )
+            return;
+        } else if (event.type !== "wheel" && !node.contains(event.target))
+          return;
+        const rect = node.getBoundingClientRect();
+        if (
+          rect.bottom > 0 &&
+          rect.top < innerHeight &&
+          rect.right > 0 &&
+          rect.left < innerWidth
+        )
+          startSampling(node, refresh);
+      }
+    : null;
+  function setSelection(element, requestId, point) {
+    state.selected = new WeakRef(element);
+    state.selectionId++;
+    snapshot(requestId);
+    if (GETTER_STUDIO_WORKSPACE_QA) {
+      motionSelection = bindMotionSelection(element, point);
+      startSampling(element);
+    }
+  }
   const snapshot = (requestId) => {
+    if (state.studio) return;
     const node = state.selected?.deref();
     if (!node?.isConnected) {
       if (state.selected || requestId) send({ type: "removed", requestId });
       state.selected = null;
+      if (GETTER_STUDIO_WORKSPACE_QA) {
+        motionSelection = undefined;
+        stopSampling();
+      }
       return;
     }
     try {
-      send({ type: "snapshot", snapshot: snapshotElement(node), requestId });
+      const result = snapshotElement(node);
+      if (GETTER_STUDIO_WORKSPACE_QA) {
+        result.selectionId = state.selectionId;
+        result.hasParent =
+          !!node.parentElement &&
+          !["body", "html"].includes(node.parentElement.localName);
+      }
+      send({ type: "snapshot", snapshot: result, requestId });
     } catch {
       send({
         type: "error",
@@ -102,8 +241,23 @@ if (!globalThis.__getterInspector) {
       });
       return;
     }
-    state.selected = new WeakRef(element);
-    snapshot();
+    if (GETTER_STUDIO_WORKSPACE_QA && state.studio) {
+      pause();
+      try {
+        send({ type: "studio-capture", capture: captureComponent(element) });
+      } catch {
+        send({
+          type: "error",
+          message: "This element could not be captured. Pick another element.",
+        });
+      }
+      return;
+    }
+    const point =
+      GETTER_STUDIO_WORKSPACE_QA && event.isTrusted && event.detail > 0
+        ? { x: event.clientX, y: event.clientY }
+        : undefined;
+    setSelection(element, undefined, point);
   }
   function key(event) {
     if (event.key === "Escape") {
@@ -158,10 +312,17 @@ if (!globalThis.__getterInspector) {
     window.addEventListener("resize", position);
   }
   chrome.runtime.onConnect.addListener((port) => {
-    if (port.name !== "getter-inspect" || port.sender?.id !== chrome.runtime.id)
+    const studio =
+      GETTER_STUDIO_WORKSPACE_QA && port.name === "getter-studio-inspect";
+    if (
+      (!studio && port.name !== "getter-inspect") ||
+      port.sender?.id !== chrome.runtime.id
+    )
       return;
     state.port?.disconnect();
+    if (GETTER_STUDIO_WORKSPACE_QA) stopSampling();
     state.port = port;
+    state.studio = studio;
     port.onMessage.addListener((message) => {
       if (port !== state.port) return;
       if (message.type === "start") start();
@@ -170,11 +331,66 @@ if (!globalThis.__getterInspector) {
         send({ type: "paused" });
       }
       if (message.type === "refresh") snapshot(message.requestId);
+      if (
+        GETTER_STUDIO_WORKSPACE_QA &&
+        ["collect-selection", "inspect-motion", "select-parent"].includes(
+          message.type,
+        )
+      ) {
+        const node = state.selected?.deref();
+        try {
+          if (!node?.isConnected || message.selectionId !== state.selectionId)
+            throw Error();
+          if (message.type === "select-parent") {
+            const parent = node.parentElement;
+            if (!parent || ["body", "html"].includes(parent.localName))
+              throw Error();
+            setSelection(parent, message.requestId);
+          } else if (message.type === "inspect-motion") {
+            send({
+              type: "studio-motion",
+              motion: readMotion(node, recorded(node)),
+              requestId: message.requestId,
+            });
+          } else {
+            const motionOnly = ["visual", "scripted"].includes(message.scope);
+            if (
+              motionOnly &&
+              (observed?.kind !== message.scope ||
+                message.sampleId !== sampleId)
+            )
+              throw Error();
+            send({
+              type: "studio-capture",
+              capture: motionOnly
+                ? {
+                    observedMotion: observed,
+                    viewport: { width: innerWidth, height: innerHeight },
+                  }
+                : {
+                    ...captureComponent(node, {
+                      withAssets: true,
+                      transitions: recorded,
+                    }),
+                    observedMotion: observed,
+                  },
+              requestId: message.requestId,
+            });
+          }
+        } catch {
+          send({
+            type: "error",
+            message: "The selection changed. Choose an element again.",
+            requestId: message.requestId,
+          });
+        }
+      }
     });
     port.onDisconnect.addListener(() => {
       void chrome.runtime.lastError;
       if (state.port === port) {
         pause();
+        if (GETTER_STUDIO_WORKSPACE_QA) stopSampling();
         state.port = null;
         state.observer?.disconnect();
       }
@@ -184,15 +400,32 @@ if (!globalThis.__getterInspector) {
       const node = state.selected?.deref();
       if (state.selected && !node?.isConnected) {
         state.selected = null;
+        if (GETTER_STUDIO_WORKSPACE_QA) {
+          motionSelection = undefined;
+          stopSampling();
+        }
         send({ type: "removed" });
       }
     });
     state.observer.observe(document, { childList: true, subtree: true });
     send({ type: "connected" });
     snapshot();
+    if (GETTER_STUDIO_WORKSPACE_QA && !studio) {
+      const node = state.selected?.deref();
+      if (node?.isConnected) startSampling(node);
+    }
   });
+  if (GETTER_STUDIO_WORKSPACE_QA) {
+    document.addEventListener("transitionrun", transition, true);
+    for (const type of ["pointerover", "wheel", "play", "keydown"])
+      document.addEventListener(type, sampleOnInteraction, {
+        capture: true,
+        passive: true,
+      });
+  }
   window.addEventListener("pagehide", () => {
     pause();
+    if (GETTER_STUDIO_WORKSPACE_QA) stopSampling();
     state.port?.disconnect();
     state.observer?.disconnect();
   });

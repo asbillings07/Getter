@@ -3,6 +3,8 @@ test-results/
 playwright-report/
 .cache/
 dist
+dist-studio-qa
+dist-studio-workspace-qa
 getter_dist.zip
 getter_zip-new.zip
 .zip
