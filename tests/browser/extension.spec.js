@@ -831,10 +831,13 @@ test("Studio lists ungranted tabs without reading them and asks only for the sel
     await studio
       .getByRole("button", { name: "Create project", exact: true })
       .click();
-    const option = await studio
+    const tabs = studio
+      .getByRole("main")
+      .getByRole("combobox", { name: "Open tabs", exact: true });
+    const option = await tabs
       .getByRole("option", { name: /127\.0\.0\.1/ })
       .getAttribute("value");
-    await studio.getByLabel("Open tabs").selectOption(option);
+    await tabs.selectOption(option);
     expect(await studio.evaluate(() => websiteAccessFixture.requests)).toEqual(
       [],
     );
@@ -1866,26 +1869,32 @@ test("Inspect Pro keeps nested media and text in place while selecting or saving
       `${imageOrigin}/component-thumb-*.png`,
       async (route) => {
         const request = route.request();
-        const headers = await request.allHeaders();
         const filename = new URL(request.url()).pathname.split("/").at(-1);
         const displayOnly = Boolean(request.serviceWorker());
         const preview =
-          displayOnly || headers.origin?.startsWith("chrome-extension://");
-        if (preview)
+          displayOnly ||
+          (request.resourceType() === "image" &&
+            request.frame().url().startsWith("chrome-extension://"));
+        if (preview) {
+          const headers = await request.allHeaders();
           thumbnailRequests.push({
             filename,
             displayOnly,
             referrer: headers.referer,
             cookie: headers.cookie,
           });
-        if (preview && filename.includes("blocked")) {
-          await route.fulfill({ status: 403, body: "Image unavailable" });
-          return;
+          if (filename.includes("blocked")) {
+            await route.fulfill({ status: 403, body: "Image unavailable" });
+            return;
+          }
         }
+        // Save fetches share the fixture URLs with preview requests. Serve them
+        // directly so collecting preview headers cannot delay asset downloads.
         await route.fulfill({
           status: 200,
           headers: {
             "content-type": "image/png",
+            "cache-control": "no-store",
             "access-control-allow-origin":
               filename === "component-thumb-10.png"
                 ? "https://unrelated.fixture.test"
@@ -2114,6 +2123,9 @@ test("Inspect Pro keeps nested media and text in place while selecting or saving
     await expect(
       saved.getByText("Second headline", { exact: true }),
     ).toBeVisible();
+    await expect(
+      saved.getByRole("img", { name: /^Component thumbnail [1-8]$/ }),
+    ).toHaveCount(8);
   } finally {
     await app.context.close();
   }
