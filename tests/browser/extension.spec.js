@@ -68,14 +68,19 @@ test.beforeAll(async () => {
         </body></html>`);
       return;
     }
-    if (req.url === "/collection-component") {
+    if (
+      req.url === "/collection-component" ||
+      req.url === "/collection-component-export"
+    ) {
+      const forExport = req.url === "/collection-component-export";
+      const artwork = `<img alt="Site artwork" src="${imageOrigin}/studio-image.png">`;
       res.setHeader("Content-Type", "text/html");
       res.end(`<!doctype html><title>Studio component fixture</title><style>
         body{color:#234567;font:16px Arial;margin:24px}
         #card{display:flex;gap:18px;padding:20px;background-color:#eeddaa;border-radius:12px;
           box-shadow:0 4px 12px #1122333a;animation:glide 2s linear infinite;}
         @keyframes glide{from{opacity:.8;transform:translateX(0)}to{opacity:1;transform:translateX(5px)}}
-      </style><section id="card"><h2>Private fixture content</h2><button onclick="window.pageAction = true">Private fixture button</button></section><img alt="Site artwork" src="${imageOrigin}/studio-image.png">`);
+      </style><section id="card"><h2>Private fixture content</h2><button onclick="window.pageAction = true">Private fixture button</button>${forExport ? artwork + '<div style="opacity:0"><p id="invisible-copy">Invisible fixture content</p></div>' : ""}</section>${forExport ? "" : artwork}`);
       return;
     }
     if (req.url === "/studio-motion") {
@@ -2116,7 +2121,7 @@ test("Studio saves while browsing two sites, then edits and exports a design fro
   ]);
   const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
   try {
-    await app.page.goto(`${origin}/collection-component`);
+    await app.page.goto(`${origin}/collection-component-export`);
     const panel = await app.openPanel();
     await panel.setViewportSize({ width: 370, height: 840 });
     const dialog = panel.getByRole("dialog");
@@ -2175,6 +2180,17 @@ test("Studio saves while browsing two sites, then edits and exports a design fro
       .getByRole("button", { name: "Quick Inspect", exact: true })
       .click();
     await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    await app.page.locator("#invisible-copy").click({ force: true });
+    await expect(panel.locator(".element-title code")).toHaveText(
+      "p#invisible-copy",
+    );
+    await panel
+      .getByRole("button", { name: "＋ Save to collection", exact: true })
+      .click();
+    await expect(
+      panel.getByText("Choose the element again before saving."),
+    ).toBeVisible();
+    await expect(dialog).toHaveCount(0);
     await app.page
       .locator("#card")
       .click({ position: { x: 8, y: 8 }, force: true });
@@ -2334,12 +2350,28 @@ test("Studio saves while browsing two sites, then edits and exports a design fro
       "translate(809 180)",
     );
     await editor.getByRole("button", { name: "Undo", exact: true }).click();
+    await expect(canvas.locator("image")).toHaveAttribute(
+      "href",
+      /^data:image\/png;base64,/,
+    );
+    await studio.evaluate(() => {
+      const readImage = FileReader.prototype.readAsDataURL;
+      FileReader.prototype.readAsDataURL = function (blob) {
+        FileReader.prototype.readAsDataURL = readImage;
+        window.finishComponentPreview = () => readImage.call(this, blob);
+      };
+    });
     await editor
       .getByRole("button", { name: "Insert Feature card", exact: true })
       .click();
     await expect(
       canvas.getByText("Private fixture button", { exact: true }),
     ).toBeVisible();
+    await expect(canvas.getByText("Invisible fixture content")).toHaveCount(0);
+    await expect
+      .poll(() => studio.evaluate(() => typeof window.finishComponentPreview))
+      .toBe("function");
+    await expect(canvas.locator("image[href]")).toHaveCount(1);
     await properties
       .getByRole("spinbutton", { name: "X position" })
       .fill("860");
@@ -2380,9 +2412,9 @@ test("Studio saves while browsing two sites, then edits and exports a design fro
     const svg = await readFile(await (await svgReady).path(), "utf8");
     expect(svg).toMatch(/<svg[^>]+xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
     expect(svg).toContain("A brighter trail");
-    expect(svg).toContain("data:image/png;base64,");
+    expect(svg.match(/data:image\/png;base64,/g)).toHaveLength(2);
     expect(svg).not.toMatch(
-      /data-editor-only|localhost|keep=private|onclick=|window\.pageAction/,
+      /data-editor-only|data-component-image|Invisible fixture content|localhost|keep=private|onclick=|window\.pageAction/,
     );
     await exportBox
       .getByRole("combobox", { name: "File format" })
@@ -2402,10 +2434,9 @@ test("Studio saves while browsing two sites, then edits and exports a design fro
     await expect(
       canvas.getByText("A brighter trail", { exact: true }),
     ).toBeVisible();
-    await expect(canvas.locator("image")).toHaveAttribute(
-      "href",
-      /^data:image\/png;base64,/,
-    );
+    await expect(
+      canvas.locator('image[href^="data:image/png;base64,"]'),
+    ).toHaveCount(2);
   } finally {
     await app.context.close();
   }

@@ -138,6 +138,8 @@ function ComponentArtwork({ layer }) {
       css.display === "flex" && !css["flex-direction"]?.startsWith("column");
     const count = Math.max(1, node.children.length);
     const pad = Math.min(12, box.width * 0.04, box.height * 0.08);
+    const hasImage = Boolean(layer.images?.[node.imageIndex]?.blob);
+    const href = hasImage ? images[node.imageIndex] : undefined;
     return (
       <g key={key}>
         <rect
@@ -162,34 +164,34 @@ function ComponentArtwork({ layer }) {
             index,
           );
         })}
-        {images[node.imageIndex] ? (
+        {hasImage && (
           <image
-            href={images[node.imageIndex]}
+            data-artwork={layer.id}
+            data-component-image={node.imageIndex}
+            href={href || undefined}
             x={box.x}
             y={box.y}
             width={Math.max(1, box.width)}
             height={Math.max(1, box.height)}
             preserveAspectRatio="xMidYMid meet"
           />
-        ) : (
-          (!node.children.length || node.text) && (
-            <text
-              x={box.x + pad + 2}
-              y={box.y + Math.min(box.height * 0.7, 23)}
-              fontFamily={
-                safeStyleValue(css["font-family"])
-                  ? css["font-family"]
-                  : "Arial"
-              }
-              fontSize={Math.max(
-                1,
-                Math.min(24, metric(css["font-size"], 16), box.height * 0.6),
-              )}
-              fill={literalColor(css.color, "#27352e")}
-            >
-              {node.text || node.placeholder || node.tag}
-            </text>
-          )
+        )}
+        {!href && (!node.children.length || node.text) && (
+          <text
+            data-editor-only={hasImage ? "" : undefined}
+            x={box.x + pad + 2}
+            y={box.y + Math.min(box.height * 0.7, 23)}
+            fontFamily={
+              safeStyleValue(css["font-family"]) ? css["font-family"] : "Arial"
+            }
+            fontSize={Math.max(
+              1,
+              Math.min(24, metric(css["font-size"], 16), box.height * 0.6),
+            )}
+            fill={literalColor(css.color, "#27352e")}
+          >
+            {node.text || node.placeholder || node.tag}
+          </text>
         )}
       </g>
     );
@@ -354,8 +356,11 @@ export async function exportDesign(stage, draft, format) {
   output.removeAttribute("aria-label");
   for (const image of output.querySelectorAll("[data-artwork]")) {
     const layer = draft.layers.find(({ id }) => id === image.dataset.artwork);
-    image.setAttribute("href", await dataUrl(layer.blob));
+    const index = image.dataset.componentImage;
+    const blob = index === undefined ? layer.blob : layer.images[index].blob;
+    image.setAttribute("href", await dataUrl(blob));
     image.removeAttribute("data-artwork");
+    image.removeAttribute("data-component-image");
   }
   output
     .querySelectorAll("[data-layer-id]")

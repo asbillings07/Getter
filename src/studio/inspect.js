@@ -324,6 +324,19 @@ export function captureComponent(
   const markOmitted = () => {
     resourcesOmitted = true;
   };
+  if (withAssets) {
+    for (
+      let ancestor = root;
+      ancestor;
+      ancestor =
+        ancestor.assignedSlot ||
+        ancestor.parentElement ||
+        ancestor.getRootNode().host
+    ) {
+      if (Number(win.getComputedStyle(ancestor).opacity) === 0)
+        throw Error("This element is unavailable.");
+    }
+  }
   function captureNode(node, depth) {
     if (visited >= 32 || depth >= 5 || performance.now() - started >= 100) {
       limited = true;
@@ -332,11 +345,15 @@ export function captureComponent(
     visited++;
     const css = properties(node, designProperties, markOmitted);
     if (css.display === "none") return null;
-    if (
-      withAssets &&
-      (node.hidden || win.getComputedStyle(node).visibility !== "visible")
-    )
-      return null;
+    if (withAssets) {
+      const style = win.getComputedStyle(node);
+      if (
+        node.hidden ||
+        style.visibility !== "visible" ||
+        Number(style.opacity) === 0
+      )
+        return null;
+    }
     const children = [];
     for (const child of node.children) {
       if (
