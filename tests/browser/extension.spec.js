@@ -1574,7 +1574,7 @@ test("Inspect Pro opens the native panel, previews and saves the whole selected 
     ).toBeVisible();
     expect(
       await animation
-        .locator(".studio-sample")
+        .locator(".studio-sample > .studio-node")
         .evaluate((node) =>
           node.getAnimations().some((item) => item.playbackRate === 0.25),
         ),
@@ -1582,6 +1582,13 @@ test("Inspect Pro opens the native panel, previews and saves the whole selected 
     expect(
       await panel.evaluate(() => document.documentElement.scrollWidth),
     ).toBe(320);
+    await animation.getByRole("slider").fill("1");
+    await expect(animation.locator(".studio-sample")).toHaveCSS("opacity", "1");
+    expect(
+      await animation
+        .locator(".studio-sample > .studio-node")
+        .evaluate((node) => Number(getComputedStyle(node).opacity)),
+    ).toBeLessThan(0.3);
     await panel.screenshot({
       path: info.outputPath("getter-inspect-pro-effects.png"),
     });

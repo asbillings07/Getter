@@ -12,11 +12,12 @@ function styleObject(css) {
   );
 }
 
-export function ComponentShape({ node, images }) {
+export function ComponentShape({ node, images, previewRef }) {
   const style = styleObject(node.css);
   return (
     <div
       className="studio-node"
+      ref={previewRef}
       style={{
         ...style,
         boxSizing: "border-box",
@@ -95,6 +96,7 @@ export function MotionPreview({
   label = "Play motion",
   caption = "Motion preview",
   css,
+  component,
   playback = false,
   onSave,
   saveLabel = `Save ${item.kind}`,
@@ -196,10 +198,14 @@ export function MotionPreview({
     <div className="studio-motion-preview">
       <div
         className="studio-sample"
-        ref={sample}
-        style={styleObject(css || {})}
+        ref={component ? undefined : sample}
+        style={component ? undefined : styleObject(css || {})}
       >
-        {caption}
+        {component ? (
+          <ComponentShape node={component} previewRef={sample} />
+        ) : (
+          caption
+        )}
       </div>
       <div className="studio-row">
         <button
@@ -355,7 +361,7 @@ export default function AssetPreview({ item }) {
         {item.observedMotion?.clip && (
           <VisualMotionPreview clip={item.observedMotion.clip} />
         )}
-        {!!item.observedMotion?.animations.length &&
+        {!!item.observedMotion?.animations?.length &&
           !item.observedMotion.clip && (
             <MotionPreview item={item.observedMotion} />
           )}

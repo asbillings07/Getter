@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  ComponentShape,
   MotionPreview,
   Properties,
   VisualMotionPreview,
@@ -78,15 +77,8 @@ export default function InspectMotion({
             <MotionPreview
               item={item}
               css={css}
-              caption={
-                component ? (
-                  <ComponentShape node={component} />
-                ) : snapshot.text ? (
-                  snapshot.text.slice(0, 60)
-                ) : (
-                  item.name
-                )
-              }
+              component={component}
+              caption={snapshot.text ? snapshot.text.slice(0, 60) : item.name}
               playback={playback}
               label={`Preview ${item.kind}`}
               onSave={() => onSave(item.kind)}
@@ -163,9 +155,7 @@ export default function InspectMotion({
             <MotionPreview
               item={captured}
               playback={playback}
-              caption={
-                component ? <ComponentShape node={component} /> : undefined
-              }
+              component={component}
               label="Preview motion"
               saveLabel="Save motion"
               onSave={() => onSave(captured.kind, observed.sampleId)}
