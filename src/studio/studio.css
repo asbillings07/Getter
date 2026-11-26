@@ -1332,3 +1332,15 @@
   min-width: 0;
   width: 100%;
 }
+
+.inspect-pro-window .studio-inspect-motion,
+.inspect-pro-window .studio-motion-preview {
+  grid-template-columns: minmax(0, 1fr);
+}
+.inspect-pro-window .studio-motion-preview {
+  max-height: none;
+}
+.inspect-pro-window .studio-sample {
+  max-height: 160px;
+  overflow: hidden;
+}

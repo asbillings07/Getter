@@ -1589,6 +1589,12 @@ test("Inspect Pro opens the native panel, previews and saves the whole selected 
         .locator(".studio-sample > .studio-node")
         .evaluate((node) => Number(getComputedStyle(node).opacity)),
     ).toBeLessThan(0.3);
+    const saveAnimation = animation.getByRole("button", {
+      name: "Save animation",
+      exact: true,
+    });
+    await saveAnimation.scrollIntoViewIfNeeded();
+    await expect(saveAnimation).toBeInViewport({ ratio: 1 });
     await panel.screenshot({
       path: info.outputPath("getter-inspect-pro-effects.png"),
     });
