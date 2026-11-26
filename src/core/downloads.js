@@ -1,4 +1,8 @@
 import JSZip from "jszip";
+import { isSecureImageUrl } from "./access.js";
+
+export { isSecureImageUrl } from "./access.js";
+
 export const EXPORT_LIMITS = Object.freeze({
   files: 40,
   fileBytes: 8 * 1024 * 1024,
@@ -6,14 +10,6 @@ export const EXPORT_LIMITS = Object.freeze({
   fileMs: 8000,
   totalMs: 60000,
 });
-export function isSecureImageUrl(value) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" && !url.username && !url.password;
-  } catch {
-    return false;
-  }
-}
 export function imageFilename(url, type, index) {
   const ext = {
     "image/jpeg": "jpg",

@@ -1034,28 +1034,32 @@ dd {
   margin-bottom: 10px;
   border-bottom: 1px solid var(--line);
 }
-.inspect-switches {
+.inspect-controls {
   display: grid;
   gap: 7px;
   flex: 1;
   min-width: 0;
 }
-.inspect-switches .setting {
+.inspect-controls .setting {
   font-size: 12px;
   min-height: 24px;
   padding: 0;
 }
-.inspect-switches input {
+.inspect-controls input {
   width: 34px;
   height: 21px;
 }
-.inspect-switches input::before {
+.inspect-controls input::before {
   width: 15px;
   height: 15px;
 }
-.inspect-switches input:checked::before {
+.inspect-controls input:checked::before {
   transform: translateX(13px);
 }
+.inspect-controls .selection-button {
+  justify-self: start;
+}
+.inspect-controls .selection-button,
 .inspect-mode-row > .primary {
   font-size: 12px;
   padding: 6px 9px;
@@ -1315,10 +1319,6 @@ dd {
 .selection-paused span {
   color: var(--dim);
 }
-.selection-paused button {
-  font-size: 12px;
-  padding: 5px 8px;
-}
 .code-preview {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -1419,7 +1419,7 @@ dd {
   font-size: 14px;
   min-height: 36px;
 }
-:root[data-mode="panel"] .inspect-switches .setting {
+:root[data-mode="panel"] .inspect-controls .setting {
   font-size: 12px;
   min-height: 24px;
 }

@@ -1,6 +1,8 @@
 import { snapshotElement } from "./core/inspect.js";
+import { isSecureImageUrl } from "./core/access.js";
 import {
   captureComponent,
+  componentParent,
   readActiveMotion,
   readMotion,
 } from "./studio/inspect.js";
@@ -17,10 +19,21 @@ if (!globalThis.__getterInspector) {
     hovered: null,
     observer: null,
     studio: false,
+    pro: false,
     selectionId: 0,
   };
   const transitions = new WeakMap();
-  let sampler, observed, samplingStatus, motionSelection;
+  let sampler, observed, visualPreview, samplingStatus, motionSelection;
+  let proRoot,
+    proRootId,
+    proRootMotion,
+    proParts = [],
+    partsRevision = 0;
+  const selectionCursor = new CSSStyleSheet();
+  selectionCursor.replaceSync(
+    "@layer getter-inspection-cursor { :root, :root *, :host * { cursor: crosshair !important; } }",
+  );
+  let cursorShadow;
   let sampleId = 0;
   const widestFrame = (clip) =>
     Math.max(...clip.frames.map(({ width }) => (width / 100) * clip.width));
@@ -60,7 +73,7 @@ if (!globalThis.__getterInspector) {
   };
   function stopSampling() {
     sampler?.abort();
-    sampler = observed = samplingStatus = undefined;
+    sampler = observed = visualPreview = samplingStatus = undefined;
   }
   const startSampling = GETTER_STUDIO_WORKSPACE_QA
     ? (element, refresh = false) => {
@@ -91,18 +104,29 @@ if (!globalThis.__getterInspector) {
           }
           samplingStatus = result.status;
           observed = result.asset;
+          if (state.pro && element === proRoot?.deref())
+            proRootMotion = observed;
           if (observed) sampleId++;
           send({
             type: "studio-sampled-motion",
             selectionId,
             sampleId,
             ...result,
+            preview: visualPreview,
           });
         };
         if (refresh) samplingStatus = "checking";
         else publish({ status: "checking" });
-        sampleMotion(element, controller.signal, selection).then(publish, () =>
-          publish({ status: "unavailable" }),
+        const preview =
+          state.pro && !visualPreview
+            ? (frame) => {
+                visualPreview = frame;
+                if (!refresh) publish({ status: "checking" });
+              }
+            : undefined;
+        sampleMotion(element, controller.signal, selection, preview).then(
+          publish,
+          () => publish({ status: "unavailable" }),
         );
       }
     : null;
@@ -137,9 +161,20 @@ if (!globalThis.__getterInspector) {
           startSampling(node, refresh);
       }
     : null;
-  function setSelection(element, requestId, point) {
+  function setSelection(element, requestId, point, keepRoot = false) {
+    if (GETTER_STUDIO_WORKSPACE_QA && state.pro && !keepRoot) {
+      proRoot = new WeakRef(element);
+      proRootId = state.selectionId + 1;
+      proRootMotion = undefined;
+      proParts = [];
+    }
     state.selected = new WeakRef(element);
     state.selectionId++;
+    if (state.picking) {
+      state.hovered = element;
+      position();
+    }
+    if (GETTER_STUDIO_WORKSPACE_QA) visualPreview = undefined;
     snapshot(requestId);
     if (GETTER_STUDIO_WORKSPACE_QA) {
       motionSelection = bindMotionSelection(element, point);
@@ -158,13 +193,20 @@ if (!globalThis.__getterInspector) {
       }
       return;
     }
+    // Keep the temporary picking cursor out of the page styles Getter copies.
+    selectionCursor.disabled = true;
     try {
       const result = snapshotElement(node);
       if (GETTER_STUDIO_WORKSPACE_QA) {
         result.selectionId = state.selectionId;
+        const parent = state.pro ? componentParent(node) : node.parentElement;
         result.hasParent =
-          !!node.parentElement &&
-          !["body", "html"].includes(node.parentElement.localName);
+          !!parent && !["body", "html"].includes(parent.localName);
+        if (state.pro) {
+          result.componentRootId = proRootId;
+          const partId = proParts.findIndex((ref) => ref.deref() === node);
+          if (partId !== -1) result.partId = partId;
+        }
       }
       send({ type: "snapshot", snapshot: result, requestId });
     } catch {
@@ -173,11 +215,23 @@ if (!globalThis.__getterInspector) {
         requestId,
         message: "This element could not be read. Choose another element.",
       });
+    } finally {
+      selectionCursor.disabled = false;
     }
   };
+  function restoreCursor(root) {
+    root.adoptedStyleSheets = root.adoptedStyleSheets.filter(
+      (sheet) => sheet !== selectionCursor,
+    );
+  }
   function pause() {
+    if (!state.picking) return;
     state.picking = false;
+    restoreCursor(document);
+    if (cursorShadow) restoreCursor(cursorShadow);
+    cursorShadow = null;
     document.removeEventListener("pointerover", hover, true);
+    document.removeEventListener("pointermove", hover, true);
     window.removeEventListener("click", select, true);
     for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup"])
       window.removeEventListener(type, suppressPress, true);
@@ -218,7 +272,16 @@ if (!globalThis.__getterInspector) {
       );
   function hover(event) {
     if (event.composedPath().includes(state.host)) return;
-    state.hovered = target(event);
+    const element = target(event);
+    if (element === state.hovered) return;
+    const root = element?.getRootNode();
+    const shadow = root instanceof ShadowRoot ? root : null;
+    if (shadow !== cursorShadow) {
+      if (cursorShadow) restoreCursor(cursorShadow);
+      cursorShadow = shadow;
+      cursorShadow?.adoptedStyleSheets.push(selectionCursor);
+    }
+    state.hovered = element;
     position();
   }
   function suppressPress(event) {
@@ -233,7 +296,7 @@ if (!globalThis.__getterInspector) {
     if (!element) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (["iframe", "frame"].includes(element.localName)) {
+    if (["iframe", "frame"].includes(element.localName) && !state.pro) {
       send({
         type: "unavailable",
         message:
@@ -268,8 +331,9 @@ if (!globalThis.__getterInspector) {
     }
   }
   function start() {
-    pause();
+    if (state.picking) return;
     state.picking = true;
+    document.adoptedStyleSheets.push(selectionCursor);
     const host = document.createElement("getter-inspection-overlay");
     state.host = host;
     host.style.cssText =
@@ -277,13 +341,17 @@ if (!globalThis.__getterInspector) {
     const shadow = host.attachShadow({ mode: "open" });
     const style = document.createElement("style");
     style.textContent =
-      ":host{all:initial}*{box-sizing:border-box}.box{position:fixed;border:2px solid #387bf0;border-radius:3px;background:#387bf00b;pointer-events:none}.banner{position:fixed;top:12px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;max-width:calc(100vw - 24px);padding:10px 14px;background:#fff;color:#17253b;border:1px solid #cbd9f0;border-radius:9px;box-shadow:0 4px 20px #17253b22;font:13px/1.5 system-ui;pointer-events:auto}.banner button{font:inherit;color:#2059be;background:none;border:0;cursor:pointer;white-space:nowrap}.banner button:focus-visible{outline:2px solid #2059be}";
+      ":host{all:initial}*{box-sizing:border-box}.box{position:fixed;border:2px solid #387bf0;border-radius:3px;background:#387bf00b;pointer-events:none;cursor:crosshair}.banner{position:fixed;top:12px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;max-width:calc(100vw - 24px);padding:10px 14px;background:#fff;color:#17253b;border:1px solid #cbd9f0;border-radius:9px;box-shadow:0 4px 20px #17253b22;font:13px/1.5 system-ui;pointer-events:auto;cursor:default}.banner button{font:inherit;color:#2059be;background:none;border:0;cursor:pointer;white-space:nowrap}.banner button:focus-visible{outline:2px solid #2059be}";
     const box = document.createElement("div");
     box.className = "box";
     state.box = box;
     box.onclick = (event) => {
       event.preventDefault();
       event.stopPropagation();
+      if (state.pro && state.hovered?.isConnected) {
+        setSelection(state.hovered);
+        return;
+      }
       send({
         type: "unavailable",
         message:
@@ -304,6 +372,7 @@ if (!globalThis.__getterInspector) {
     shadow.append(style, box, banner);
     document.documentElement.append(host);
     document.addEventListener("pointerover", hover, true);
+    document.addEventListener("pointermove", hover, true);
     window.addEventListener("click", select, true);
     for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup"])
       window.addEventListener(type, suppressPress, true);
@@ -311,38 +380,162 @@ if (!globalThis.__getterInspector) {
     window.addEventListener("scroll", position, true);
     window.addEventListener("resize", position);
   }
+  function previewThumbnail(node) {
+    const [width, height, alt] =
+      node.localName === "video"
+        ? [node.videoWidth, node.videoHeight, "Video frame"]
+        : node.localName === "canvas"
+          ? [node.width, node.height, "Canvas artwork"]
+          : [node.naturalWidth, node.naturalHeight, node.alt.slice(0, 100)];
+    if (
+      !width ||
+      !height ||
+      (node.localName === "video" && node.readyState < 2)
+    )
+      return;
+    const scale = Math.min(1, 320 / Math.max(width, height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(width * scale));
+    canvas.height = Math.max(1, Math.round(height * scale));
+    try {
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      context.drawImage(node, 0, 0, canvas.width, canvas.height);
+      if (
+        node.localName !== "img" &&
+        !context
+          .getImageData(0, 0, canvas.width, canvas.height)
+          .data.some((alpha, index) => index % 4 === 3 && alpha)
+      )
+        return;
+      const data = canvas.toDataURL("image/webp", 0.8);
+      if (data.startsWith("data:image/webp;base64,")) return { data, alt };
+    } catch {
+      // Cross-origin media may be displayed by the page but unreadable to canvas.
+    }
+  }
+
+  function inComponent(root, node) {
+    for (let part = node; part; part = componentParent(part)) {
+      if (part === root) return true;
+    }
+    return false;
+  }
+
+  function previewBackground(root) {
+    for (
+      let node = root.parentElement, depth = 0;
+      node && depth < 16;
+      node = node.parentElement, depth++
+    ) {
+      const value = getComputedStyle(node).backgroundColor;
+      if (value && value !== "transparent" && !/[,/]\s*0\)$/.test(value))
+        return value;
+    }
+    const scheme = getComputedStyle(root).colorScheme;
+    const dark =
+      scheme === "dark" ||
+      (scheme.includes("dark") &&
+        matchMedia("(prefers-color-scheme: dark)").matches);
+    return dark ? "#121212" : "#ffffff";
+  }
+
   chrome.runtime.onConnect.addListener((port) => {
     const studio =
       GETTER_STUDIO_WORKSPACE_QA && port.name === "getter-studio-inspect";
+    const pro =
+      GETTER_STUDIO_WORKSPACE_QA && port.name === "getter-inspect-pro";
     if (
-      (!studio && port.name !== "getter-inspect") ||
+      (!studio && !pro && port.name !== "getter-inspect") ||
       port.sender?.id !== chrome.runtime.id
     )
       return;
     state.port?.disconnect();
-    if (GETTER_STUDIO_WORKSPACE_QA) stopSampling();
+    if (GETTER_STUDIO_WORKSPACE_QA) {
+      stopSampling();
+      if (pro || pro !== state.pro) {
+        pause();
+        state.selected = null;
+        state.selectionId++;
+        motionSelection = proRoot = proRootId = proRootMotion = undefined;
+        proParts = [];
+      }
+    }
     state.port = port;
     state.studio = studio;
+    state.pro = pro;
     port.onMessage.addListener((message) => {
       if (port !== state.port) return;
       if (message.type === "start") start();
-      if (message.type === "pause") {
-        pause();
-        send({ type: "paused" });
-      }
+      if (message.type === "pause") pause();
       if (message.type === "refresh") snapshot(message.requestId);
       if (
         GETTER_STUDIO_WORKSPACE_QA &&
-        ["collect-selection", "inspect-motion", "select-parent"].includes(
+        (["collect-selection", "inspect-motion", "select-parent"].includes(
           message.type,
-        )
+        ) ||
+          (state.pro &&
+            ["component-parts", "select-part"].includes(message.type)))
       ) {
         const node = state.selected?.deref();
         try {
           if (!node?.isConnected || message.selectionId !== state.selectionId)
             throw Error();
-          if (message.type === "select-parent") {
-            const parent = node.parentElement;
+          if (message.type === "component-parts") {
+            const root = proRoot?.deref();
+            if (!root?.isConnected || !inComponent(root, node)) throw Error();
+            const refs = [];
+            const images = [];
+            let selected;
+            const result = captureComponent(root, {
+              withAssets: true,
+              preview: true,
+              onNode(element, part) {
+                part.id = refs.length;
+                refs.push(new WeakRef(element));
+                if (element === node) selected = part;
+                if (element.localName === "img") {
+                  const src = element.currentSrc;
+                  if (
+                    element.complete &&
+                    element.naturalWidth &&
+                    src.length <= 4096 &&
+                    isSecureImageUrl(src)
+                  )
+                    part.previewImage = { src, alt: element.alt.slice(0, 100) };
+                }
+                if (
+                  ["img", "video", "canvas"].includes(element.localName) &&
+                  images.length < 8
+                )
+                  images.push({ element, part });
+              },
+            });
+            for (const { element, part } of images)
+              part.thumbnail = previewThumbnail(element);
+            proParts = refs;
+            send({
+              type: "studio-component-parts",
+              parts: {
+                ...result,
+                selected,
+                background: previewBackground(root),
+                selectionId: state.selectionId,
+                revision: ++partsRevision,
+              },
+              requestId: message.requestId,
+            });
+          } else if (message.type === "select-part") {
+            const part =
+              Number.isInteger(message.partId) &&
+              message.revision === partsRevision &&
+              proParts[message.partId]?.deref();
+            if (!part?.isConnected || !inComponent(proRoot?.deref(), part))
+              throw Error();
+            setSelection(part, message.requestId, undefined, true);
+          } else if (message.type === "select-parent") {
+            const parent = state.pro
+              ? componentParent(node)
+              : node.parentElement;
             if (!parent || ["body", "html"].includes(parent.localName))
               throw Error();
             setSelection(parent, message.requestId);
@@ -354,6 +547,10 @@ if (!globalThis.__getterInspector) {
             });
           } else {
             const motionOnly = ["visual", "scripted"].includes(message.scope);
+            const entire = state.pro && message.scope === "component";
+            const root = entire ? proRoot?.deref() : node;
+            if (!root?.isConnected || (entire && !inComponent(root, node)))
+              throw Error();
             if (
               motionOnly &&
               (observed?.kind !== message.scope ||
@@ -368,11 +565,12 @@ if (!globalThis.__getterInspector) {
                     viewport: { width: innerWidth, height: innerHeight },
                   }
                 : {
-                    ...captureComponent(node, {
+                    ...captureComponent(root, {
                       withAssets: true,
+                      expanded: entire,
                       transitions: recorded,
                     }),
-                    observedMotion: observed,
+                    observedMotion: entire ? proRootMotion : observed,
                   },
               requestId: message.requestId,
             });

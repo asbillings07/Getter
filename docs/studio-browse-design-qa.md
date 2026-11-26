@@ -18,14 +18,15 @@
    **Preview transition** when playable frames are available. Hover the
    source element to detect its transition. The preview plays
    in Getter. You can save motion separately or keep it with a component.
-   Getter also checks the selected element for two seconds. When it detects
+   Getter also checks the selected element for up to two seconds. When it detects
    supported scripted changes or readable canvas or video motion, **Preview
    motion** and **Save motion** appear in **Effects**. Canvas and video save
    as silent visual references that replay in the collection. For a supported
    2D-rotated canvas, the reference preserves the tilt and crops to the visible
    bounds. **Selected artwork** can also indicate a canvas matched to a click
    on a transparent hit target. That reference follows the same target's
-   visible canvas bounds as its artwork turns. A shelf selection with
+   visible canvas bounds as its artwork turns. If the selected artwork leaves
+   view, the preview ends at the last verified frame. A shelf selection with
    multiple distinct artwork targets on one canvas can show **Entire scene**
    and save the visible shelf as one motion reference. Selecting a book
    still follows that book. A light preview background keeps dark artwork
@@ -47,7 +48,7 @@
    keeps the website in view. Getter remembers the last collection in the
    browser session. **Open collection** shows the saved assets in Studio.
 
-Select on page, Show all properties, property search, value copying, and Copy CSS
+Pause selection and Resume selecting, Show all properties, property search, value copying, and Copy CSS
 are still available in Quick Inspect. Component captures started in the side
 panel include selected visible text, supported HTTPS image files, and supported
 motion. Form values and executable markup are excluded.
@@ -55,6 +56,50 @@ motion. Form values and executable markup are excluded.
 The capture checks the active document before storage. Saved sources identify
 the site without the page URL. Website images reuse Getter's bounded HTTPS
 fetch path and have the same format and size limits as Studio Collections.
+
+## Inspect Pro
+
+In **Open Studio QA**, choose **Inspect Pro**. Use **How to open the page** to
+switch between choosing an open tab and entering a website address. A project can launch Inspect Pro with its collection already
+selected for saving. Inspect Pro opens in Chrome’s side panel beside the chosen
+site and requests access only if Getter needs it for that page.
+
+- Select a component on the page. The component preview stays above the
+  property tabs. **Parts** lists the captured hierarchy and highlights the
+  selected part in its page position. The preview scrolls horizontally or
+  vertically to keep offscreen parts in view. **Select parent** moves up one
+  level. **Styles**, **Layout**, **Effects**, and **Element** organize the selected element’s
+  values. **Copy CSS** and property search are available.
+- **Effects** previews supported animations and transitions on reconstructed
+  styling, or plays a reference clip for readable canvas and video motion.
+  Native animation previews support replay, speed, and scrubbing. The
+  reconstructed view uses artwork already loaded on the page. When a thumbnail
+  cannot be copied, the preview can load its HTTPS source without cookies or a
+  referrer. Cross-origin images can display even when their host does not grant
+  access to read their pixels. Images and video frames that still cannot be
+  displayed are shown as placeholders. An
+  embedded frame can be selected at its boundary, with its interior unavailable.
+  A visual reference is
+  available only when Getter can read the motion. The component preview can
+  show a still of matched canvas artwork or an entire scene when the page's
+  click target does not render the artwork itself.
+- **Save to collection** opens the destination for the whole selected component
+  with its supported descendants, styles, and detected motion, including when
+  a child is highlighted in **Parts**. **Individual
+  assets** is the separate action for a single item. **Keep inspecting** closes
+  the save dialog and keeps the selection while the same document is open.
+- Inspect Pro follows the active tab in its Chrome window. Reloading, navigating
+  or switching tabs clears the selection. On a new site, allow access in the
+  panel if Chrome needs a grant.
+  **Back to Getter** returns to the extension tools, including Quick Inspect.
+
+Inspect Pro uses the product blend for the Aptelum attribution mark in both
+appearances. Action icons follow the surrounding text color. The mark matches
+the master recorded in the [Aptelum design system](https://github.com/asbillings07/aptelum/blob/747cce312918a5572c4bc58d7bb1f08c6cb9ea40/docs/design-system/README.md)
+with SHA-256 `e055a95caa78654fafd4aab080c91e216c262cada22d92173a5de0542ec60d80`.
+
+The Inspect Pro entry is part of the Studio workspace QA package. Live
+subscription enforcement and starting from Design Review are separate work.
 
 ## Use the collection in the editor
 

@@ -10,6 +10,8 @@ export default function InspectMotion({
   motion,
   observed,
   snapshot,
+  component,
+  playback,
   query,
   onSave,
 }) {
@@ -75,7 +77,9 @@ export default function InspectMotion({
             <MotionPreview
               item={item}
               css={css}
+              component={component}
               caption={snapshot.text ? snapshot.text.slice(0, 60) : item.name}
+              playback={playback}
               label={`Preview ${item.kind}`}
               onSave={() => onSave(item.kind)}
             />
@@ -139,7 +143,12 @@ export default function InspectMotion({
                 : observed.canvasWithinSelection
                   ? "Canvas in selection"
                   : "Motion detected"}{" "}
-            · {captured.clip ? "2-second visual reference" : "2-second sample"}
+            ·{" "}
+            {captured.clip
+              ? captured.clip.duration === 2000
+                ? "2-second visual reference"
+                : `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(captured.clip.duration / 1000)}s visual reference`
+              : "2-second sample"}
           </p>
           {captured.clip ? (
             <VisualMotionPreview
@@ -150,6 +159,8 @@ export default function InspectMotion({
           ) : (
             <MotionPreview
               item={captured}
+              playback={playback}
+              component={component}
               label="Preview motion"
               saveLabel="Save motion"
               onSave={() => onSave(captured.kind, observed.sampleId)}

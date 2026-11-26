@@ -3,6 +3,56 @@ import { sections, inspectGroups, cssSnippet } from "../core/inspect.js";
 import { verifyDocument } from "../core/workspace.js";
 import Info from "./Info.jsx";
 import InspectMotion from "../studio/InspectMotion.jsx";
+import InspectComponentPreview from "../studio/InspectComponentPreview.jsx";
+import InspectorIcon from "../studio/InspectorIcon.jsx";
+import { capturableEffects } from "../studio/inspect.js";
+
+function findPart(node, id) {
+  if (!node || node.id === id) return node;
+  for (const child of node.children) {
+    const result = findPart(child, id);
+    if (result) return result;
+  }
+}
+
+function ComponentParts({ node, selectedId, onSelect }) {
+  const mark =
+    node.tag === "img"
+      ? "image"
+      : ["input", "button", "label", "select"].includes(node.tag)
+        ? "control"
+        : node.children.length
+          ? "layers"
+          : "text";
+  return (
+    <li>
+      <button
+        type="button"
+        className="text-button inspect-pro-label"
+        aria-pressed={node.id === selectedId}
+        onClick={() => onSelect(node.id)}
+      >
+        <InspectorIcon name={mark} />
+        <span>
+          <code>{node.tag}</code>
+          {node.text && ` · ${node.text.slice(0, 60)}`}
+        </span>
+      </button>
+      {!!node.children.length && (
+        <ul>
+          {node.children.map((child) => (
+            <ComponentParts
+              key={child.id}
+              node={child}
+              selectedId={selectedId}
+              onSelect={onSelect}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
 export default function InspectView({
   scan,
   model,
@@ -10,11 +60,14 @@ export default function InspectView({
   onCopy,
   onNotice,
   onCollect,
+  pro: proWorkspace = false,
 }) {
+  const pro = GETTER_STUDIO_WORKSPACE_QA && proWorkspace;
   const [status, setStatus] = useState("connecting"),
     [note, setNote] = useState("");
   const [motion, setMotion] = useState(null);
   const [observed, setObserved] = useState(null);
+  const [parts, setParts] = useState(null);
   const connection = useRef(),
     latest = useRef(),
     waiters = useRef(new Map()),
@@ -33,7 +86,7 @@ export default function InspectView({
         });
         if (!live) return;
         port = chrome.tabs.connect(scan.tabId, {
-          name: "getter-inspect",
+          name: pro ? "getter-inspect-pro" : "getter-inspect",
           documentId: scan.documentId,
         });
         connection.current = port;
@@ -64,7 +117,9 @@ export default function InspectView({
                   : GETTER_STUDIO_WORKSPACE_QA &&
                       message.type === "studio-motion"
                     ? message.motion
-                    : null,
+                    : pro && message.type === "studio-component-parts"
+                      ? message.parts
+                      : null,
             );
             waiters.current.delete(message.requestId);
           }
@@ -116,7 +171,7 @@ export default function InspectView({
       for (const resolve of waiters.current.values()) resolve(null);
       waiters.current.clear();
     };
-  }, [scan.tabId, scan.documentId]);
+  }, [scan.tabId, scan.documentId, pro]);
   useEffect(() => {
     try {
       connection.current?.postMessage({
@@ -181,6 +236,7 @@ export default function InspectView({
     onCopy(value, label, scan);
   }
   const selectionId = model.snapshot?.selectionId;
+  const componentRootId = model.snapshot?.componentRootId;
   const matchesSelection = (result) =>
     !!result &&
     selectionId !== undefined &&
@@ -203,6 +259,33 @@ export default function InspectView({
       live = false;
     };
   }, [scan.documentId, selectionId, model.section, model.picking, !!onCollect]);
+
+  useEffect(() => {
+    if (!pro || componentRootId === undefined) return;
+    let live = true;
+    request({ type: "component-parts", selectionId }).then((result) => {
+      if (live) setParts({ result, componentRootId });
+    });
+    return () => {
+      live = false;
+    };
+  }, [scan.documentId, componentRootId, pro]);
+
+  async function selectPart(partId) {
+    if (!(await verifyDocument(chrome, scan))) {
+      onNotice("The page changed. Choose the current page before selecting.");
+      return;
+    }
+    if (
+      !(await request({
+        type: "select-part",
+        selectionId,
+        partId,
+        revision: parts?.result?.revision,
+      }))
+    )
+      onNotice("This part is no longer available. Choose the component again.");
+  }
 
   async function selectParent() {
     if (!(await verifyDocument(chrome, scan))) {
@@ -232,27 +315,38 @@ export default function InspectView({
       onNotice("Choose the element again before saving.");
       return;
     }
-    onCollect(capture, scope);
+    onCollect(capture, scope, selectionId);
   }
   const snapshot = model.snapshot,
     groups = inspectGroups(snapshot, model.section, model.all, model.query);
+  const partsReady =
+    parts !== null && parts.componentRootId === componentRootId;
+  const tree = partsReady ? parts.result : null;
+  const component = tree && {
+    ...tree,
+    selected:
+      snapshot?.partId === undefined
+        ? tree.selected
+        : findPart(tree.component, snapshot.partId),
+  };
+  const observedSelection = matchesSelection(observed) ? observed : null;
+  const sectionButtons = pro ? [["parts", "Parts"], ...sections] : sections;
+  const hasEffect =
+    pro && snapshot && Object.keys(capturableEffects(snapshot.css)).length > 0;
   const toggle = (key, value) => onChange({ ...model, [key]: value });
   const controls = (
     <div className="inspect-mode-row">
-      <div className="inspect-switches">
-        <label className="setting">
-          Select on page
-          <input
-            type="checkbox"
-            role="switch"
-            checked={model.picking}
-            disabled={status === "error" || status === "connecting"}
-            onChange={(e) => {
-              setStatus("ready");
-              toggle("picking", e.target.checked);
-            }}
-          />
-        </label>
+      <div className="inspect-controls">
+        <button
+          type="button"
+          className="secondary selection-button"
+          onClick={() => {
+            if (!model.picking) setStatus("ready");
+            toggle("picking", !model.picking);
+          }}
+        >
+          {model.picking ? "Pause selection" : "Resume selecting"}
+        </button>
         <label className="setting">
           Show all properties
           <input
@@ -314,6 +408,45 @@ export default function InspectView({
       </dd>
     </div>
   );
+  const sectionControls = (
+    <>
+      <div className="inspect-tabs-row">
+        <div className="segments" role="group" aria-label="Inspect sections">
+          {sectionButtons.map(([id, label]) => (
+            <button
+              key={id}
+              aria-pressed={model.section === id}
+              onClick={() => onChange({ ...model, section: id, query: "" })}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <Info label="How to copy values">
+          Click a value to copy it. Show all properties reveals additional
+          values and attributes.
+        </Info>
+      </div>
+      {model.section !== "parts" && (
+        <label className="search-field">
+          <span aria-hidden="true">⌕</span>
+          <input
+            type="search"
+            aria-label={
+              model.section === "element"
+                ? "Find element detail"
+                : "Find CSS property"
+            }
+            placeholder={
+              model.section === "element" ? "Find a detail" : "Find a property"
+            }
+            value={model.query}
+            onChange={(e) => toggle("query", e.target.value)}
+          />
+        </label>
+      )}
+    </>
+  );
   const n = (value) => Number.parseFloat(value) || 0;
   return (
     <section className="inspect-view">
@@ -325,15 +458,9 @@ export default function InspectView({
           </p>
         )}
         {snapshot && !model.picking && (
-          <div className="selection-paused">
+          <div className="selection-paused" role="status">
             <strong>Selection paused</strong>
             <span>Use the page normally; this element stays selected.</span>
-            <button
-              className="secondary"
-              onClick={() => toggle("picking", true)}
-            >
-              Resume selecting
-            </button>
           </div>
         )}
         {snapshot && (
@@ -363,9 +490,17 @@ export default function InspectView({
                 <button
                   type="button"
                   className="secondary studio-collection-button"
+                  aria-label={pro ? "＋ Save to collection" : undefined}
                   onClick={() => collect("component")}
                 >
-                  ＋ Save to collection
+                  {pro ? (
+                    <span className="inspect-pro-label">
+                      <InspectorIcon name="add" />
+                      Save to collection
+                    </span>
+                  ) : (
+                    "＋ Save to collection"
+                  )}
                 </button>
                 <button
                   type="button"
@@ -385,51 +520,7 @@ export default function InspectView({
                 to that root.
               </p>
             )}
-            {model.section !== "code" && (
-              <>
-                <div className="inspect-tabs-row">
-                  <div
-                    className="segments"
-                    role="group"
-                    aria-label="Inspect sections"
-                  >
-                    {sections.map(([id, label]) => (
-                      <button
-                        key={id}
-                        aria-pressed={model.section === id}
-                        onClick={() =>
-                          onChange({ ...model, section: id, query: "" })
-                        }
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  <Info label="How to copy values">
-                    Click a value to copy it. Show all properties reveals
-                    additional values and attributes.
-                  </Info>
-                </div>
-                <label className="search-field">
-                  <span aria-hidden="true">⌕</span>
-                  <input
-                    type="search"
-                    aria-label={
-                      model.section === "element"
-                        ? "Find element detail"
-                        : "Find CSS property"
-                    }
-                    placeholder={
-                      model.section === "element"
-                        ? "Find a detail"
-                        : "Find a property"
-                    }
-                    value={model.query}
-                    onChange={(e) => toggle("query", e.target.value)}
-                  />
-                </label>
-              </>
-            )}
+            {!pro && model.section !== "code" && sectionControls}
           </>
         )}
       </div>
@@ -443,18 +534,29 @@ export default function InspectView({
                 : "Selection paused"}
           </h2>
           <p>
-            {status === "removed"
-              ? "Choose another element on the page."
-              : "Click any element on the page to inspect it. Selection stays active until you pause."}
+            {!model.picking
+              ? "Resume selecting when you’re ready to inspect an element."
+              : status === "removed"
+                ? "Choose another element on the page."
+                : "Click any element on the page to inspect it. Selection stays active until you pause."}
           </p>
-          {!model.picking && (
-            <button className="primary" onClick={() => toggle("picking", true)}>
-              Resume selecting
-            </button>
-          )}
         </div>
       ) : (
         <div className="inspect-results" aria-label="Inspect results">
+          {pro && model.section !== "code" && (
+            <>
+              <InspectComponentPreview
+                component={component}
+                artwork={observedSelection?.preview}
+                loading={
+                  !partsReady ||
+                  !observedSelection ||
+                  observedSelection.status === "checking"
+                }
+              />
+              {sectionControls}
+            </>
+          )}
           {model.section === "code" ? (
             <>
               <button
@@ -481,16 +583,53 @@ export default function InspectView({
                 Copy snippet
               </button>
             </>
+          ) : model.section === "parts" && pro ? (
+            component ? (
+              <section aria-label="Component hierarchy">
+                {component.limited && (
+                  <p className="scan-note">
+                    Large components may have additional parts. Select a smaller
+                    section to inspect them.
+                  </p>
+                )}
+                <ul className="inspect-pro-parts">
+                  <ComponentParts
+                    node={component.component}
+                    selectedId={component.selected?.id}
+                    onSelect={selectPart}
+                  />
+                </ul>
+              </section>
+            ) : (
+              <p className="scan-note">
+                Select a visible component on the page to see its parts.
+              </p>
+            )
           ) : (
             <>
+              {pro &&
+                model.section === "effects" &&
+                !model.query &&
+                component?.selected &&
+                hasEffect && (
+                  <button
+                    className="secondary"
+                    type="button"
+                    onClick={() => collect("effect")}
+                  >
+                    Save effect
+                  </button>
+                )}
               {GETTER_STUDIO_WORKSPACE_QA &&
                 onCollect &&
                 model.section === "effects" && (
                   <InspectMotion
                     key={`${scan.documentId}:${selectionId}`}
                     motion={matchesSelection(motion) ? motion.value : null}
-                    observed={matchesSelection(observed) ? observed : null}
+                    observed={observedSelection}
                     snapshot={snapshot}
+                    component={pro ? component?.selected : undefined}
+                    playback={pro}
                     query={model.query}
                     onSave={collect}
                   />
@@ -572,7 +711,9 @@ export default function InspectView({
                     {model.query
                       ? "No matching properties"
                       : model.section === "effects"
-                        ? "No effects applied"
+                        ? pro
+                          ? "No additional CSS effects"
+                          : "No effects applied"
                         : "No details available"}
                   </h2>
                   <p>

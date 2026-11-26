@@ -1,4 +1,44 @@
 import { legacyKeys } from "./core/preferences.js";
+import {
+  inspectPreviewImagePath,
+  inspectProKey,
+} from "./studio/inspect-workspace.js";
+
+if (GETTER_STUDIO_WORKSPACE_QA) {
+  self.addEventListener("fetch", (event) => {
+    const { request } = event;
+    const route = new URL(request.url);
+    if (
+      route.origin !== self.location.origin ||
+      route.pathname !== inspectPreviewImagePath
+    )
+      return;
+    event.respondWith(
+      (async () => {
+        const client = await clients.get(event.clientId);
+        if (
+          client?.url !== chrome.runtime.getURL("sidepanel.html") ||
+          request.destination !== "image" ||
+          request.mode !== "no-cors"
+        )
+          return Response.error();
+        const source = URL.parse(route.searchParams.get("src") || "");
+        if (source?.protocol !== "https:" || source.username || source.password)
+          return Response.error();
+
+        // Keep cross-origin thumbnails display-only, including after CDN
+        // redirects. Do not forward the panel request's cookies or referrer.
+        const preview = await fetch(source, {
+          mode: "no-cors",
+          credentials: "omit",
+          referrerPolicy: "no-referrer",
+        });
+        return preview.type === "opaque" ? preview : Response.error();
+      })().catch(() => Response.error()),
+    );
+  });
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   chrome.action
     .enable()
@@ -48,9 +88,11 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
       const saved =
         transfers.get(message.windowId) ||
         (await chrome.storage.session.get(key))[key];
+      const recipient = page.pathname === "/popup.html" ? "popup" : "panel";
+      if (saved?.mode !== recipient) return null;
       transfers.delete(message.windowId);
       await chrome.storage.session.remove(key);
-      return saved && Date.now() - saved.time < 30000 ? saved.workspace : null;
+      return Date.now() - saved.time < 30000 ? saved.workspace : null;
     })().then(respond, () => respond(null));
     return true;
   }
@@ -59,9 +101,19 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     !["panel", "popup"].includes(message.mode)
   )
     return;
-  const record = { time: Date.now(), workspace: message.workspace };
+  const record = {
+    time: Date.now(),
+    mode: message.mode,
+    workspace: message.workspace,
+  };
   transfers.set(message.windowId, record);
-  const saved = chrome.storage.session.set({ [key]: record });
+  const saved = chrome.storage.session
+    .set({ [key]: record })
+    .then(() =>
+      GETTER_STUDIO_WORKSPACE_QA && message.mode === "panel"
+        ? chrome.storage.session.remove(inspectProKey(message.windowId))
+        : undefined,
+    );
   setTimeout(() => {
     if (transfers.get(message.windowId) === record)
       transfers.delete(message.windowId);

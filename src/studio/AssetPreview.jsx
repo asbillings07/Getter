@@ -4,7 +4,7 @@ import { safeStyleValue } from "./inspect.js";
 const camel = (name) =>
   name.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
 
-function styleObject(css) {
+export function styleObject(css) {
   return Object.fromEntries(
     Object.entries(css)
       .filter(([, value]) => safeStyleValue(value))
@@ -12,11 +12,12 @@ function styleObject(css) {
   );
 }
 
-function ComponentShape({ node, images }) {
+export function ComponentShape({ node, images, previewRef }) {
   const style = styleObject(node.css);
   return (
     <div
       className="studio-node"
+      ref={previewRef}
       style={{
         ...style,
         boxSizing: "border-box",
@@ -26,10 +27,20 @@ function ComponentShape({ node, images }) {
     >
       {images?.[node.imageIndex]?.blob ? (
         <ImagePreview image={images[node.imageIndex]} />
+      ) : node.thumbnail?.data.startsWith("data:image/webp;base64,") ? (
+        <img
+          className="studio-component-thumbnail"
+          src={node.thumbnail.data}
+          alt={node.thumbnail.alt}
+        />
       ) : (
         node.text ||
         node.placeholder ||
-        (node.children.length ? null : node.tag)
+        (node.children.length
+          ? null
+          : node.tag === "img"
+            ? "Image unavailable"
+            : node.tag)
       )}
       {node.children.map((child, index) => (
         <ComponentShape key={index} node={child} images={images} />
@@ -95,52 +106,169 @@ export function MotionPreview({
   label = "Play motion",
   caption = "Motion preview",
   css,
+  component,
+  playback = false,
   onSave,
   saveLabel = `Save ${item.kind}`,
 }) {
   const sample = useRef(null);
   const animations = useRef([]);
+  const clock = useRef(0);
+  const [running, setRunning] = useState(false);
+  const [position, setPosition] = useState(0);
+  const [speed, setSpeed] = useState(1);
+  const duration = Math.min(
+    10000,
+    Math.max(1, ...item.animations.map((animation) => animation.duration)),
+  );
   useEffect(
-    () => () => animations.current.forEach((animation) => animation.cancel()),
+    () => () => {
+      cancelAnimationFrame(clock.current);
+      animations.current.forEach((animation) => animation.cancel());
+    },
     [],
   );
-  function play() {
+
+  function setTime(value) {
+    animations.current.forEach((animation) => {
+      animation.currentTime = Math.min(
+        value,
+        animation.effect.getTiming().duration,
+      );
+    });
+    setPosition(value);
+  }
+
+  function create(reduced = false) {
     animations.current.forEach((animation) => animation.cancel());
-    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     animations.current = item.animations.map(
       ({ keyframes, duration, easing, direction }) =>
         sample.current.animate(keyframes, {
-          duration: reduce ? 0 : Math.min(duration, 10000),
+          duration: reduced ? 0 : Math.min(duration, 10000),
           easing,
           direction,
           iterations: 1,
           fill: "forwards",
         }),
     );
+    animations.current.forEach((animation) => {
+      animation.playbackRate = speed;
+    });
+  }
+
+  function tick() {
+    const time = Math.max(
+      0,
+      ...animations.current.map((animation) => animation.currentTime ?? 0),
+    );
+    setPosition(Math.min(duration, Math.round(time)));
+    if (
+      time < duration &&
+      animations.current.some((animation) => animation.playState === "running")
+    )
+      clock.current = requestAnimationFrame(tick);
+    else setRunning(false);
+  }
+
+  function play(replay = false) {
+    cancelAnimationFrame(clock.current);
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!playback) {
+      create(reduce);
+      return;
+    }
+    if (running && !replay) {
+      animations.current.forEach((animation) => animation.pause());
+      setRunning(false);
+      return;
+    }
+    if (!animations.current.length || replay || position >= duration) {
+      create();
+      setTime(0);
+    }
+    if (reduce) {
+      animations.current.forEach((animation) => animation.pause());
+      setTime(duration);
+      setRunning(false);
+      return;
+    }
+    animations.current.forEach((animation) => animation.play());
+    setRunning(true);
+    clock.current = requestAnimationFrame(tick);
+  }
+
+  function scrub(value) {
+    cancelAnimationFrame(clock.current);
+    if (!animations.current.length) create();
+    animations.current.forEach((animation) => animation.pause());
+    setRunning(false);
+    setTime(value);
   }
   return (
     <div className="studio-motion-preview">
       <div
         className="studio-sample"
-        ref={sample}
-        style={styleObject(css || {})}
+        ref={component ? undefined : sample}
+        style={component ? undefined : styleObject(css || {})}
       >
-        {caption}
+        {component ? (
+          <ComponentShape node={component} previewRef={sample} />
+        ) : (
+          caption
+        )}
       </div>
       <div className="studio-row">
         <button
           className={onSave ? "primary" : "secondary"}
           type="button"
-          onClick={play}
+          onClick={() => play()}
         >
-          {label}
+          {running ? "Pause preview" : label}
         </button>
+        {playback && (
+          <button
+            className="secondary"
+            type="button"
+            onClick={() => play(true)}
+          >
+            Replay
+          </button>
+        )}
         {onSave && (
           <button className="secondary" type="button" onClick={onSave}>
             {saveLabel}
           </button>
         )}
       </div>
+      {playback && (
+        <div className="inspect-pro-playback">
+          <input
+            type="range"
+            min="0"
+            max={duration}
+            value={position}
+            aria-label="Animation timeline in milliseconds"
+            onChange={(event) => scrub(Number(event.target.value))}
+          />
+          <select
+            aria-label="Playback speed"
+            value={speed}
+            onChange={(event) => {
+              const next = Number(event.target.value);
+              setSpeed(next);
+              animations.current.forEach((animation) =>
+                animation.updatePlaybackRate(next),
+              );
+            }}
+          >
+            <option value="1">1×</option>
+            <option value="0.25">¼×</option>
+          </select>
+          <small>
+            {position} / {duration} ms
+          </small>
+        </div>
+      )}
     </div>
   );
 }
@@ -240,6 +368,13 @@ export default function AssetPreview({ item }) {
         >
           <ComponentShape node={item.tree} images={item.images} />
         </div>
+        {item.observedMotion?.clip && (
+          <VisualMotionPreview clip={item.observedMotion.clip} />
+        )}
+        {!!item.observedMotion?.animations?.length &&
+          !item.observedMotion.clip && (
+            <MotionPreview item={item.observedMotion} />
+          )}
         {!!motion.length && (
           <details>
             <summary>Captured motion ({motion.length})</summary>

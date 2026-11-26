@@ -8,6 +8,7 @@ import Info from "./components/Info.jsx";
 import WebsiteAccess from "./components/WebsiteAccess.jsx";
 import StudioAccount, { AccountIcon } from "./components/StudioAccount.jsx";
 import SidePanelCollect from "./studio/SidePanelCollect.jsx";
+import InspectProRouter from "./studio/InspectProPanel.jsx";
 import { collectionLabels } from "./studio/library.js";
 import { initialWorkspace, takeWorkspace } from "./core/workspace.js";
 import { colorLabel } from "./core/extract.js";
@@ -1361,7 +1362,13 @@ class ErrorBoundary extends React.Component {
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      {GETTER_STUDIO_WORKSPACE_QA && mode === "panel" ? (
+        <InspectProRouter>
+          <App />
+        </InspectProRouter>
+      ) : (
+        <App />
+      )}
     </ErrorBoundary>
   </React.StrictMode>,
 );
