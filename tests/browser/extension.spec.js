@@ -740,7 +740,7 @@ test("Studio collections save selected styles from multiple sites and reopen aft
 
     const stored = await studio.evaluate(async () => {
       const db = await new Promise((resolve, reject) => {
-        const request = indexedDB.open("getter-studio-workspace-qa", 1);
+        const request = indexedDB.open("getter-studio-workspace-qa");
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
       });
