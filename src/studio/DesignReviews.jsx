@@ -201,7 +201,7 @@ function ReviewSetup({ projects, projectId, review, onDone, onCancel }) {
   );
 }
 
-function ReviewDetails({ review, onBack, onReplace, projects }) {
+function ReviewDetails({ review, onBack, onReplace, projects, onProject }) {
   const [environment, setEnvironment] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -270,9 +270,16 @@ function ReviewDetails({ review, onBack, onReplace, projects }) {
             {project?.name || "Standalone review"} · {review.viewport}
           </p>
         </div>
-        <button className="secondary" onClick={onBack}>
-          Back to reviews
-        </button>
+        <div className="studio-row">
+          {project && (
+            <button className="secondary" onClick={() => onProject(project)}>
+              Open project
+            </button>
+          )}
+          <button className="secondary" onClick={onBack}>
+            Back to reviews
+          </button>
+        </div>
       </div>
       <section className="studio-card review-fields">
         <h2>Reference and staging</h2>
@@ -332,12 +339,14 @@ export default function DesignReviews({
   projectId,
   initialReviewId,
   setup,
+  onProject,
 }) {
   const [view, setView] = useState(
     setup ? "new" : initialReviewId ? "loading" : "list",
   );
   const [records, setRecords] = useState(null);
   const [review, setReview] = useState(null);
+  const scope = projectId || (initialReviewId && review?.projectId);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -395,7 +404,7 @@ export default function DesignReviews({
     return (
       <ReviewSetup
         projects={projects}
-        projectId={projectId}
+        projectId={scope}
         review={view === "replace" ? review : null}
         onDone={open}
         onCancel={view === "replace" ? () => setView("details") : back}
@@ -406,19 +415,20 @@ export default function DesignReviews({
       <ReviewDetails
         review={review}
         projects={projects}
+        onProject={onProject}
         onBack={back}
         onReplace={() => setView("replace")}
       />
     );
 
   const visible = records?.filter(
-    (record) => !projectId || record.projectId === projectId,
+    (record) => !scope || record.projectId === scope,
   );
   return (
     <div className="review-workspace">
       <div className="studio-heading">
         <div>
-          <h1>{projectId ? "Project reviews" : "Design Review"}</h1>
+          <h1>{scope ? "Project reviews" : "Design Review"}</h1>
           <p>Compare a website with an approved design.</p>
         </div>
         <button className="primary" onClick={() => setView("new")}>

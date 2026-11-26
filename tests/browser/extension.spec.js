@@ -2451,6 +2451,13 @@ test("Design Review starts from a project and requests access only for the chose
     await expect(
       studio.getByRole("heading", { name: /WEB-215.*Sample screenshot/ }),
     ).toBeVisible();
+    await studio.getByRole("button", { name: /Open review/ }).click();
+    await studio
+      .getByRole("button", { name: "Open project", exact: true })
+      .click();
+    await expect(
+      studio.getByRole("heading", { name: "Juniper", exact: true }),
+    ).toBeVisible();
   } finally {
     await app.context.close();
   }

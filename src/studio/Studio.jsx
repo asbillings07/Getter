@@ -69,23 +69,33 @@ function Studio() {
   const projectCollections = (project) =>
     projectCollectionEntries(project, projects || []);
 
-  function showProjects() {
-    setReviews(null);
+  function clearReviewRoute() {
     const url = new URL(location.href);
     if (url.searchParams.has("review")) {
       url.searchParams.delete("review");
       history.replaceState(null, "", url);
     }
+  }
+
+  function showProjects() {
+    setReviews(null);
+    clearReviewRoute();
     setSelection(null);
     setNotice("");
     refreshProjects();
   }
 
   function showReviews(scope = {}) {
-    const url = new URL(location.href);
-    url.searchParams.delete("review");
-    history.replaceState(null, "", url);
+    clearReviewRoute();
     setReviews({ ...scope, navigationId: crypto.randomUUID() });
+  }
+
+  function openProject(project) {
+    const target = projectCollections(project)[0];
+    if (!target) return;
+    setReviews(null);
+    clearReviewRoute();
+    openCollection(project, target, "project");
   }
 
   async function openProjectDialog(next) {
@@ -373,6 +383,7 @@ function Studio() {
           <DesignReviews
             key={reviews.navigationId || reviews.initialReviewId}
             projects={projects || []}
+            onProject={openProject}
             {...reviews}
           />
         </main>
@@ -677,10 +688,7 @@ function Studio() {
               openProjectDialog("reuse");
             }}
             onChooseSite={() => openProjectDialog("inspect-pro")}
-            onOpen={(project) => {
-              const target = projectCollections(project)[0];
-              if (target) openCollection(project, target, "project");
-            }}
+            onOpen={openProject}
             onCollection={openCollection}
           />
         ) : (
