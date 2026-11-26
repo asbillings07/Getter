@@ -740,7 +740,7 @@ test("Studio collections save selected styles from multiple sites and reopen aft
 
     const stored = await studio.evaluate(async () => {
       const db = await new Promise((resolve, reject) => {
-        const request = indexedDB.open("getter-studio-workspace-qa", 1);
+        const request = indexedDB.open("getter-studio-workspace-qa");
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
       });
@@ -831,10 +831,13 @@ test("Studio lists ungranted tabs without reading them and asks only for the sel
     await studio
       .getByRole("button", { name: "Create project", exact: true })
       .click();
-    const option = await studio
+    const tabs = studio
+      .getByRole("main")
+      .getByRole("combobox", { name: "Open tabs", exact: true });
+    const option = await tabs
       .getByRole("option", { name: /127\.0\.0\.1/ })
       .getAttribute("value");
-    await studio.getByLabel("Open tabs").selectOption(option);
+    await tabs.selectOption(option);
     expect(await studio.evaluate(() => websiteAccessFixture.requests)).toEqual(
       [],
     );
@@ -1388,7 +1391,9 @@ test("Studio Inspect keeps the existing tools and saves motion, text, and reusab
     await dialog
       .getByRole("button", { name: "Save component", exact: true })
       .click();
-    await expect(dialog.getByRole("status")).toContainText("Saved to Assets");
+    await expect(
+      dialog.getByRole("status").or(dialog.getByRole("alert")),
+    ).toContainText("Saved to Assets", { timeout: 15000 });
     await dialog.getByRole("button", { name: "Keep inspecting" }).click();
     await panel
       .getByRole("button", { name: "Individual assets", exact: true })
@@ -1864,26 +1869,32 @@ test("Inspect Pro keeps nested media and text in place while selecting or saving
       `${imageOrigin}/component-thumb-*.png`,
       async (route) => {
         const request = route.request();
-        const headers = await request.allHeaders();
         const filename = new URL(request.url()).pathname.split("/").at(-1);
         const displayOnly = Boolean(request.serviceWorker());
         const preview =
-          displayOnly || headers.origin?.startsWith("chrome-extension://");
-        if (preview)
+          displayOnly ||
+          (request.resourceType() === "image" &&
+            request.frame().url().startsWith("chrome-extension://"));
+        if (preview) {
+          const headers = await request.allHeaders();
           thumbnailRequests.push({
             filename,
             displayOnly,
             referrer: headers.referer,
             cookie: headers.cookie,
           });
-        if (preview && filename.includes("blocked")) {
-          await route.fulfill({ status: 403, body: "Image unavailable" });
-          return;
+          if (filename.includes("blocked")) {
+            await route.fulfill({ status: 403, body: "Image unavailable" });
+            return;
+          }
         }
+        // Save fetches share the fixture URLs with preview requests. Serve them
+        // directly so collecting preview headers cannot delay asset downloads.
         await route.fulfill({
           status: 200,
           headers: {
             "content-type": "image/png",
+            "cache-control": "no-store",
             "access-control-allow-origin":
               filename === "component-thumb-10.png"
                 ? "https://unrelated.fixture.test"
@@ -2096,9 +2107,9 @@ test("Inspect Pro keeps nested media and text in place while selecting or saving
       .getByRole("textbox", { name: "Project name" })
       .fill("Full component QA");
     await destination.getByRole("button", { name: "Create and save" }).click();
-    await expect(destination.getByRole("status")).toContainText(
-      "Saved to Assets",
-    );
+    await expect(
+      destination.getByRole("status").or(destination.getByRole("alert")),
+    ).toContainText("Saved to Assets", { timeout: 15000 });
     const opened = app.context.waitForEvent("page");
     await destination.getByRole("button", { name: "Open collection" }).click();
     const collection = await opened;
@@ -2112,6 +2123,9 @@ test("Inspect Pro keeps nested media and text in place while selecting or saving
     await expect(
       saved.getByText("Second headline", { exact: true }),
     ).toBeVisible();
+    await expect(
+      saved.getByRole("img", { name: /^Component thumbnail [1-8]$/ }),
+    ).toHaveCount(8);
   } finally {
     await app.context.close();
   }
@@ -2188,6 +2202,426 @@ test("Inspect Pro accepts a typed site and requests only that site when asked", 
       { origins: ["http://localhost/*"] },
     ]);
     await expect(site.locator("getter-inspection-overlay")).toHaveCount(0);
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("Design Review pairs a sample Figma layer, guards the reviewed site, and restores its screenshot", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
+  try {
+    await app.page.goto(`${origin}/component-selection`);
+    const studio = await openStudioOptions(app);
+    await studio.setViewportSize({ width: 390, height: 900 });
+    await studio
+      .getByRole("button", { name: "Design Review", exact: true })
+      .click();
+    await expect(
+      studio.getByRole("heading", { name: "Review a page" }),
+    ).toBeVisible();
+    await studio.getByRole("button", { name: /New design review/ }).click();
+    await studio.getByLabel("Open tabs").selectOption({
+      label: "Component selection fixture · 127.0.0.1",
+    });
+    await studio.getByLabel("Ticket").fill("WEB-214");
+    await studio
+      .getByLabel("Figma frame link")
+      .fill("https://figma.invalid/design/test");
+    await expect(studio.getByRole("alert")).toContainText(
+      "Paste a Figma Design link",
+    );
+    await studio
+      .getByRole("button", { name: "Use sample Figma frame" })
+      .click();
+    await expect(
+      studio.getByText("Product card · Sample Figma frame"),
+    ).toBeVisible();
+    expect(
+      await studio.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(390);
+    await studio.screenshot({
+      path: info.outputPath("review-setup-narrow.png"),
+    });
+    await studio.getByRole("button", { name: /Start review/ }).click();
+    await expect(
+      studio.getByRole("heading", { name: "WEB-214" }),
+    ).toBeVisible();
+    await studio
+      .getByRole("button", { name: "Open Inspect Pro", exact: true })
+      .click();
+    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    await app.worker.evaluate(async () => {
+      const window = await chrome.windows.getCurrent();
+      await chrome.sidePanel.close({ windowId: window.id });
+    });
+
+    const panel = await app.openPanel();
+    await panel.setViewportSize({ width: 320, height: 880 });
+    const compare = panel.getByRole("region", {
+      name: "Design Review comparison",
+    });
+    await expect(compare).toBeVisible();
+    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    await app.page.locator("#first-headline").dispatchEvent("click");
+    await expect(compare.getByText("h3#first-headline")).toBeVisible();
+    await compare.getByLabel("Figma layer").selectOption("24:81");
+    await compare
+      .getByRole("button", { name: "Match layer", exact: true })
+      .click();
+    const fontSize = compare.locator("li").filter({ hasText: "font-size" });
+    await expect(fontSize).toContainText("Different");
+    await expect(fontSize).toContainText("24px");
+    await expect(fontSize).toContainText("18px");
+    expect(
+      await panel.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(320);
+    await compare.screenshot({
+      path: info.outputPath("review-sample-figma-match.png"),
+    });
+
+    await app.page.evaluate(() => history.pushState({}, "", "?another-page"));
+    await expect(
+      panel.getByRole("heading", {
+        name: "Return to the website under review",
+      }),
+    ).toBeVisible();
+    await expect(compare).toHaveCount(0);
+    await app.page.evaluate(() =>
+      history.replaceState({}, "", "/component-selection"),
+    );
+    await expect(compare).toBeVisible();
+    await panel
+      .getByRole("button", { name: "Back to review", exact: true })
+      .click();
+    await studio.waitForURL(/studio\.html\?review=/);
+    await expect(
+      studio.getByRole("heading", { name: "Saved comparison" }),
+    ).toBeVisible();
+    await expect(studio.getByText("h3#first-headline")).toBeVisible();
+
+    await studio
+      .getByRole("button", { name: "Replace reference", exact: true })
+      .click();
+    await studio
+      .getByLabel("Figma frame link")
+      .fill(
+        "https://www.figma.com/design/FixtureOnly/Example?node-id=22-80&ignored=1",
+      );
+    await studio
+      .getByRole("button", { name: "Replace reference", exact: true })
+      .click();
+    await expect(studio.getByText("Waiting for Figma access")).toBeVisible();
+    await expect(
+      studio.getByRole("heading", { name: "Saved comparison" }),
+    ).toHaveCount(0);
+    await expect(
+      studio.getByRole("link", { name: "Open saved Figma frame link" }),
+    ).toHaveAttribute(
+      "href",
+      "https://www.figma.com/design/FixtureOnly/Example?node-id=22-80",
+    );
+
+    await studio
+      .getByRole("button", { name: "Replace reference", exact: true })
+      .click();
+    await studio.getByLabel("Reference type").selectOption("screenshot");
+    const screenshot = studio.getByLabel("Screenshot", { exact: true });
+    await screenshot.setInputFiles({
+      name: "invalid.png",
+      mimeType: "image/png",
+      buffer: Buffer.from("invalid"),
+    });
+    await expect(studio.getByRole("alert")).toContainText(
+      "could not be opened",
+    );
+    const image = await studio.evaluate(() => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 256;
+      canvas.height = 144;
+      const context = canvas.getContext("2d");
+      context.fillStyle = "#176953";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/png").split(",")[1];
+    });
+    await screenshot.setInputFiles({
+      name: "approved.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(image, "base64"),
+    });
+    await expect(
+      studio.getByRole("img", { name: "Uploaded approved reference" }),
+    ).toBeVisible();
+    await studio
+      .getByRole("button", { name: "Replace reference", exact: true })
+      .click();
+    await expect(
+      studio.getByRole("heading", { name: "Reference and staging" }),
+    ).toBeVisible();
+    await studio.reload();
+    await expect(
+      studio.getByRole("img", { name: "Uploaded approved reference" }),
+    ).toBeVisible();
+    await studio
+      .getByRole("button", { name: "Open Inspect Pro", exact: true })
+      .click();
+    await expect(
+      compare.getByRole("heading", { name: "Screenshot reference" }),
+    ).toBeVisible();
+    await expect(compare.getByLabel("Figma layer")).toHaveCount(0);
+    await panel.setViewportSize({ width: 320, height: 460 });
+    await compare
+      .getByRole("button", { name: "Mark an area", exact: true })
+      .click();
+    const surface = compare.getByRole("group", { name: "Screenshot area" });
+    const outline = surface.locator(".review-area-mark");
+    const saveArea = compare.getByRole("button", { name: "Save marked area" });
+    await expect(surface.getByRole("img")).toHaveJSProperty(
+      "naturalWidth",
+      256,
+    );
+    await surface.click();
+    await expect(saveArea).toBeDisabled();
+    await expect(outline).toHaveCount(0);
+
+    async function draw(from, to) {
+      await surface.scrollIntoViewIfNeeded();
+      const image = await surface.boundingBox();
+      await panel.mouse.move(
+        image.x + from[0] * image.width,
+        image.y + from[1] * image.height,
+      );
+      await panel.mouse.down();
+      await panel.mouse.move(
+        image.x + to[0] * image.width,
+        image.y + to[1] * image.height,
+        { steps: 5 },
+      );
+      await expect(outline).toBeVisible();
+      await expect(saveArea).toBeDisabled();
+      await panel.mouse.up();
+      await expect(saveArea).toBeEnabled();
+    }
+
+    await draw([0.75, 0.75], [0.25, 0.25]);
+    const bounds = await outline.evaluate(({ style }) =>
+      [style.left, style.top, style.width, style.height].map(parseFloat),
+    );
+    bounds.forEach((value, index) =>
+      expect(Math.abs(value - [25, 25, 50, 50][index])).toBeLessThan(1),
+    );
+    const main = panel.getByRole("main");
+    const draftOutline = await outline.getAttribute("style");
+    await main.evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    const screenshotBox = await surface.boundingBox();
+    await panel.mouse.move(
+      screenshotBox.x + screenshotBox.width / 2,
+      screenshotBox.y + screenshotBox.height / 2,
+    );
+    await panel.mouse.wheel(0, 800);
+    await expect
+      .poll(() => main.evaluate((element) => element.scrollTop))
+      .toBeGreaterThan(0);
+    await expect(saveArea).toBeInViewport({ ratio: 1 });
+    await panel.mouse.wheel(0, -800);
+    await expect(main).toHaveJSProperty("scrollTop", 0);
+    await expect(outline).toHaveAttribute("style", draftOutline);
+    await compare
+      .getByLabel("Visual difference")
+      .fill("The heading sits lower in staging.");
+    await saveArea.click();
+    await expect(compare.getByText("Marked area saved.")).toBeVisible();
+    await expect(
+      compare.getByText("The heading sits lower in staging."),
+    ).toBeVisible();
+    const savedOutline = await outline.getAttribute("style");
+    await panel.reload();
+    await expect(compare.getByText("Marked area saved.")).toBeVisible();
+    await expect(outline).toHaveAttribute("style", savedOutline);
+    const changeArea = compare.getByRole("button", {
+      name: "Change marked area",
+    });
+    await changeArea.click();
+    await draw([0.54, 0.29], [-0.03, 0.88]);
+    await expect(outline).toHaveCSS("left", "0px");
+    await panel.keyboard.press("Escape");
+    await expect(outline).toHaveAttribute("style", savedOutline);
+    await changeArea.click();
+    await compare.getByText("Enter area coordinates").click();
+    await compare.getByLabel("width percent").fill("42.5");
+    await expect(outline).toHaveAttribute("style", /width: 42\.5%/);
+    await saveArea.click();
+    await expect(compare.getByText("Marked area saved.")).toBeVisible();
+    await panel
+      .getByRole("button", { name: "Back to review", exact: true })
+      .click();
+    await studio
+      .getByRole("button", { name: "Back to reviews", exact: true })
+      .click();
+    await expect(
+      studio.getByRole("heading", { name: "WEB-214 · approved.png" }),
+    ).toBeVisible();
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("Design Review can scroll to Start review after uploading a desktop screenshot", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
+  try {
+    const studio = await openStudioOptions(app);
+    await studio.emulateMedia({ colorScheme: "dark" });
+    await studio.setViewportSize({ width: 1440, height: 700 });
+    await studio
+      .getByRole("button", { name: "Design Review", exact: true })
+      .click();
+    await studio.getByRole("button", { name: /New design review/ }).click();
+    await studio.getByLabel("How to open the page").selectOption("address");
+    await studio
+      .getByRole("textbox", { name: "Website address", exact: true })
+      .fill(`${origin}/workbench`);
+    await studio.getByLabel("Ticket").fill("WEB-216");
+    await studio.getByLabel("Reference type").selectOption("screenshot");
+    const picture = await studio.evaluate(() => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 2560;
+      canvas.height = 1600;
+      const context = canvas.getContext("2d");
+      context.fillStyle = "#101c31";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = "#a9ccff";
+      for (let y = 100; y < canvas.height; y += 180)
+        context.fillRect(100, y, canvas.width - 200, 50);
+      return canvas.toDataURL("image/png").split(",")[1];
+    });
+    await studio.getByLabel("Screenshot", { exact: true }).setInputFiles({
+      name: "desktop-reference.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(picture, "base64"),
+    });
+    const preview = studio.getByRole("img", {
+      name: "Uploaded approved reference",
+    });
+    await expect(preview).toHaveJSProperty("naturalWidth", 2560);
+    const start = studio.getByRole("button", { name: /Start review/ });
+    await expect(start).toBeEnabled();
+    const content = studio.getByRole("main");
+    for (const width of [1440, 390]) {
+      await studio.setViewportSize({ width, height: 700 });
+      await studio.mouse.move(width / 2, 240);
+      await studio.mouse.wheel(0, 1600);
+      await expect
+        .poll(() => content.evaluate((page) => page.scrollTop))
+        .toBeGreaterThan(0);
+      await expect(start).toBeInViewport({ ratio: 1 });
+      const box = await preview.boundingBox();
+      expect(box.height).toBeLessThanOrEqual(224);
+      expect(box.width / box.height).toBeCloseTo(2560 / 1600, 1);
+      expect(
+        await studio.evaluate(() => document.documentElement.scrollWidth),
+      ).toBe(width);
+      await studio.screenshot({
+        path: info.outputPath(`review-scroll-${width}.png`),
+      });
+      await studio.mouse.wheel(0, -1600);
+      await expect(content).toHaveJSProperty("scrollTop", 0);
+    }
+    await studio.mouse.wheel(0, 1600);
+    await expect(start).toBeInViewport({ ratio: 1 });
+    await start.click();
+    await expect(
+      studio.getByRole("heading", { name: "WEB-216" }),
+    ).toBeInViewport();
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("Design Review starts from a project and requests access only for the chosen address", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, {
+    buildDir: "dist-studio-workspace-qa",
+    fixtureHostGrants: false,
+    denyPermissionRequests: true,
+  });
+  try {
+    const studio = await openStudioOptions(app);
+    await studio.getByRole("button", { name: "New project" }).click();
+    await studio.getByLabel("Project name").fill("Juniper");
+    await studio
+      .getByRole("button", { name: "Create project", exact: true })
+      .click();
+    await studio
+      .getByRole("button", { name: "Projects", exact: true })
+      .last()
+      .click();
+    await studio.getByRole("button", { name: "Open project Juniper" }).click();
+    await studio.getByRole("button", { name: "New design review" }).click();
+    await expect(studio.getByLabel("Project · Optional")).toHaveValue(/.+/);
+    await studio.getByLabel("Ticket").fill("WEB-215");
+    await studio.getByLabel("How to open the page").selectOption("address");
+    await expect(studio.getByLabel("Open tabs")).toHaveCount(0);
+    await studio
+      .getByRole("textbox", { name: "Website address", exact: true })
+      .fill(`${origin}/workbench`);
+    await studio.getByLabel("Reference type").selectOption("screenshot");
+    await studio.getByRole("button", { name: "Use sample screenshot" }).click();
+    await studio.getByRole("button", { name: /Start review/ }).click();
+    await expect(studio.getByText("Juniper · Desktop")).toBeVisible();
+    const opened = app.context.waitForEvent("page");
+    await studio
+      .getByRole("button", { name: "Open Inspect Pro", exact: true })
+      .click();
+    const site = await opened;
+    await expect(site).toHaveURL(`${origin}/workbench`);
+    await app.worker.evaluate(async () => {
+      const window = await chrome.windows.getCurrent();
+      await chrome.sidePanel.close({ windowId: window.id });
+    });
+    const panel = await app.openPanel();
+    await expect(
+      panel.getByRole("heading", { name: "Allow Inspect Pro on this site" }),
+    ).toBeVisible();
+    expect(await panel.evaluate(() => websiteAccessFixture.requests)).toEqual(
+      [],
+    );
+    await panel.getByRole("button", { name: "Allow site access" }).click();
+    await expect(panel.getByRole("status")).toContainText(
+      "Site access wasn’t allowed",
+    );
+    expect(await panel.evaluate(() => websiteAccessFixture.requests)).toEqual([
+      { origins: ["http://127.0.0.1/*"] },
+    ]);
+    await expect(site.locator("getter-inspection-overlay")).toHaveCount(0);
+    await expect(
+      panel.getByRole("region", { name: "Design Review comparison" }),
+    ).toHaveCount(0);
+    await studio.getByRole("button", { name: "Back to reviews" }).click();
+    await expect(
+      studio.getByRole("heading", { name: "Project reviews" }),
+    ).toBeVisible();
+    await expect(
+      studio.getByRole("heading", { name: /WEB-215.*Sample screenshot/ }),
+    ).toBeVisible();
+    await studio.getByRole("button", { name: /Open review/ }).click();
+    await studio
+      .getByRole("button", { name: "Open project", exact: true })
+      .click();
+    await expect(
+      studio.getByRole("heading", { name: "Juniper", exact: true }),
+    ).toBeVisible();
   } finally {
     await app.context.close();
   }
@@ -3453,9 +3887,10 @@ test("Studio campaign and brand board drafts keep collection assets through reop
     await expect(
       studio.getByRole("dialog", { name: "Create a project" }),
     ).toBeHidden();
-    await studio.getByLabel("Open tabs").selectOption({
-      label: "Getter workspace fixture · 127.0.0.1",
-    });
+    await studio
+      .getByRole("main")
+      .getByRole("combobox", { name: "Open tabs", exact: true })
+      .selectOption({ label: "Getter workspace fixture · 127.0.0.1" });
     await studio.getByRole("button", { name: "Scan styles" }).click();
     await studio.getByRole("checkbox", { name: /#123456/ }).check();
     await studio.getByRole("checkbox", { name: /Arial.*body/ }).check();

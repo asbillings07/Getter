@@ -48,7 +48,7 @@ async function loadedWebsite(api, tabId) {
 // tab and top document have been verified and recorded for this window.
 export async function launchInspectPro(
   api,
-  { windowId, address, source, destination },
+  { windowId, address, source, destination, review },
 ) {
   const opening = api.sidePanel.open({ windowId });
   await opening;
@@ -61,6 +61,6 @@ export async function launchInspectPro(
   const key = inspectProKey(windowId);
   await api.tabs.update(tabId, { active: true });
   await api.storage.session.set({
-    [key]: { id: crypto.randomUUID(), destination },
+    [key]: { id: crypto.randomUUID(), destination, review },
   });
 }

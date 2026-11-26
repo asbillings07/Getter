@@ -13,9 +13,11 @@ let connection;
 function openDatabase() {
   if (connection) return connection;
   connection = new Promise((resolve, reject) => {
-    const request = indexedDB.open("getter-studio-workspace-qa", 1);
-    request.onupgradeneeded = () => {
-      request.result.createObjectStore("projects", { keyPath: "id" });
+    const request = indexedDB.open("getter-studio-workspace-qa", 2);
+    request.onupgradeneeded = ({ oldVersion }) => {
+      if (oldVersion < 1)
+        request.result.createObjectStore("projects", { keyPath: "id" });
+      request.result.createObjectStore("reviews", { keyPath: "id" });
     };
     request.onsuccess = () => {
       const db = request.result;
@@ -33,10 +35,10 @@ function openDatabase() {
   return connection;
 }
 
-async function transact(mode, operation) {
+export async function transact(mode, operation, storeName = "projects") {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction("projects", mode);
+    const transaction = db.transaction(storeName, mode);
     let result, failure;
     transaction.oncomplete = () => resolve(result);
     transaction.onabort = () => reject(failure ?? transaction.error);
@@ -45,7 +47,7 @@ async function transact(mode, operation) {
       failure = error;
       transaction.abort();
     };
-    operation(transaction.objectStore("projects"), finish, abort);
+    operation(transaction.objectStore(storeName), finish, abort);
   });
 }
 

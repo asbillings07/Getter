@@ -7,6 +7,8 @@ import SidePanelCollect, {
   openCollectionWorkspace,
 } from "./SidePanelCollect.jsx";
 import { inspectProKey } from "./inspect-workspace.js";
+import InspectReview from "./InspectReview.jsx";
+import { reviewSiteMatches } from "./reviews.js";
 
 export default function InspectProRouter({ children }) {
   const [session, setSession] = useState(undefined);
@@ -52,6 +54,8 @@ export default function InspectProRouter({ children }) {
 }
 
 function InspectProPanel({ session }) {
+  const review = session.review;
+  const [showComparison, setShowComparison] = useState(true);
   const [destination, setDestination] = useState(session.destination);
   const [page, setPage] = useState({ status: "loading" });
   const { status, scan, origin } = page;
@@ -133,6 +137,10 @@ function InspectProPanel({ session }) {
           invalidate(tab?.status === "loading" ? "loading" : "unsupported");
           return;
         }
+        if (review && !reviewSiteMatches(review.address, tab.url)) {
+          invalidate("review-site");
+          return;
+        }
         const next = {
           tabId: tab.id,
           documentId: tab.documentId,
@@ -182,6 +190,12 @@ function InspectProPanel({ session }) {
         chrome.tabs.onActivated.addListener(activated);
         chrome.tabs.onUpdated.addListener(updated);
         chrome.webNavigation.onCommitted.addListener(committed);
+        if (review) {
+          chrome.webNavigation.onHistoryStateUpdated.addListener(committed);
+          chrome.webNavigation.onReferenceFragmentUpdated.addListener(
+            committed,
+          );
+        }
         chrome.permissions.onRemoved.addListener(permissionChanged);
         chrome.permissions.onAdded.addListener(refresh);
         refresh();
@@ -196,10 +210,16 @@ function InspectProPanel({ session }) {
       chrome.tabs.onActivated.removeListener(activated);
       chrome.tabs.onUpdated.removeListener(updated);
       chrome.webNavigation.onCommitted.removeListener(committed);
+      if (review) {
+        chrome.webNavigation.onHistoryStateUpdated.removeListener(committed);
+        chrome.webNavigation.onReferenceFragmentUpdated.removeListener(
+          committed,
+        );
+      }
       chrome.permissions.onRemoved.removeListener(permissionChanged);
       chrome.permissions.onAdded.removeListener(refresh);
     };
-  }, []);
+  }, [review]);
 
   async function allow() {
     setAccessPending(scan.documentId);
@@ -244,6 +264,21 @@ function InspectProPanel({ session }) {
     ).catch(() => notify("Couldn’t open Getter Studio. Try again."));
   }
 
+  async function openReview() {
+    const url = new URL(chrome.runtime.getURL("studio.html"));
+    url.searchParams.set("review", review.id);
+    try {
+      const tab =
+        review.studioTabId !== undefined &&
+        (await chrome.tabs.get(review.studioTabId).catch(() => null));
+      if (tab?.url?.split("?")[0] === chrome.runtime.getURL("studio.html"))
+        await chrome.tabs.update(tab.id, { url: url.href, active: true });
+      else await chrome.tabs.create({ url: url.href });
+    } catch {
+      notify("Couldn’t open the saved review. Try again.");
+    }
+  }
+
   return (
     <div className="window inspect-pro-window">
       <header className="top inspect-pro-header">
@@ -273,28 +308,57 @@ function InspectProPanel({ session }) {
         <button
           className="text-button"
           type="button"
-          onClick={() => openStudio()}
+          onClick={review ? openReview : () => openStudio()}
         >
-          Open Studio
+          {review ? "Back to review" : "Open Studio"}
         </button>
       </div>
+      {review && status === "ready" && (
+        <div className="inspect-review-navigation">
+          <button
+            className="text-button"
+            type="button"
+            onClick={() => setShowComparison((visible) => !visible)}
+          >
+            {showComparison ? "Back to Inspect" : "Show comparison"}
+          </button>
+        </div>
+      )}
       <main className="inspect-main">
         {status === "ready" ? (
-          <InspectView
-            key={scan.documentId}
-            pro
-            scan={scan}
-            model={model}
-            onChange={(next) => {
-              if (current.current === scan) setModel(next);
-            }}
-            onCopy={copy}
-            onNotice={notify}
-            onCollect={(inspection, captureScope, selectionId) => {
-              if (current.current === scan)
-                setCapture({ inspection, captureScope, selectionId });
-            }}
-          />
+          <>
+            <div
+              className="review-inspect-tools"
+              hidden={Boolean(review && showComparison)}
+            >
+              <InspectView
+                key={scan.documentId}
+                pro
+                scan={scan}
+                model={model}
+                onChange={(next) => {
+                  if (current.current === scan) setModel(next);
+                }}
+                onCopy={copy}
+                onNotice={notify}
+                onCollect={(inspection, captureScope, selectionId) => {
+                  if (current.current === scan)
+                    setCapture({ inspection, captureScope, selectionId });
+                }}
+              />
+            </div>
+            {review && showComparison && (
+              <InspectReview
+                id={review.id}
+                snapshot={model.snapshot}
+                isCurrent={() =>
+                  current.current === scan &&
+                  latest.current.snapshot?.selectionId ===
+                    model.snapshot?.selectionId
+                }
+              />
+            )}
+          </>
         ) : (
           <section className="state" aria-live="polite">
             <h2>
@@ -302,6 +366,7 @@ function InspectProPanel({ session }) {
                 {
                   loading: "Connecting to this page…",
                   unsupported: "Open a website to inspect",
+                  "review-site": "Return to the website under review",
                   access: "Allow Inspect Pro on this site",
                 }[status]
               }
@@ -323,6 +388,12 @@ function InspectProPanel({ session }) {
             )}
             {status === "unsupported" && (
               <p>Switch to a website or open one in this window to continue.</p>
+            )}
+            {status === "review-site" && (
+              <p>
+                Switch back to the reviewed page or reopen it from the saved
+                review.
+              </p>
             )}
           </section>
         )}
