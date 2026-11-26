@@ -3,12 +3,13 @@ import { safeStyleValue } from "./inspect.js";
 
 export const formats = {
   website: { label: "Website layout", width: 1440, height: 900 },
-  portrait: { label: "Social post · portrait", width: 1080, height: 1350 },
-  square: { label: "Social post · square", width: 1080, height: 1080 },
+  portrait: { label: "Campaign artwork · portrait", width: 1080, height: 1350 },
+  square: { label: "Campaign artwork · square", width: 1080, height: 1080 },
+  story: { label: "Story / cover · vertical", width: 1080, height: 1920 },
   brand: { label: "Brand board", width: 1200, height: 800 },
   blank: { label: "Blank canvas", width: 1200, height: 800 },
 };
-const { website, ...otherFormats } = formats;
+const { website, portrait, square, story, brand, blank } = formats;
 export const startingLayouts = {
   website: { ...website, label: "Website · Simple navigation" },
   "website-newsletter": {
@@ -17,7 +18,16 @@ export const startingLayouts = {
     format: "website",
     newsletter: true,
   },
-  ...otherFormats,
+  portrait,
+  square,
+  story,
+  carousel: {
+    ...portrait,
+    label: "Campaign artwork · 3-slide carousel",
+    format: "portrait",
+  },
+  brand,
+  blank,
 };
 
 const ink = "#27352e";
@@ -130,6 +140,231 @@ function newsletterLayers() {
   ];
 }
 
+const campaignCopy = [
+  ["Make it a bright morning.", "Meet the new collection."],
+  ["Good things take care.", "Discover the details behind each piece."],
+  ["Make it part of your day.", "Explore the full collection."],
+];
+
+function campaignLayers(brand, height, copy) {
+  const [headline, description] = copy;
+  const artworkHeight = height - 570;
+  return [
+    text("Brand name", brand, 68, 58, 944, 50, 32, true),
+    {
+      ...text("Headline", headline, 68, 132, 944, 184, 76, true),
+      compositionShift: (height - 550) / height,
+    },
+    layer("shape", {
+      name: "Campaign artwork",
+      x: 68,
+      y: 348,
+      width: 944,
+      height: artworkHeight,
+      compositionShift: -216 / height,
+      fill: accent,
+      radius: 26,
+      placeholder: "artwork",
+    }),
+    {
+      ...text(
+        "Artwork label",
+        "Campaign artwork",
+        98,
+        321 + artworkHeight / 2,
+        884,
+        84,
+        50,
+        true,
+      ),
+      align: "middle",
+      compositionShift: -216 / height,
+      placeholder: "artwork",
+    },
+    text("Supporting copy", description, 68, height - 192, 944, 90, 38),
+    text("Campaign label", "NEW COLLECTION", 68, height - 81, 465, 41, 25),
+    {
+      ...text("Site or handle", "@yourbrand", 548, height - 81, 464, 41, 25),
+      align: "end",
+    },
+  ];
+}
+
+function brandBoard(name) {
+  const swatches = [
+    ["Primary", green],
+    ["Background", paper],
+    ["Text", ink],
+    ["Accent", accent],
+  ].map(([name, fill], index) =>
+    layer("shape", {
+      name,
+      fill,
+      x: 60 + index * 277,
+      y: 262,
+      width: 249,
+      height: 112,
+      swatch: true,
+      stroke: "#d6d0c3",
+      strokeWidth: 1,
+    }),
+  );
+  const [primary, background, inkSwatch, accentSwatch] = swatches;
+  const content = [
+    text("Brand name", name, 60, 42, 1080, 45, 29, true),
+    text(
+      "Brand headline",
+      "Good things, slowly made.",
+      60,
+      99,
+      1080,
+      83,
+      64,
+      true,
+    ),
+    text(
+      "Brand description",
+      "Thoughtful details for everyday moments.",
+      60,
+      190,
+      1080,
+      43,
+      30,
+    ),
+    text("Headings label", "HEADINGS", 60, 410, 490, 30, 19),
+    text(
+      "Heading sample",
+      "Slow mornings. Good company.",
+      60,
+      448,
+      490,
+      115,
+      43,
+      true,
+    ),
+    text("Body label", "BODY", 620, 410, 520, 30, 19),
+    text(
+      "Body sample",
+      "We believe the best days begin with something simple, made well.",
+      620,
+      451,
+      520,
+      81,
+      27,
+    ),
+    text("Usage note", "Thoughtful details, everywhere.", 60, 609, 435, 58, 24),
+  ].map((item) => ({ ...item, textColorSource: inkSwatch.id }));
+  return {
+    backgroundSource: background.id,
+    composition: "classic",
+    layers: [
+      ...swatches.map((item) => ({ ...item, textColorSource: inkSwatch.id })),
+      ...content,
+      layer("button", {
+        name: "Button sample",
+        text: "Explore the collection",
+        x: 60,
+        y: 667,
+        width: 380,
+        height: 67,
+        fontSize: 26,
+        fillSource: primary.id,
+      }),
+      layer("shape", {
+        name: "Brand artwork",
+        x: 620,
+        y: 570,
+        width: 520,
+        height: 170,
+        fillSource: accentSwatch.id,
+        placeholder: "artwork",
+      }),
+      {
+        ...text("Artwork label", "Brand artwork", 630, 632, 500, 58, 35, true),
+        align: "middle",
+        textColorSource: inkSwatch.id,
+        placeholder: "artwork",
+      },
+    ].map((item) => ({
+      ...item,
+      compositionShift:
+        (item.y < 240 ? -8 : item.y < 400 ? 8 : item.y < 570 ? 18 : 28) /
+        formats.brand.height,
+    })),
+  };
+}
+
+const compositions = [
+  [
+    ["headline-first", "Headline first"],
+    ["image-first", "Image first"],
+  ],
+  [
+    ["classic", "Classic brand board"],
+    ["airy", "Airy brand board"],
+  ],
+];
+
+export function compositionOptions(draft) {
+  return compositions.find((options) =>
+    options.some(([value]) => value === draft.composition),
+  );
+}
+
+export function changeComposition(draft, composition) {
+  const options = compositionOptions(draft);
+  if (
+    draft.composition === composition ||
+    !options?.some(([value]) => value === composition)
+  )
+    return draft;
+  const direction = composition === options[0][0] ? -1 : 1;
+  return {
+    ...draft,
+    composition,
+    layers: draft.layers.map((item) =>
+      item.compositionShift
+        ? {
+            ...item,
+            y:
+              item.y +
+              direction * Math.round(item.compositionShift * draft.height),
+          }
+        : item,
+    ),
+  };
+}
+
+export function changeDesignLayer(draft, selected, fields) {
+  const updated = { ...selected, ...fields };
+  const properties = ["fill", "textColor"];
+  for (const property of properties) {
+    if (updated[property] !== selected[property])
+      delete updated[property + "Source"];
+  }
+  const changedSwatch = selected.swatch && updated.fill !== selected.fill;
+  const layers = draft.layers.map((item) => {
+    const next = item.id === selected.id ? updated : item;
+    if (!changedSwatch) return next;
+    const linked = properties.filter(
+      (property) => next[property + "Source"] === selected.id,
+    );
+    return linked.length
+      ? {
+          ...next,
+          ...Object.fromEntries(
+            linked.map((property) => [property, updated.fill]),
+          ),
+        }
+      : next;
+  });
+  const background =
+    changedSwatch && draft.backgroundSource === selected.id
+      ? updated.fill
+      : draft.background;
+  return { ...draft, layers, background };
+}
+
 function template(format, brand, newsletter) {
   if (format === "website")
     return [
@@ -229,107 +464,6 @@ function template(format, brand, newsletter) {
         textColor: "#ffffff",
       },
     ];
-  if (format === "portrait" || format === "square") {
-    const height = formats[format].height;
-    return [
-      text("Brand name", brand, 70, 62, 940, 55, 30, true),
-      text(
-        "Headline",
-        "Share something worth remembering.",
-        68,
-        151,
-        946,
-        178,
-        70,
-        true,
-      ),
-      layer("shape", {
-        name: "Artwork background",
-        x: 68,
-        y: 364,
-        width: 944,
-        height: height - 613,
-        fill: accent,
-        radius: 26,
-        placeholder: "artwork",
-      }),
-      {
-        ...text(
-          "Artwork label",
-          "Artwork",
-          98,
-          (height + 70) / 2,
-          886,
-          78,
-          56,
-          true,
-        ),
-        align: "middle",
-        placeholder: "artwork",
-      },
-      text(
-        "Supporting copy",
-        "Add a short message for your audience.",
-        70,
-        height - 198,
-        928,
-        94,
-        36,
-      ),
-      text("Site or handle", "@yourbrand", 70, height - 88, 922, 46, 25),
-    ];
-  }
-  if (format === "brand")
-    return [
-      text("Brand name", brand, 64, 48, 1060, 77, 48, true),
-      text(
-        "Headline sample",
-        "Your brand, in its own words.",
-        64,
-        152,
-        1040,
-        164,
-        62,
-        true,
-      ),
-      text(
-        "Body sample",
-        "Add a description that sets the tone for your brand.",
-        64,
-        330,
-        1040,
-        80,
-        31,
-      ),
-      ...[green, accent, "#d6aa83", "#e8ddca"].map((fill, index) =>
-        layer("shape", {
-          name: `Palette swatch ${index + 1}`,
-          x: 64 + index * 272,
-          y: 440,
-          width: 241,
-          height: 156,
-          fill,
-          radius: 12,
-        }),
-      ),
-      layer("button", {
-        name: "Button sample",
-        x: 64,
-        y: 652,
-        width: 265,
-        height: 71,
-        fontSize: 25,
-      }),
-      text(
-        "Usage note",
-        "Add a usage note for the team.",
-        394,
-        665,
-        700,
-        66,
-        25,
-      ),
-    ];
   return [];
 }
 
@@ -342,7 +476,7 @@ export function createDraft(name, layout, brand) {
     height,
     newsletter,
   } = startingLayouts[layout];
-  return {
+  const draft = {
     version: 1,
     revision: 0,
     id: crypto.randomUUID(),
@@ -352,6 +486,37 @@ export function createDraft(name, layout, brand) {
     height,
     background: paper,
     layers: template(format, brand, newsletter),
+  };
+  if (format === "brand") return { ...draft, ...brandBoard(brand) };
+  if (!["portrait", "square", "story"].includes(format)) return draft;
+  draft.composition = "headline-first";
+  draft.layers = campaignLayers(brand, height, campaignCopy[0]);
+  if (layout === "carousel") {
+    draft.additionalSlides = campaignCopy.slice(1).map((copy) => ({
+      background: paper,
+      composition: "headline-first",
+      layers: campaignLayers(brand, height, copy),
+    }));
+  }
+  return draft;
+}
+
+export function draftSlide(design, index) {
+  if (!index) return design;
+  return { ...design, ...design.additionalSlides[index - 1] };
+}
+
+export function replaceDraftSlide(design, index, view) {
+  if (!index) return view;
+  const { background, layers, composition, ...shared } = view;
+  return {
+    ...shared,
+    background: design.background,
+    layers: design.layers,
+    composition: design.composition,
+    additionalSlides: design.additionalSlides.map((slide, position) =>
+      position === index - 1 ? { background, layers, composition } : slide,
+    ),
   };
 }
 
@@ -462,7 +627,7 @@ export function addFromAsset(asset, draft) {
           (item) => item.type === "shape" && item.placeholder === "artwork",
         );
     if (slot) {
-      const { x, y, width, height, radius } = slot;
+      const { x, y, width, height, radius, compositionShift } = slot;
       return layer("image", {
         ...base,
         x,
@@ -470,6 +635,7 @@ export function addFromAsset(asset, draft) {
         width,
         height,
         radius,
+        compositionShift,
         fills: "artwork",
         blob: asset.value.blob,
         fit: "cover",

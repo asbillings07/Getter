@@ -59,10 +59,10 @@ fetch path and have the same format and size limits as Studio Collections.
 ## Use the collection in the editor
 
 1. From the collection, select **Create design** or **Use in editor** on an
-   asset. Choose a website layout, social post, brand board, or blank canvas.
-   **Simple navigation** starts with a header, hero, and footer. **Navigation
-   - newsletter** adds separate layers for the newsletter copy and signup
-     artwork. The email prompt and Join button are visual elements in the draft.
+   asset. Choose a website layout, campaign artwork, brand board, or blank
+   canvas. **Simple navigation** starts with a header, hero, and footer.
+   **Navigation + newsletter** adds editable signup artwork between the hero
+   and footer.
 2. Select layers on the canvas or in **Layers**. Edit text and type styles,
    move and resize artwork, and use **Collection assets** to apply a color or
    font, replace artwork, or insert a captured component. The website preset has
@@ -80,6 +80,26 @@ style properties for component artwork. Captured markup, handlers, and form
 values are excluded. Standalone text assets can be inserted as editable layers.
 Projects, collections, and drafts use local Chrome storage. Existing QA
 collections use the same storage and do not need to be imported again.
+
+### Campaign artwork
+
+Start with portrait or square artwork, a vertical story or cover, or a
+three-slide carousel. Insert an image from the collection to fill the artwork
+slot. Select **Canvas** to choose **Headline first** or **Image first**.
+Use **Slide 1**, **Slide 2**, and **Slide 3** to edit each slide independently.
+Saving a carousel saves all three slides. Export it as a ZIP with one numbered
+SVG or PNG per slide. Each file contains static artwork.
+
+### Brand board
+
+Select the **Primary**, **Background**, **Text**, or **Accent** swatch and
+apply a collection color or edit its Fill. The swatch caption shows the
+current value. The swatches also update the sample button, canvas color, board
+copy, and artwork placeholder. Editing a linked property directly sets its
+own value. Edit the two type samples independently and insert or replace
+artwork from the collection. Select **Canvas** for the classic or airy
+composition. The options for a board are SVG and PNG. Receiving apps determine
+how imported SVG elements and fonts can be edited.
 
 ## Build
 

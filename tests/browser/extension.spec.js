@@ -2514,6 +2514,258 @@ test("Studio saves while browsing two sites, then edits and exports a design fro
   }
 });
 
+test("Studio campaign and brand board drafts keep collection assets through reopen and export", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
+  try {
+    await app.page.goto(`${origin}/workbench`);
+    const studio = await openStudioOptions(app);
+    await studio.setViewportSize({ width: 360, height: 860 });
+    await studio.getByRole("button", { name: "New project" }).click();
+    await studio
+      .getByRole("textbox", { name: "Project name" })
+      .fill("Fieldwork");
+    await studio.keyboard.press("Enter");
+    await studio.getByLabel("Open tabs").selectOption({
+      label: "Getter workspace fixture · 127.0.0.1",
+    });
+    await studio.getByRole("button", { name: "Scan styles" }).click();
+    await studio.getByRole("checkbox", { name: /#123456/ }).check();
+    await studio.getByRole("checkbox", { name: /Arial.*body/ }).check();
+    await studio.getByRole("button", { name: "Save selected (2)" }).click();
+    const saved = studio.getByText("Saved to the collection on this device.", {
+      exact: true,
+    });
+    await expect(saved).toBeVisible();
+    const alternate = await studio.evaluate(() => {
+      const sample = document.createElement("canvas");
+      sample.width = sample.height = 4;
+      const context = sample.getContext("2d");
+      context.fillStyle = "#d38c52";
+      context.fillRect(0, 0, sample.width, sample.height);
+      return sample.toDataURL("image/png").split(",")[1];
+    });
+    for (const [name, buffer] of [
+      ["Cover artwork.png", studioPng],
+      ["Alternate artwork.png", Buffer.from(alternate, "base64")],
+    ]) {
+      await studio
+        .getByLabel("Add a local image")
+        .setInputFiles({ name, mimeType: "image/png", buffer });
+      await expect(saved).toBeVisible();
+    }
+    await studio.getByRole("button", { name: "Assets", exact: true }).click();
+    const assets = studio.getByRole("region", { name: /Collection assets/ });
+    const editor = studio.getByRole("region", { name: "Studio editor" });
+    const canvas = editor
+      .getByRole("region", { name: "Canvas workspace" })
+      .locator("svg.design-artboard");
+    const layerButton = (name) =>
+      editor.getByRole("button", { name, exact: true });
+    const textField = editor.getByRole("textbox", {
+      name: "Layer text",
+      exact: true,
+    });
+    const goToSlide = (number) => layerButton(`Slide ${number}`).press("Enter");
+    const back = () =>
+      editor.getByRole("button", { name: /Back to collection/ }).click();
+    const create = async (name, layout) => {
+      await assets
+        .getByRole("button", { name: "Create design", exact: true })
+        .click();
+      const dialog = studio.getByRole("dialog", { name: "Create a design" });
+      await dialog.getByRole("textbox", { name: "Design name" }).fill(name);
+      await dialog
+        .getByRole("combobox", { name: "Starting layout" })
+        .selectOption(layout);
+      await dialog
+        .getByRole("button", { name: "Create design", exact: true })
+        .click();
+      await expect(
+        editor.getByRole("heading", { name, exact: true }),
+      ).toBeVisible();
+    };
+    const reopen = async (name) => {
+      await studio.reload();
+      await studio
+        .getByRole("button", { name: "Fieldwork collection", exact: true })
+        .click();
+      await studio.getByRole("button", { name: "Editor", exact: true }).click();
+      await studio
+        .getByRole("button", { name: `Open ${name}`, exact: true })
+        .click();
+    };
+    const showExport = async () => {
+      await layerButton("Export draft").click();
+      return studio.getByRole("dialog", { name: "Export draft" });
+    };
+    const download = async (dialog, name) => {
+      const next = studio.waitForEvent("download");
+      await dialog.getByRole("button", { name, exact: true }).click();
+      const downloaded = await next;
+      return readFile(await downloaded.path());
+    };
+
+    await create("Summer carousel", "carousel");
+    expect(
+      await studio.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(360);
+    await layerButton("Headline").click();
+    await textField.fill("Fresh for summer");
+    await layerButton("Insert Cover artwork.png").click();
+    await expect(canvas.locator("image")).toHaveAttribute(
+      "href",
+      /^data:image\/png;base64,/,
+    );
+    await layerButton("Canvas").click();
+    await editor.getByLabel("Composition").selectOption("image-first");
+    await expect(
+      canvas.locator('g[transform="translate(68 132)"] image'),
+    ).toHaveCount(1);
+    await goToSlide(2);
+    await expect(editor.getByLabel("Composition")).toHaveValue(
+      "headline-first",
+    );
+    await expect(canvas.getByText("Fresh for summer")).toHaveCount(0);
+    await layerButton("Headline").click();
+    await textField.fill("Made with care");
+    await goToSlide(3);
+    await layerButton("Headline").click();
+    await textField.fill("Find your favorite");
+    await goToSlide(1);
+    await layerButton("Undo").click();
+    await expect(layerButton("Slide 3")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(canvas.getByText("Find your favorite")).toHaveCount(0);
+    await layerButton("Redo").click();
+    await expect(
+      canvas.getByText("Find your favorite", { exact: true }),
+    ).toBeVisible();
+    await back();
+    await expect(assets.getByRole("article")).toHaveCount(4);
+    await reopen("Summer carousel");
+    await goToSlide(2);
+    await expect(
+      canvas.getByText("Made with care", { exact: true }),
+    ).toBeVisible();
+    await goToSlide(3);
+    await expect(
+      canvas.getByText("Find your favorite", { exact: true }),
+    ).toBeVisible();
+
+    const campaignExport = await showExport();
+    const svgZip = await JSZip.loadAsync(
+      await download(campaignExport, "Download SVG ZIP"),
+    );
+    expect(Object.keys(svgZip.files)).toEqual([
+      "slide-01.svg",
+      "slide-02.svg",
+      "slide-03.svg",
+    ]);
+    const cover = await svgZip.file("slide-01.svg").async("string");
+    expect(cover).toContain("Fresh for summer");
+    expect(cover).toContain("data:image/png;base64,");
+    expect(await svgZip.file("slide-02.svg").async("string")).toContain(
+      "Made with care",
+    );
+    expect(await svgZip.file("slide-03.svg").async("string")).toContain(
+      "Find your favorite",
+    );
+    await campaignExport.getByLabel("File format").selectOption("png");
+    const pngZip = await JSZip.loadAsync(
+      await download(campaignExport, "Download PNG ZIP"),
+    );
+    expect(Object.keys(pngZip.files)).toEqual([
+      "slide-01.png",
+      "slide-02.png",
+      "slide-03.png",
+    ]);
+    for (const file of Object.values(pngZip.files)) {
+      const image = await file.async("nodebuffer");
+      expect(image.subarray(1, 4).toString()).toBe("PNG");
+      expect(image.readUInt32BE(16)).toBe(1080);
+      expect(image.readUInt32BE(20)).toBe(1350);
+    }
+    await campaignExport.getByRole("button", { name: "Done" }).click();
+    await studio.setViewportSize({ width: 1280, height: 900 });
+    await goToSlide(1);
+    await studio.screenshot({
+      path: info.outputPath("getter-campaign-artwork.png"),
+    });
+    await back();
+
+    await create("Vertical story", "story");
+    await expect(canvas).toHaveAttribute("viewBox", "0 0 1080 1920");
+    const storyExport = await showExport();
+    await storyExport.getByLabel("File format").selectOption("png");
+    const story = await download(storyExport, "Download PNG");
+    expect(story.readUInt32BE(20)).toBe(1920);
+    await storyExport.getByRole("button", { name: "Done" }).click();
+    await back();
+
+    await studio.setViewportSize({ width: 360, height: 860 });
+    await create("Fieldwork brand board", "brand");
+    expect(
+      await studio.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(360);
+    await layerButton("Primary").click();
+    await layerButton("Apply #123456").click();
+    await expect(canvas.getByText("#123456", { exact: true })).toBeVisible();
+    const brandButton = canvas
+      .locator('g[transform="translate(60 667)"] > rect')
+      .first();
+    await expect(brandButton).toHaveAttribute("fill", "rgb(18, 52, 86)");
+    await layerButton("Heading sample").click();
+    await textField.fill("A quieter kind of good");
+    await layerButton("Apply Arial · body").click();
+    await expect(
+      editor.getByRole("textbox", { name: "Font family" }),
+    ).toHaveValue("Arial");
+    const typeSize = editor.getByRole("spinbutton", { name: "Type size" });
+    await typeSize.fill("40");
+    await typeSize.press("Enter");
+    await layerButton("Insert Cover artwork.png").click();
+    await layerButton("Replace Alternate artwork.png").click();
+    const artwork = canvas.locator("image");
+    await expect(artwork).toHaveAttribute(
+      "href",
+      `data:image/png;base64,${alternate}`,
+    );
+    await layerButton("Canvas").click();
+    await editor.getByLabel("Composition").selectOption("airy");
+    await expect(
+      canvas.locator('g[transform="translate(620 598)"] image'),
+    ).toHaveCount(1);
+    await back();
+    await reopen("Fieldwork brand board");
+    await expect(editor.getByLabel("Composition")).toHaveValue("airy");
+    await expect(
+      canvas.getByText("A quieter kind of good", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      canvas.locator('g[transform="translate(60 695)"] > rect').first(),
+    ).toHaveAttribute("fill", "rgb(18, 52, 86)");
+    await studio.setViewportSize({ width: 1280, height: 900 });
+    await studio.screenshot({
+      path: info.outputPath("getter-brand-board.png"),
+    });
+    const boardExport = await showExport();
+    const board = (await download(boardExport, "Download SVG")).toString(
+      "utf8",
+    );
+    expect(board).toContain("A quieter kind of good");
+    expect(board).toContain("#123456");
+    expect(board).toContain(`data:image/png;base64,${alternate}`);
+  } finally {
+    await app.context.close();
+  }
+});
+
 test("ungranted side-panel sites are identified without automatic permission requests", async ({}, info) => {
   const app = await launch(info, {
     fixtureHostGrants: false,

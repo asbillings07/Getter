@@ -42,7 +42,10 @@ export default function Designs({
             />
             <h3>{design.name}</h3>
             <p>
-              {formats[design.format].label} · {design.width} × {design.height}
+              {design.additionalSlides?.length
+                ? startingLayouts.carousel.label
+                : formats[design.format].label}{" "}
+              · {design.width} × {design.height}
             </p>
             <button
               className="secondary studio-inline-action"
