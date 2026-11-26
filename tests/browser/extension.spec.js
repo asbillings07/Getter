@@ -2570,8 +2570,10 @@ test("Studio campaign and brand board drafts keep collection assets through reop
       exact: true,
     });
     const goToSlide = (number) => layerButton(`Slide ${number}`).press("Enter");
-    const back = () =>
-      editor.getByRole("button", { name: /Back to collection/ }).click();
+    const back = async () => {
+      await editor.getByRole("button", { name: /Back to collection/ }).click();
+      await expect(assets).toBeVisible();
+    };
     const create = async (name, layout) => {
       await assets
         .getByRole("button", { name: "Create design", exact: true })
