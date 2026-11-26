@@ -101,6 +101,40 @@ function componentChildren(node) {
   return (node.shadowRoot || node).children;
 }
 
+function captureTextRuns(textNodes, range, measure) {
+  const runs = [];
+  for (const node of textNodes.slice(0, 12)) {
+    const value = node.nodeValue.slice(0, 1000);
+    if (!value.trim()) continue;
+    const oneLine = () => {
+      const rects = [...range.getClientRects()];
+      return rects.every(({ top }) => Math.abs(top - rects[0].top) < 1);
+    };
+    for (let start = 0; start < value.length && runs.length < 24;) {
+      range.setStart(node, start);
+      range.setEnd(node, value.length);
+      let end = value.length;
+      if (!oneLine()) {
+        let first = start + 1;
+        let last = end;
+        while (first < last) {
+          const middle = Math.ceil((first + last) / 2);
+          range.setEnd(node, middle);
+          if (oneLine()) first = middle;
+          else last = middle - 1;
+        }
+        end = first;
+        range.setEnd(node, end);
+      }
+      const bounds = measure(range.getBoundingClientRect());
+      const text = value.slice(start, end).replace(/\s+/g, " ").trim();
+      if (text && bounds.width && bounds.height) runs.push({ text, bounds });
+      start = end;
+    }
+  }
+  return runs;
+}
+
 export function safeStyleValue(value) {
   return (
     typeof value === "string" &&
@@ -441,24 +475,12 @@ export function captureComponent(
       if (content) {
         captured.text = content.slice(0, 1000);
         limited ||= content.length > captured.text.length;
-        if (preview) {
-          const range = doc.createRange();
-          captured.textRuns = directText.slice(0, 12).flatMap((child) => {
-            const text = child.nodeValue.replace(/\s+/g, " ").trim();
-            if (!text) return [];
-            range.selectNodeContents(child);
-            const bounds = measure(range.getBoundingClientRect());
-            return bounds.width && bounds.height
-              ? [
-                  {
-                    text: text.slice(0, 1000),
-                    bounds,
-                    multiline: range.getClientRects().length > 1,
-                  },
-                ]
-              : [];
-          });
-        }
+        if (preview)
+          captured.textRuns = captureTextRuns(
+            directText,
+            doc.createRange(),
+            measure,
+          );
         const font = {
           type: "font",
           tag: node.localName.slice(0, 60),

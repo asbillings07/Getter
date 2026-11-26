@@ -55,12 +55,14 @@ test.beforeAll(async () => {
           #player { position: relative; width: 420px; }
           #video { display: block; width: 420px; height: 210px; }
           #player button { position: absolute; bottom: 12px; left: 12px; }
+          #wrapped { margin: 0; width: 220px; }
           iframe { width: 260px; height: 80px; border: 0; }
         </style>
         <article id="feature">
           <div id="player"><div><div><video id="video" muted autoplay playsinline></video></div></div>
             <button id="play">Player controls</button></div>
           <section id="headlines">${headline("first-headline", "First headline")}${headline("second-headline", "Second headline")}</section>
+          <p id="wrapped">Keep these words on their original lines when they wrap across the card, even around <strong>inline content</strong> and the words that follow it.</p>
           <iframe src="${origin.replace("127.0.0.1", "localhost")}/frame" title="Embedded video"></iframe>
         </article>
         <script>
@@ -1814,6 +1816,16 @@ test("Inspect Pro opens the native panel, previews and saves the whole selected 
       panel.getByRole("heading", { name: "Open a website to inspect" }),
     ).toBeVisible();
     await nextTab.goto(`${origin}/studio-motion`);
+    await expect(
+      panel.getByRole("button", {
+        name: /^(Pause selection|Resume selecting)$/,
+      }),
+    ).toBeVisible({ timeout: 15000 });
+    const resume = panel.getByRole("button", {
+      name: "Resume selecting",
+      exact: true,
+    });
+    if (await resume.isVisible()) await resume.click();
     await expect(nextTab.locator("getter-inspection-overlay")).toBeAttached();
     await expect(selection).toHaveCount(0);
     await panel.getByRole("button", { name: "Back to Getter" }).click();
@@ -1880,6 +1892,19 @@ test("Inspect Pro keeps nested media and text in place while selecting or saving
     await expect(preview.getByText("Frame text", { exact: true })).toHaveCount(
       0,
     );
+    const lines = await preview
+      .locator(".inspect-pro-text-run")
+      .evaluateAll((runs) =>
+        runs.flatMap((run) => {
+          const text = run.textContent;
+          return /Keep these words|original lines|wrap across|inline content/.test(
+            text,
+          )
+            ? [parseFloat(run.style.top)]
+            : [];
+        }),
+      );
+    expect(new Set(lines).size).toBeGreaterThanOrEqual(3);
 
     const first = preview.getByText("First headline", { exact: true });
     const second = preview.getByText("Second headline", { exact: true });

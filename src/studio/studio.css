@@ -1361,6 +1361,7 @@
 }
 .inspect-pro-text-run {
   line-height: normal;
+  white-space: nowrap;
 }
 .inspect-pro-media-placeholder {
   display: grid;

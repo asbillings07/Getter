@@ -57,15 +57,11 @@ function PreviewPart({ node }) {
           ) : null}
         </div>
       )}
-      {node.textRuns?.map(({ text, bounds, multiline }, index) => (
+      {node.textRuns?.map(({ text, bounds }, index) => (
         <span
           key={index}
           className="inspect-pro-text-run"
-          style={{
-            ...place(bounds),
-            ...textStyle,
-            whiteSpace: multiline ? "pre-wrap" : "nowrap",
-          }}
+          style={{ ...place(bounds), ...textStyle }}
         >
           {text}
         </span>
