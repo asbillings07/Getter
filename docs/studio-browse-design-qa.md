@@ -116,7 +116,8 @@ subscription enforcement is separate work.
    active tab shows a different address.
 4. For the sample frame, pick a live website element, choose a Figma layer, and
    select **Match layer**. Check the expected and observed values and their
-   original units. For a screenshot, mark the area visually and optionally
+   original units. For a screenshot, choose **Mark an area**, drag over the
+   reference, and save the outline. You can also enter area coordinates and
    describe the difference. Screenshot pixels do not supply exact design
    properties or Figma layer names.
 5. Return to the review, then reopen it from **Design Review**. The chosen

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ReferencePreview, Screenshot } from "./ReviewReference.jsx";
 import {
   changeReview,
@@ -7,79 +7,152 @@ import {
   sampleLayers,
 } from "./reviews.js";
 
-const initialArea = { x: 0, y: 0, width: 100, height: 100 };
+const areaFields = ["x", "y", "width", "height"];
 
-function ScreenshotArea({ reference, saved, note, onSave }) {
-  const [area, setArea] = useState(saved || initialArea);
-  const [finding, setFinding] = useState(note || "");
-  const [corner, setCorner] = useState(null);
-  const [marking, setMarking] = useState(false);
-  const fields = ["x", "y", "width", "height"];
-  const valid =
-    fields.every((field) => Number.isFinite(area[field])) &&
+function validArea(area) {
+  return (
+    areaFields.every((field) => Number.isFinite(area?.[field])) &&
     area.x >= 0 &&
     area.y >= 0 &&
     area.width > 0 &&
     area.height > 0 &&
-    area.x + area.width <= 100 &&
-    area.y + area.height <= 100;
+    area.x + area.width <= 100 + 1e-9 &&
+    area.y + area.height <= 100 + 1e-9
+  );
+}
 
-  function mark(event) {
-    if (!marking || event.detail === 0) return;
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const x = Math.min(
-      100,
-      Math.max(
-        0,
-        Math.round((100 * (event.clientX - bounds.left)) / bounds.width),
-      ),
-    );
-    const y = Math.min(
-      100,
-      Math.max(
-        0,
-        Math.round((100 * (event.clientY - bounds.top)) / bounds.height),
-      ),
-    );
-    if (!corner) {
-      setCorner({ x, y });
+function areaPoint(event, { left, top, width, height }) {
+  // Work in tenths of a percent so the drawn area survives panel resizing.
+  const part = (value, origin, size) =>
+    Math.round(Math.min(1000, Math.max(0, (1000 * (value - origin)) / size)));
+  return {
+    x: part(event.clientX, left, width),
+    y: part(event.clientY, top, height),
+  };
+}
+
+function areaBetween(start, end) {
+  return {
+    x: Math.min(start.x, end.x) / 10,
+    y: Math.min(start.y, end.y) / 10,
+    width: Math.abs(start.x - end.x) / 10,
+    height: Math.abs(start.y - end.y) / 10,
+  };
+}
+
+function ScreenshotArea({ reference, saved, note, onSave }) {
+  const [area, setArea] = useState(saved ?? null);
+  const [finding, setFinding] = useState(note || "");
+  const [dragPreview, setDragPreview] = useState(null);
+  const [marking, setMarking] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const screenshot = useRef(null);
+  const drag = useRef(null);
+  const mark = marking ? (dragPreview ?? area) : saved;
+
+  function startDrag(event) {
+    if (
+      !marking ||
+      saving ||
+      drag.current ||
+      !event.isPrimary ||
+      event.button !== 0
+    )
       return;
+    const target = event.currentTarget;
+    const bounds = target.getBoundingClientRect();
+    if (!bounds.width || !bounds.height) return;
+    event.preventDefault();
+    const start = areaPoint(event, bounds);
+    target.setPointerCapture(event.pointerId);
+    drag.current = { id: event.pointerId, start, target };
+    setDragPreview(areaBetween(start, start));
+  }
+
+  function draggedArea(event) {
+    return areaBetween(
+      drag.current.start,
+      areaPoint(event, event.currentTarget.getBoundingClientRect()),
+    );
+  }
+
+  function moveDrag(event) {
+    if (drag.current?.id === event.pointerId)
+      setDragPreview(draggedArea(event));
+  }
+
+  function clearDrag() {
+    const current = drag.current;
+    drag.current = null;
+    setDragPreview(null);
+    if (current?.target.hasPointerCapture(current.id))
+      current.target.releasePointerCapture(current.id);
+  }
+
+  function finishDrag(event) {
+    if (drag.current?.id !== event.pointerId) return;
+    const next = draggedArea(event);
+    if (validArea(next)) setArea(next);
+    clearDrag();
+  }
+
+  function cancelDrag(event) {
+    if (drag.current?.id === event.pointerId) clearDrag();
+  }
+
+  function cancelMarking() {
+    if (saving) return;
+    clearDrag();
+    setArea(saved ?? null);
+    setFinding(note || "");
+    setMarking(false);
+  }
+
+  async function saveMark() {
+    if (saving || drag.current || !validArea(area)) return;
+    setSaving(true);
+    try {
+      if (await onSave(area, finding.trim())) setMarking(false);
+    } finally {
+      setSaving(false);
     }
-    setArea({
-      x: Math.min(x, corner.x),
-      y: Math.min(y, corner.y),
-      width: Math.abs(x - corner.x),
-      height: Math.abs(y - corner.y),
-    });
-    setCorner(null);
   }
 
   return (
-    <div className="review-fields">
+    <div
+      className="review-fields"
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && marking) cancelMarking();
+      }}
+    >
       <h3>Screenshot reference</h3>
       <small>
         {reference.name} · {reference.width} × {reference.height} px
       </small>
-      <div className="review-screenshot">
+      <div
+        className="review-screenshot"
+        ref={screenshot}
+        data-marking={marking || undefined}
+        role="group"
+        aria-label="Screenshot area"
+        tabIndex={-1}
+        onPointerDown={startDrag}
+        onPointerMove={moveDrag}
+        onPointerUp={finishDrag}
+        onPointerCancel={cancelDrag}
+        onLostPointerCapture={cancelDrag}
+      >
         <Screenshot reference={reference} />
-        {(marking || saved) && valid && (
+        {validArea(mark) && (
           <span
+            aria-hidden="true"
             className="review-area-mark"
             style={{
-              left: `${area.x}%`,
-              top: `${area.y}%`,
-              width: `${area.width}%`,
-              height: `${area.height}%`,
+              left: `${mark.x}%`,
+              top: `${mark.y}%`,
+              width: `${mark.width}%`,
+              height: `${mark.height}%`,
             }}
-          />
-        )}
-        {marking && (
-          <button
-            type="button"
-            tabIndex={-1}
-            className="review-area-target"
-            aria-label="Select two corners on the screenshot"
-            onClick={mark}
           />
         )}
       </div>
@@ -91,31 +164,31 @@ function ScreenshotArea({ reference, saved, note, onSave }) {
         <button
           type="button"
           className="secondary"
-          onClick={() => setMarking(true)}
+          onClick={() => {
+            setMarking(true);
+            screenshot.current.focus();
+          }}
         >
           {saved ? "Change marked area" : "Mark an area"}
         </button>
       ) : (
         <>
-          <small role="status">
-            {corner
-              ? "Select the opposite corner."
-              : "Select two corners on the screenshot."}
-          </small>
+          <small role="status">Drag over the screenshot to mark an area.</small>
           <details>
             <summary>Enter area coordinates</summary>
             <div className="review-coordinates">
-              {fields.map((field) => (
+              {areaFields.map((field) => (
                 <label key={field}>
                   {field === "x" || field === "y" ? field.toUpperCase() : field}
                   <input
                     type="number"
                     min={0}
                     max={100}
+                    step={0.1}
                     aria-label={`${field} percent`}
-                    value={Number.isFinite(area[field]) ? area[field] : ""}
+                    disabled={saving || Boolean(dragPreview)}
+                    value={Number.isFinite(mark?.[field]) ? mark[field] : ""}
                     onChange={(event) => {
-                      setCorner(null);
                       const value = event.target.valueAsNumber;
                       setArea((previous) => ({ ...previous, [field]: value }));
                     }}
@@ -129,6 +202,7 @@ function ScreenshotArea({ reference, saved, note, onSave }) {
             <textarea
               maxLength={400}
               rows={3}
+              disabled={saving}
               value={finding}
               onChange={(event) => setFinding(event.target.value)}
             />
@@ -137,22 +211,16 @@ function ScreenshotArea({ reference, saved, note, onSave }) {
             <button
               type="button"
               className="primary"
-              disabled={!valid || !!corner}
-              onClick={async () => {
-                if (await onSave(area, finding.trim())) setMarking(false);
-              }}
+              disabled={!validArea(area) || Boolean(dragPreview) || saving}
+              onClick={saveMark}
             >
               Save marked area
             </button>
             <button
               type="button"
               className="text-button"
-              onClick={() => {
-                setCorner(null);
-                setArea(saved || initialArea);
-                setFinding(note || "");
-                setMarking(false);
-              }}
+              disabled={saving}
+              onClick={cancelMarking}
             >
               Cancel
             </button>

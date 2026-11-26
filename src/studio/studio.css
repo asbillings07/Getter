@@ -1557,21 +1557,21 @@
   position: relative;
   width: fit-content;
   max-width: 100%;
+  overflow: hidden;
+  border-radius: 6px;
 }
-.review-area-mark,
-button.review-area-target {
-  position: absolute;
+.review-screenshot[data-marking] {
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
 }
 .review-area-mark {
-  outline: 2px solid #1664e5;
-  box-shadow: 0 0 0 1px white;
+  position: absolute;
+  box-shadow:
+    inset 0 0 0 2px var(--accent),
+    inset 0 0 0 3px var(--paper);
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
   pointer-events: none;
-}
-button.review-area-target {
-  inset: 0;
-  border: 0;
-  background: transparent;
-  cursor: crosshair;
 }
 .review-coordinates,
 .review-values li {

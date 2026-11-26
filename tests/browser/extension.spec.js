@@ -2338,10 +2338,19 @@ test("Design Review pairs a sample Figma layer, guards the reviewed site, and re
     await expect(studio.getByRole("alert")).toContainText(
       "could not be opened",
     );
+    const image = await studio.evaluate(() => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 256;
+      canvas.height = 144;
+      const context = canvas.getContext("2d");
+      context.fillStyle = "#176953";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/png").split(",")[1];
+    });
     await screenshot.setInputFiles({
       name: "approved.png",
       mimeType: "image/png",
-      buffer: studioPng,
+      buffer: Buffer.from(image, "base64"),
     });
     await expect(
       studio.getByRole("img", { name: "Uploaded approved reference" }),
@@ -2366,22 +2375,69 @@ test("Design Review pairs a sample Figma layer, guards the reviewed site, and re
     await compare
       .getByRole("button", { name: "Mark an area", exact: true })
       .click();
-    await compare.getByText("Enter area coordinates").click();
-    await compare.getByLabel("width percent").fill("55");
+    const surface = compare.getByRole("group", { name: "Screenshot area" });
+    const outline = surface.locator(".review-area-mark");
+    const saveArea = compare.getByRole("button", { name: "Save marked area" });
+    await expect(surface.getByRole("img")).toHaveJSProperty(
+      "naturalWidth",
+      256,
+    );
+    await surface.click();
+    await expect(saveArea).toBeDisabled();
+    await expect(outline).toHaveCount(0);
+
+    async function draw(from, to) {
+      await surface.scrollIntoViewIfNeeded();
+      const image = await surface.boundingBox();
+      await panel.mouse.move(
+        image.x + from[0] * image.width,
+        image.y + from[1] * image.height,
+      );
+      await panel.mouse.down();
+      await panel.mouse.move(
+        image.x + to[0] * image.width,
+        image.y + to[1] * image.height,
+        { steps: 5 },
+      );
+      await expect(outline).toBeVisible();
+      await expect(saveArea).toBeDisabled();
+      await panel.mouse.up();
+      await expect(saveArea).toBeEnabled();
+    }
+
+    await draw([0.75, 0.75], [0.25, 0.25]);
+    const bounds = await outline.evaluate(({ style }) =>
+      [style.left, style.top, style.width, style.height].map(parseFloat),
+    );
+    bounds.forEach((value, index) =>
+      expect(Math.abs(value - [25, 25, 50, 50][index])).toBeLessThan(1),
+    );
     await compare
       .getByLabel("Visual difference")
       .fill("The heading sits lower in staging.");
-    await compare.getByRole("button", { name: "Save marked area" }).click();
+    await saveArea.click();
     await expect(compare.getByText("Marked area saved.")).toBeVisible();
     await expect(
       compare.getByText("The heading sits lower in staging."),
     ).toBeVisible();
+    const savedOutline = await outline.getAttribute("style");
     await panel.reload();
     await expect(compare.getByText("Marked area saved.")).toBeVisible();
-    await expect(compare.locator(".review-area-mark")).toHaveAttribute(
-      "style",
-      /width: 55%/,
-    );
+    await expect(outline).toHaveAttribute("style", savedOutline);
+    const changeArea = compare.getByRole("button", {
+      name: "Change marked area",
+    });
+    await changeArea.click();
+    await draw([0.54, 0.29], [-0.03, 0.88]);
+    await expect(outline).toHaveCSS("left", "0px");
+    await panel.keyboard.press("Escape");
+    await expect(outline).toHaveAttribute("style", savedOutline);
+    await changeArea.click();
+    await compare.getByText("Enter area coordinates").click();
+    await compare.getByLabel("width percent").fill("42.5");
+    await expect(outline).toHaveAttribute("style", /width: 42\.5%/);
+    await saveArea.click();
+    await expect(compare.getByText("Marked area saved.")).toBeVisible();
     await panel
       .getByRole("button", { name: "Back to review", exact: true })
       .click();
