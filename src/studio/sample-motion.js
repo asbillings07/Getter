@@ -840,7 +840,7 @@ function scriptedAsset(samples, useGeometry, nativeProperties) {
   };
 }
 
-function mediaObserver(node, readFrame) {
+function mediaObserver(node, readFrame, onPreview) {
   const buffer = node.ownerDocument.createElement("canvas");
   const ctx = buffer.getContext("2d", { willReadFrequently: true });
   const sources = [];
@@ -894,7 +894,8 @@ function mediaObserver(node, readFrame) {
       } else {
         ctx.drawImage(node, ...source, 0, 0, buffer.width, buffer.height);
       }
-      if (!hasPixels) {
+      const firstPaint = !hasPixels;
+      if (firstPaint) {
         const pixels = ctx.getImageData(0, 0, buffer.width, buffer.height).data;
         hasPixels = pixels.some((value, i) => i % 4 === 3 && value > 0);
       }
@@ -913,6 +914,8 @@ function mediaObserver(node, readFrame) {
         image = sources.push(data) - 1;
       }
       samples.push({ at, rect, image });
+      if (firstPaint && hasPixels)
+        onPreview?.({ src: data, width: rect.width, height: rect.height });
     } catch {
       failed = true;
     }
@@ -939,23 +942,38 @@ function mediaObserver(node, readFrame) {
   };
 }
 
-export async function sampleMotion(root, signal, { artwork, canvas } = {}) {
+export async function sampleMotion(
+  root,
+  signal,
+  { artwork, canvas } = {},
+  onPreview,
+) {
   if (artwork?.status) return { status: artwork.status };
   const doc = root.ownerDocument;
   const win = doc.defaultView;
   const nearbyCanvas = canvas?.deref();
   if (canvas && !nearbyCanvas) return { status: "unavailable" };
+  const preview = (frame) =>
+    onPreview?.({
+      ...frame,
+      kind: artwork ? (artwork.scene ? "scene" : "artwork") : "media",
+    });
   const media = artwork
-    ? [mediaObserver(artwork.node, artwork.frame)]
+    ? [mediaObserver(artwork.node, artwork.frame, preview)]
     : nearbyCanvas
       ? [
-          mediaObserver(nearbyCanvas, () =>
-            canvasFrameWithinSelection(root, nearbyCanvas, win),
+          mediaObserver(
+            nearbyCanvas,
+            () => canvasFrameWithinSelection(root, nearbyCanvas, win),
+            preview,
           ),
         ]
       : selectedMedia(root, win).map((node) =>
-          mediaObserver(node, () =>
-            root.contains(node) ? mediaFrame(node, win, node === root) : null,
+          mediaObserver(
+            node,
+            () =>
+              root.contains(node) ? mediaFrame(node, win, node === root) : null,
+            node === root ? preview : undefined,
           ),
         );
   const bounds = new AbortController();

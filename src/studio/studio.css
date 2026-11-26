@@ -1333,6 +1333,13 @@
   outline: 1px solid var(--line);
   border-radius: 6px;
 }
+.inspect-pro-artwork {
+  display: block;
+  height: auto;
+  border-radius: 6px;
+  background: #f2f5f9;
+  outline: 1px solid var(--line);
+}
 .inspect-pro-preview-frame > div {
   transform-origin: top left;
 }

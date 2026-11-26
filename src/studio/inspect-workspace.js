@@ -1,4 +1,4 @@
-import { siteOrigin, supportedPage } from "../core/access.js";
+import { supportedPage } from "../core/access.js";
 
 export const inspectProKey = (windowId) => `getter.inspectPro.${windowId}`;
 
@@ -56,22 +56,9 @@ export async function launchInspectPro(
   const frame = await loadedWebsite(api, tabId);
   if (source && source.documentId !== frame.documentId)
     throw Error("That tab changed. Choose its current page and try again.");
-  const { hostname } = new URL(frame.url);
   const key = inspectProKey(windowId);
-  const session = {
-    id: crypto.randomUUID(),
-    tabId,
-    documentId: frame.documentId,
-    origin: siteOrigin(frame.url),
-    hostname,
-    destination,
-  };
-  await api.storage.session.set({ [key]: session });
-  try {
-    await api.tabs.update(tabId, { active: true });
-  } catch (error) {
-    if ((await api.storage.session.get(key))[key]?.id === session.id)
-      await api.storage.session.remove(key);
-    throw error;
-  }
+  await api.tabs.update(tabId, { active: true });
+  await api.storage.session.set({
+    [key]: { id: crypto.randomUUID(), destination },
+  });
 }

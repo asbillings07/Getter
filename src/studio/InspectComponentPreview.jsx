@@ -1,7 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ComponentShape } from "./AssetPreview.jsx";
 
-export default function InspectComponentPreview({ component, loading }) {
+export default function InspectComponentPreview({
+  component,
+  artwork,
+  loading,
+}) {
   const stage = useRef(null);
   const [availableWidth, setAvailableWidth] = useState(0);
 
@@ -28,15 +32,30 @@ export default function InspectComponentPreview({ component, loading }) {
       node.thumbnail ||
       (background &&
         !["transparent", "rgba(0, 0, 0, 0)"].includes(background)));
+  const showArtwork =
+    artwork &&
+    (!canRender ||
+      (artwork.kind !== "media" && node.id === component.selected?.id));
+  const artworkLabel =
+    artwork?.kind === "scene" ? "Entire scene" : "Selected artwork";
 
   return (
     <section className="inspect-pro-preview" aria-label="Component preview">
       <div className="studio-row studio-between">
         <h2>Component preview</h2>
-        <small>Page reconstruction</small>
+        <small>{showArtwork ? artworkLabel : "Page reconstruction"}</small>
       </div>
       <div className="inspect-pro-preview-stage" ref={stage}>
-        {canRender && scale > 0 ? (
+        {showArtwork ? (
+          <img
+            className="inspect-pro-artwork"
+            src={artwork.src}
+            alt={`${artworkLabel} preview`}
+            style={{
+              width: `min(100%, ${artwork.width}px, ${(180 * artwork.width) / artwork.height}px)`,
+            }}
+          />
+        ) : canRender && scale > 0 ? (
           <div
             className="inspect-pro-preview-frame"
             style={{

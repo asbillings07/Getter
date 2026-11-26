@@ -74,12 +74,16 @@ site and requests access only if Getter needs it for that page.
   Native animation previews support replay, speed, and scrubbing. The
   reconstructed view uses artwork already loaded and readable on the page.
   Images the browser blocks are shown as placeholders. A visual reference is
-  available only when Getter can read the motion.
+  available only when Getter can read the motion. The component preview can
+  show a still of matched canvas artwork or an entire scene when the page's
+  click target does not render the artwork itself.
 - **Save to collection** opens the destination for the whole selected component
   with its supported descendants, styles, and detected motion. **Individual
   assets** is the separate action for a single item. **Keep inspecting** closes
   the save dialog and keeps the selection while the same document is open.
-- Reloading or navigating the chosen tab requires starting a fresh inspection.
+- Inspect Pro follows the active tab in its Chrome window. Reloading, navigating
+  or switching tabs clears the selection. On a new site, allow access in the
+  panel if Chrome needs a grant.
   **Back to Getter** returns to the extension tools, including Quick Inspect.
 
 Inspect Pro uses the product blend for the Aptelum attribution mark in both

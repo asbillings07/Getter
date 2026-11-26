@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import InspectView from "../components/InspectView.jsx";
 import InspectorIcon from "./InspectorIcon.jsx";
+import { activePage, siteOrigin, supportedPage } from "../core/access.js";
 import { initialWorkspace, verifyDocument } from "../core/workspace.js";
 import SidePanelCollect, {
   openCollectionWorkspace,
@@ -13,24 +14,15 @@ export default function InspectProRouter({ children }) {
     let live = true;
     let read = 0;
     let key;
-    let windowId;
     async function refresh() {
       const reading = ++read;
       try {
-        const [tabs, saved] = await Promise.all([
-          chrome.tabs.query({ active: true, windowId }),
-          chrome.storage.session.get(key),
-        ]);
-        const current = saved[key];
-        if (live && reading === read)
-          setSession(current && current.tabId === tabs[0]?.id ? current : null);
+        const saved = await chrome.storage.session.get(key);
+        if (live && reading === read) setSession(saved[key] || null);
       } catch {
         if (live && reading === read) setSession(null);
       }
     }
-    const activate = (change) => {
-      if (change.windowId === windowId) refresh();
-    };
     const changed = (changes, area) => {
       if (area === "session" && changes[key]) refresh();
     };
@@ -38,9 +30,7 @@ export default function InspectProRouter({ children }) {
       .getCurrent()
       .then((window) => {
         if (!live) return;
-        windowId = window.id;
-        key = inspectProKey(windowId);
-        chrome.tabs.onActivated.addListener(activate);
+        key = inspectProKey(window.id);
         chrome.storage.onChanged.addListener(changed);
         refresh();
       })
@@ -49,7 +39,6 @@ export default function InspectProRouter({ children }) {
       });
     return () => {
       live = false;
-      chrome.tabs.onActivated.removeListener(activate);
       chrome.storage.onChanged.removeListener(changed);
     };
   }, []);
@@ -63,21 +52,21 @@ export default function InspectProRouter({ children }) {
 }
 
 function InspectProPanel({ session }) {
-  const { tabId, documentId, hostname, origin } = session;
   const [destination, setDestination] = useState(session.destination);
-  const scan = { tabId, documentId, host: hostname };
-  const [status, setStatus] = useState("loading");
+  const [page, setPage] = useState({ status: "loading" });
+  const { status, scan, origin } = page;
   const [model, setModel] = useState(() => ({
     ...initialWorkspace().inspect,
     section: "parts",
   }));
   const [notice, setNotice] = useState("");
   const [capture, setCapture] = useState(null);
-  const [accessPending, setAccessPending] = useState(false);
+  const [accessPending, setAccessPending] = useState(null);
   const latest = useRef();
   const check = useRef();
   const expiry = useRef();
-  const current = useRef(false);
+  const current = useRef(null);
+  const documentInPanel = useRef(null);
   latest.current = model;
   const notify = (message) => {
     clearTimeout(expiry.current);
@@ -115,85 +104,115 @@ function InspectProPanel({ session }) {
     let live = true;
     let read = 0;
     let windowId;
-    const invalidate = (next) => {
-      current.current = false;
-      setStatus(next);
-      setModel((value) => ({ ...value, snapshot: null }));
+    let activeTabId;
+    const clearSelection = () => {
+      current.current = null;
+      documentInPanel.current = null;
+      setModel((value) => ({
+        ...value,
+        snapshot: null,
+        section: "parts",
+        query: "",
+      }));
       setCapture(null);
+      setNotice("");
+    };
+    const invalidate = (status = "loading") => {
+      ++read;
+      clearSelection();
+      setPage({ status });
     };
     async function refresh() {
       const reading = ++read;
-      const [tabs, frame] = await Promise.all([
-        chrome.tabs.query({ active: true, windowId }),
-        chrome.webNavigation.getFrame({ tabId, frameId: 0 }).catch(() => null),
-      ]);
-      if (!live || reading !== read) return;
-      if (tabs[0]?.id !== tabId || frame?.documentId !== documentId) {
-        invalidate("stale");
-        return;
-      }
-      const allowed = await verifyDocument(chrome, scan);
-      if (!live || reading !== read) return;
-      if (!allowed) invalidate("access");
-      else {
-        current.current = true;
-        setStatus("ready");
+      const fresh = () => live && reading === read;
+      try {
+        const tab = await activePage(chrome, windowId);
+        if (!fresh()) return;
+        activeTabId = tab?.id;
+        if (!supportedPage(tab?.url) || !tab.documentId) {
+          invalidate(tab?.status === "loading" ? "loading" : "unsupported");
+          return;
+        }
+        const next = {
+          tabId: tab.id,
+          documentId: tab.documentId,
+          host: new URL(tab.url).hostname,
+        };
+        if (current.current?.documentId === next.documentId) return;
+        const allowed = tab.accessible && (await verifyDocument(chrome, next));
+        if (!fresh()) return;
+        if (documentInPanel.current !== next.documentId) clearSelection();
+        documentInPanel.current = next.documentId;
+        current.current = allowed ? next : null;
+        setPage({
+          status: allowed ? "ready" : "access",
+          scan: next,
+          origin: siteOrigin(tab.url),
+        });
+      } catch {
+        if (fresh()) invalidate("unsupported");
       }
     }
-    function retry() {
-      refresh().catch(() => {
-        if (live) invalidate("stale");
-      });
-    }
-    check.current = retry;
-    const committed = (details) => {
-      if (
-        details.tabId === tabId &&
-        details.frameId === 0 &&
-        details.documentId !== documentId
-      ) {
-        ++read;
-        invalidate("stale");
-      }
+    const activated = (change) => {
+      if (change.windowId !== windowId) return;
+      activeTabId = change.tabId;
+      invalidate();
+      refresh();
+    };
+    const updated = (tabId, change) => {
+      if (tabId !== activeTabId) return;
+      if (change.status === "loading") invalidate();
+      if (change.status === "complete") refresh();
+    };
+    const committed = ({ tabId, frameId, documentId }) => {
+      if (tabId !== activeTabId || frameId !== 0) return;
+      if (current.current?.documentId !== documentId) invalidate();
+      refresh();
     };
     const permissionChanged = () => {
-      // Close an open destination before a revoked grant can be reused.
-      current.current = false;
-      setCapture(null);
-      retry();
+      invalidate();
+      refresh();
     };
-    chrome.webNavigation.onCommitted.addListener(committed);
-    chrome.permissions.onRemoved.addListener(permissionChanged);
-    chrome.permissions.onAdded.addListener(retry);
     chrome.windows
       .getCurrent()
       .then((window) => {
         if (!live) return;
         windowId = window.id;
-        retry();
+        check.current = refresh;
+        chrome.tabs.onActivated.addListener(activated);
+        chrome.tabs.onUpdated.addListener(updated);
+        chrome.webNavigation.onCommitted.addListener(committed);
+        chrome.permissions.onRemoved.addListener(permissionChanged);
+        chrome.permissions.onAdded.addListener(refresh);
+        refresh();
       })
       .catch(() => {
-        if (live) invalidate("stale");
+        if (live) invalidate("unsupported");
       });
     return () => {
       live = false;
-      current.current = false;
+      current.current = null;
+      check.current = null;
+      chrome.tabs.onActivated.removeListener(activated);
+      chrome.tabs.onUpdated.removeListener(updated);
       chrome.webNavigation.onCommitted.removeListener(committed);
       chrome.permissions.onRemoved.removeListener(permissionChanged);
-      chrome.permissions.onAdded.removeListener(retry);
+      chrome.permissions.onAdded.removeListener(refresh);
     };
-  }, [tabId, documentId]);
+  }, []);
 
   async function allow() {
-    setAccessPending(true);
+    setAccessPending(scan.documentId);
     try {
       if (await chrome.permissions.request({ origins: [origin] }))
         check.current?.();
-      else notify("Site access wasn’t allowed.");
+      else if (documentInPanel.current === scan.documentId)
+        notify("Site access wasn’t allowed.");
     } catch {
-      notify("Getter couldn’t request site access. Try again.");
+      if (documentInPanel.current === scan.documentId)
+        notify("Getter couldn’t request site access. Try again.");
     } finally {
-      setAccessPending(false);
+      setAccessPending((value) => (value === scan.documentId ? null : value));
     }
   }
 
@@ -209,7 +228,7 @@ function InspectProPanel({ session }) {
   }
 
   async function copy(value, label) {
-    if (!current.current) return;
+    if (current.current !== scan) return;
     try {
       await navigator.clipboard.writeText(value);
       notify(`Copied ${label || "value"}.`);
@@ -249,28 +268,32 @@ function InspectProPanel({ session }) {
       <div className="context inspect-pro-context">
         <span className="inspect-pro-label">
           <InspectorIcon name="site" />
-          {hostname}
+          {scan?.host || "Current tab"}
         </span>
         <button
           className="text-button"
           type="button"
           onClick={() => openStudio()}
         >
-          {status === "stale" ? "Choose site in Studio" : "Open Studio"}
+          Open Studio
         </button>
       </div>
       <main className="inspect-main">
         {status === "ready" ? (
           <InspectView
+            key={scan.documentId}
             pro
             scan={scan}
             model={model}
-            onChange={setModel}
+            onChange={(next) => {
+              if (current.current === scan) setModel(next);
+            }}
             onCopy={copy}
             onNotice={notify}
-            onCollect={(inspection, captureScope, selectionId) =>
-              setCapture({ inspection, captureScope, selectionId })
-            }
+            onCollect={(inspection, captureScope, selectionId) => {
+              if (current.current === scan)
+                setCapture({ inspection, captureScope, selectionId });
+            }}
           />
         ) : (
           <section className="state" aria-live="polite">
@@ -278,7 +301,7 @@ function InspectProPanel({ session }) {
               {
                 {
                   loading: "Connecting to this page…",
-                  stale: "The page changed",
+                  unsupported: "Open a website to inspect",
                   access: "Allow Inspect Pro on this site",
                 }[status]
               }
@@ -286,22 +309,20 @@ function InspectProPanel({ session }) {
             {status === "access" && (
               <>
                 <p>
-                  Grant Getter access to {hostname} to pick and preview
+                  Grant Getter access to {scan.host} to pick and preview
                   elements.
                 </p>
                 <button
                   className="primary"
                   onClick={allow}
-                  disabled={accessPending}
+                  disabled={accessPending === scan.documentId}
                 >
                   Allow site access
                 </button>
               </>
             )}
-            {status === "stale" && (
-              <p>
-                Choose the current page from Studio to start a fresh inspection.
-              </p>
+            {status === "unsupported" && (
+              <p>Switch to a website or open one in this window to continue.</p>
             )}
           </section>
         )}
@@ -338,7 +359,7 @@ function InspectProPanel({ session }) {
           includeObservedMotion
           onSaved={setDestination}
           isCurrent={() =>
-            current.current &&
+            current.current === scan &&
             latest.current.snapshot?.selectionId === capture.selectionId
           }
           onClose={() => setCapture(null)}

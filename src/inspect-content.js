@@ -21,7 +21,7 @@ if (!globalThis.__getterInspector) {
     selectionId: 0,
   };
   const transitions = new WeakMap();
-  let sampler, observed, samplingStatus, motionSelection;
+  let sampler, observed, visualPreview, samplingStatus, motionSelection;
   let proRoot,
     proParts = [],
     partsRevision = 0;
@@ -69,7 +69,7 @@ if (!globalThis.__getterInspector) {
   };
   function stopSampling() {
     sampler?.abort();
-    sampler = observed = samplingStatus = undefined;
+    sampler = observed = visualPreview = samplingStatus = undefined;
   }
   const startSampling = GETTER_STUDIO_WORKSPACE_QA
     ? (element, refresh = false) => {
@@ -106,12 +106,21 @@ if (!globalThis.__getterInspector) {
             selectionId,
             sampleId,
             ...result,
+            preview: visualPreview,
           });
         };
         if (refresh) samplingStatus = "checking";
         else publish({ status: "checking" });
-        sampleMotion(element, controller.signal, selection).then(publish, () =>
-          publish({ status: "unavailable" }),
+        const preview =
+          state.pro && !visualPreview
+            ? (frame) => {
+                visualPreview = frame;
+                if (!refresh) publish({ status: "checking" });
+              }
+            : undefined;
+        sampleMotion(element, controller.signal, selection, preview).then(
+          publish,
+          () => publish({ status: "unavailable" }),
         );
       }
     : null;
@@ -153,6 +162,7 @@ if (!globalThis.__getterInspector) {
     }
     state.selected = new WeakRef(element);
     state.selectionId++;
+    if (GETTER_STUDIO_WORKSPACE_QA) visualPreview = undefined;
     snapshot(requestId);
     if (GETTER_STUDIO_WORKSPACE_QA) {
       motionSelection = bindMotionSelection(element, point);
@@ -401,7 +411,7 @@ if (!globalThis.__getterInspector) {
     state.port?.disconnect();
     if (GETTER_STUDIO_WORKSPACE_QA) {
       stopSampling();
-      if (pro !== state.pro) {
+      if (pro || pro !== state.pro) {
         pause();
         state.selected = null;
         state.selectionId++;

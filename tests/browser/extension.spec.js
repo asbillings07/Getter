@@ -1740,17 +1740,45 @@ test("Inspect Pro opens the native panel, previews and saves the whole selected 
     ).toBeVisible();
     await app.page.reload();
     await expect(
-      panel.getByRole("heading", { name: "The page changed" }),
+      panel.getByRole("heading", { name: "Choose an element" }),
     ).toBeVisible();
     await expect(
       panel.getByRole("button", { name: "＋ Save to collection" }),
     ).toHaveCount(0);
+    await app.page.goto(
+      `${origin.replace("127.0.0.1", "localhost")}/workbench`,
+    );
+    await expect(panel.locator(".inspect-pro-context")).toContainText(
+      "localhost",
+    );
+    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    await app.page.locator("#action").click();
+    await expect(selection).toHaveText("button#action");
+
+    const nextTab = await app.context.newPage();
+    await nextTab.goto(`${origin}/studio-motion`);
+    await nextTab.bringToFront();
+    await expect(panel.locator(".inspect-pro-context")).toContainText(
+      "127.0.0.1",
+    );
+    await expect(selection).toHaveCount(0);
+    await expect(app.page.locator("getter-inspection-overlay")).toHaveCount(0);
+    await expect(nextTab.locator("getter-inspection-overlay")).toBeAttached();
+    await nextTab.locator("#promo h2").click();
+    await expect(selection).toHaveText("article#promo > h2");
+    await nextTab.goto("about:blank");
+    await expect(
+      panel.getByRole("heading", { name: "Open a website to inspect" }),
+    ).toBeVisible();
+    await nextTab.goto(`${origin}/studio-motion`);
+    await expect(nextTab.locator("getter-inspection-overlay")).toBeAttached();
+    await expect(selection).toHaveCount(0);
     await panel.getByRole("button", { name: "Back to Getter" }).click();
     await panel
       .getByRole("button", { name: "Quick Inspect", exact: true })
       .click();
-    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
-    await app.page.locator("#promo h2").dispatchEvent("click");
+    await expect(nextTab.locator("getter-inspection-overlay")).toBeAttached();
+    await nextTab.locator("#promo h2").dispatchEvent("click");
     await panel.getByRole("button", { name: /Copy CSS/ }).click();
     await expect(panel.locator(".code-preview")).toContainText(
       "article#promo > h2",
@@ -1811,6 +1839,24 @@ test("Inspect Pro accepts a typed site and requests only that site when asked", 
     );
     expect(await panel.evaluate(() => websiteAccessFixture.requests)).toEqual([
       { origins: ["http://127.0.0.1/*"] },
+    ]);
+    await expect(site.locator("getter-inspection-overlay")).toHaveCount(0);
+    await site.goto(`${origin.replace("127.0.0.1", "localhost")}/workbench`);
+    await expect(
+      panel.getByRole("heading", { name: "Inspect Pro", exact: true }),
+    ).toBeVisible();
+    await expect(
+      panel.getByText(/Grant Getter access to localhost/),
+    ).toBeVisible();
+    expect(
+      await panel.evaluate(() => websiteAccessFixture.requests),
+    ).toHaveLength(1);
+    await panel
+      .getByRole("button", { name: "Allow site access", exact: true })
+      .click();
+    expect(await panel.evaluate(() => websiteAccessFixture.requests)).toEqual([
+      { origins: ["http://127.0.0.1/*"] },
+      { origins: ["http://localhost/*"] },
     ]);
     await expect(site.locator("getter-inspection-overlay")).toHaveCount(0);
   } finally {
@@ -2271,6 +2317,16 @@ test("Inspect Pro preserves the verified motion when a clicked book leaves view 
     await expect(panel.locator(".element-title code")).toHaveText(
       "div#book-target",
     );
+    const componentPreview = panel.getByRole("region", {
+      name: "Component preview",
+    });
+    const bookPreview = componentPreview.getByRole("img", {
+      name: "Selected artwork preview",
+    });
+    await expect(bookPreview).toHaveAttribute(
+      "src",
+      /^data:image\/webp;base64,/,
+    );
     await book.evaluate((node) => {
       window.setTimeout(() => {
         node.style.visibility = "hidden";
@@ -2315,6 +2371,26 @@ test("Inspect Pro preserves the verified motion when a clicked book leaves view 
     await saved.getByRole("button", { name: "Preview motion" }).click();
     await expect(saved.getByText("Preview complete.")).toBeVisible();
     await expect(savedImage).toHaveAttribute("src", lastFrame);
+    await collection.close();
+
+    await app.page.setViewportSize({ width: 850, height: 844 });
+    await app.page.goto(`${origin}/shelf-artwork-motion`);
+    await app.page.bringToFront();
+    const resume = panel.getByRole("button", { name: "Resume selecting" });
+    if (await resume.isVisible()) await resume.click();
+    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    await app.page.mouse.click(260, 147);
+    const shelf = componentPreview.getByRole("img", {
+      name: "Entire scene preview",
+    });
+    await expect(shelf).toHaveAttribute("src", /^data:image\/webp;base64,/);
+    await expect(bookPreview).toHaveCount(0);
+    expect(
+      await shelf.evaluate(async (image) => {
+        await image.decode();
+        return [image.naturalWidth, image.naturalHeight];
+      }),
+    ).toEqual([256, 85]);
   } finally {
     await app.context.close();
   }

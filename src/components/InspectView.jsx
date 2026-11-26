@@ -312,6 +312,7 @@ export default function InspectView({
     groups = inspectGroups(snapshot, model.section, model.all, model.query);
   const partsReady = parts !== null && parts.selectionId === selectionId;
   const component = partsReady ? parts.result : null;
+  const observedSelection = matchesSelection(observed) ? observed : null;
   const sectionButtons = pro ? [["parts", "Parts"], ...sections] : sections;
   const hasEffect =
     pro && snapshot && Object.keys(capturableEffects(snapshot.css)).length > 0;
@@ -529,7 +530,12 @@ export default function InspectView({
             <>
               <InspectComponentPreview
                 component={component}
-                loading={!partsReady}
+                artwork={observedSelection?.preview}
+                loading={
+                  !partsReady ||
+                  !observedSelection ||
+                  observedSelection.status === "checking"
+                }
               />
               {sectionControls}
             </>
@@ -603,7 +609,7 @@ export default function InspectView({
                   <InspectMotion
                     key={`${scan.documentId}:${selectionId}`}
                     motion={matchesSelection(motion) ? motion.value : null}
-                    observed={matchesSelection(observed) ? observed : null}
+                    observed={observedSelection}
                     snapshot={snapshot}
                     component={pro ? component?.selected : undefined}
                     playback={pro}
