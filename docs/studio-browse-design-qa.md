@@ -60,6 +60,9 @@ fetch path and have the same format and size limits as Studio Collections.
 
 1. From the collection, select **Create design** or **Use in editor** on an
    asset. Choose a website layout, social post, brand board, or blank canvas.
+   **Simple navigation** starts with a header, hero, and footer. **Navigation
+   - newsletter** adds separate layers for the newsletter copy and signup
+     artwork. The email prompt and Join button are visual elements in the draft.
 2. Select layers on the canvas or in **Layers**. Edit text and type styles,
    move and resize artwork, and use **Collection assets** to apply a color or
    font, replace artwork, or insert a captured component. The website preset has

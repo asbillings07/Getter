@@ -8,6 +8,18 @@ export const formats = {
   brand: { label: "Brand board", width: 1200, height: 800 },
   blank: { label: "Blank canvas", width: 1200, height: 800 },
 };
+const { website, ...otherFormats } = formats;
+export const startingLayouts = {
+  website: { ...website, label: "Website · Simple navigation" },
+  "website-newsletter": {
+    ...website,
+    label: "Website · Navigation + newsletter",
+    format: "website",
+    newsletter: true,
+  },
+  ...otherFormats,
+};
+
 const ink = "#27352e";
 const green = "#34584a";
 const paper = "#f7f3e9";
@@ -67,7 +79,58 @@ function text(name, text, x, y, width, height, fontSize, emphasis = false) {
   });
 }
 
-function template(format, brand) {
+function newsletterLayers() {
+  return [
+    layer("shape", {
+      name: "Newsletter background",
+      x: 0,
+      y: 652,
+      width: 1440,
+      height: 140,
+      fill: accent,
+      radius: 0,
+    }),
+    text(
+      "Newsletter heading",
+      "A little inspiration, occasionally.",
+      78,
+      677,
+      655,
+      46,
+      34,
+      true,
+    ),
+    text(
+      "Newsletter description",
+      "New ideas and fresh finds, in your inbox.",
+      78,
+      727,
+      655,
+      39,
+      23,
+    ),
+    layer("shape", {
+      name: "Email field background",
+      x: 778,
+      y: 695,
+      width: 390,
+      height: 55,
+      fill: "#fffdf7",
+    }),
+    text("Email prompt", "Your email address", 802, 709, 345, 34, 22),
+    layer("button", {
+      name: "Newsletter button",
+      text: "Join",
+      x: 1184,
+      y: 695,
+      width: 177,
+      height: 55,
+      fontSize: 23,
+    }),
+  ];
+}
+
+function template(format, brand, newsletter) {
   if (format === "website")
     return [
       layer("shape", {
@@ -83,14 +146,22 @@ function template(format, brand) {
       text("About link", "About", 994, 35, 89, 43, 22),
       text("Collection link", "Collection", 1110, 35, 125, 43, 22),
       text("Contact link", "Contact", 1260, 35, 110, 43, 22),
-      text("Eyebrow", "FEATURED COLLECTION", 78, 204, 520, 44, 22),
+      text(
+        "Eyebrow",
+        "FEATURED COLLECTION",
+        78,
+        newsletter ? 164 : 204,
+        520,
+        44,
+        22,
+      ),
       text(
         "Headline",
         "Make room for your next idea.",
         74,
-        269,
+        newsletter ? 218 : 269,
         678,
-        220,
+        newsletter ? 180 : 220,
         76,
         true,
       ),
@@ -98,7 +169,7 @@ function template(format, brand) {
         "Description",
         "Tell people what makes your project special.",
         78,
-        503,
+        newsletter ? 410 : 503,
         590,
         110,
         31,
@@ -106,7 +177,7 @@ function template(format, brand) {
       layer("button", {
         name: "Call to action",
         x: 78,
-        y: 638,
+        y: newsletter ? 542 : 638,
         width: 258,
         height: 70,
         fontSize: 28,
@@ -114,18 +185,28 @@ function template(format, brand) {
       layer("shape", {
         name: "Artwork background",
         x: 809,
-        y: 180,
+        y: newsletter ? 142 : 180,
         width: 546,
-        height: 540,
+        height: newsletter ? 474 : 540,
         fill: accent,
         radius: 22,
         placeholder: "artwork",
       }),
       {
-        ...text("Artwork label", "Artwork", 848, 401, 466, 65, 44, true),
+        ...text(
+          "Artwork label",
+          "Artwork",
+          848,
+          newsletter ? 349 : 401,
+          466,
+          65,
+          44,
+          true,
+        ),
         align: "middle",
         placeholder: "artwork",
       },
+      ...(newsletter ? newsletterLayers() : []),
       layer("shape", {
         name: "Footer background",
         x: 0,
@@ -252,9 +333,15 @@ function template(format, brand) {
   return [];
 }
 
-export function createDraft(name, format, brand) {
-  if (!Object.hasOwn(formats, format)) throw Error("Choose a starting layout.");
-  const { width, height } = formats[format];
+export function createDraft(name, layout, brand) {
+  if (!Object.hasOwn(startingLayouts, layout))
+    throw Error("Choose a starting layout.");
+  const {
+    format = layout,
+    width,
+    height,
+    newsletter,
+  } = startingLayouts[layout];
   return {
     version: 1,
     revision: 0,
@@ -264,7 +351,7 @@ export function createDraft(name, format, brand) {
     width,
     height,
     background: paper,
-    layers: template(format, brand),
+    layers: template(format, brand, newsletter),
   };
 }
 

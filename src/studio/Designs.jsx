@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { EditorDialog } from "./Collections.jsx";
-import { createDraft, formats } from "./design.js";
+import { createDraft, formats, startingLayouts } from "./design.js";
 
 export default function Designs({
   collection,
@@ -15,7 +15,7 @@ export default function Designs({
   const designs = [...(collection.designs || [])].sort((a, b) =>
     b.updatedAt.localeCompare(a.updatedAt),
   );
-  const options = Object.entries(formats).map(
+  const options = Object.entries(startingLayouts).map(
     ([id, { label, width, height }]) => ({
       id,
       name: `${label} · ${width} × ${height}`,

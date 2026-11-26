@@ -2437,6 +2437,78 @@ test("Studio saves while browsing two sites, then edits and exports a design fro
     await expect(
       canvas.locator('image[href^="data:image/png;base64,"]'),
     ).toHaveCount(2);
+    await expect(
+      editor.getByRole("button", { name: "Newsletter heading", exact: true }),
+    ).toHaveCount(0);
+    await editor.getByRole("button", { name: /Back to collection/ }).click();
+
+    await studio.setViewportSize({ width: 360, height: 860 });
+    await assets
+      .getByRole("button", { name: "Create design", exact: true })
+      .click();
+    await create
+      .getByRole("textbox", { name: "Design name" })
+      .fill("Trail newsletter");
+    await create
+      .getByRole("combobox", { name: "Starting layout" })
+      .selectOption("website-newsletter");
+    await create
+      .getByRole("button", { name: "Create design", exact: true })
+      .click();
+    await expect(
+      editor.getByRole("heading", { name: "Trail newsletter" }),
+    ).toBeVisible();
+    await expect(canvas.getByText("About", { exact: true })).toBeVisible();
+    await expect(canvas.getByText("Privacy", { exact: true })).toBeVisible();
+    await expect(
+      canvas.getByText("Your email address", { exact: true }),
+    ).toBeVisible();
+    await expect(canvas.getByText("Join", { exact: true })).toBeVisible();
+    expect(
+      await studio.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(360);
+    await editor
+      .getByRole("button", { name: "Newsletter button", exact: true })
+      .click();
+    await editor
+      .getByRole("button", { name: "Apply #187C70", exact: true })
+      .click();
+    await editor
+      .getByRole("button", { name: "Newsletter heading", exact: true })
+      .click();
+    await properties
+      .getByRole("textbox", { name: "Layer text" })
+      .fill("Weekly field notes");
+    await editor.getByRole("button", { name: /Back to collection/ }).click();
+    await expect(assets.getByRole("article")).toHaveCount(5);
+    await studio.reload();
+    await studio.getByRole("button", { name: "Editor", exact: true }).click();
+    await studio.getByRole("button", { name: "Open Trail newsletter" }).click();
+    await expect(
+      canvas.getByText("Weekly field notes", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      canvas.locator(
+        'g[transform="translate(1184 695)"] > rect[fill="rgb(24, 124, 112)"]',
+      ),
+    ).toHaveCount(1);
+    await studio.setViewportSize({ width: 1440, height: 900 });
+    await studio.screenshot({
+      path: info.outputPath("getter-studio-website-newsletter.png"),
+    });
+    await editor
+      .getByRole("button", { name: "Export draft", exact: true })
+      .click();
+    const newsletterReady = studio.waitForEvent("download");
+    await exportBox.getByRole("button", { name: "Download SVG" }).click();
+    const newsletter = await readFile(
+      await (await newsletterReady).path(),
+      "utf8",
+    );
+    expect(newsletter).toContain("Weekly field notes");
+    expect(newsletter).toContain("Your email address");
+    expect(newsletter).toContain("Privacy");
+    expect(newsletter).toContain('fill="rgb(24, 124, 112)"');
   } finally {
     await app.context.close();
   }
