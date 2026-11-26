@@ -92,7 +92,7 @@ function ReviewSetup({ projects, projectId, review, onDone, onCancel }) {
   }
 
   return (
-    <form className="review-workspace" onSubmit={submit}>
+    <form className="review-workspace review-setup" onSubmit={submit}>
       <div className="studio-heading">
         <div>
           <small className="workspace-kicker">Design Review</small>

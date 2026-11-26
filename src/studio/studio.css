@@ -1458,6 +1458,17 @@
   overflow: hidden;
 }
 
+.review-shell {
+  height: 100dvh;
+}
+.review-shell > :is(.workspace-header, .workspace-footer) {
+  flex-shrink: 0;
+}
+.review-main {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
 .review-workspace,
 .review-fields {
   display: grid;
@@ -1496,6 +1507,12 @@
   display: block;
   width: 100%;
   height: auto;
+}
+.review-setup .review-reference img {
+  width: auto;
+  max-width: 100%;
+  max-height: min(32dvh, 280px);
+  object-fit: contain;
 }
 .review-sample-card {
   display: grid;

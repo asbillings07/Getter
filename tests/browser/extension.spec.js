@@ -2384,6 +2384,81 @@ test("Design Review pairs a sample Figma layer, guards the reviewed site, and re
   }
 });
 
+test("Design Review can scroll to Start review after uploading a desktop screenshot", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
+  try {
+    const studio = await openStudioOptions(app);
+    await studio.emulateMedia({ colorScheme: "dark" });
+    await studio.setViewportSize({ width: 1440, height: 700 });
+    await studio
+      .getByRole("button", { name: "Design Review", exact: true })
+      .click();
+    await studio.getByRole("button", { name: /New design review/ }).click();
+    await studio.getByLabel("How to open the page").selectOption("address");
+    await studio
+      .getByRole("textbox", { name: "Website address", exact: true })
+      .fill(`${origin}/workbench`);
+    await studio.getByLabel("Ticket").fill("WEB-216");
+    await studio.getByLabel("Reference type").selectOption("screenshot");
+    const picture = await studio.evaluate(() => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 2560;
+      canvas.height = 1600;
+      const context = canvas.getContext("2d");
+      context.fillStyle = "#101c31";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = "#a9ccff";
+      for (let y = 100; y < canvas.height; y += 180)
+        context.fillRect(100, y, canvas.width - 200, 50);
+      return canvas.toDataURL("image/png").split(",")[1];
+    });
+    await studio.getByLabel("Screenshot", { exact: true }).setInputFiles({
+      name: "desktop-reference.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(picture, "base64"),
+    });
+    const preview = studio.getByRole("img", {
+      name: "Uploaded approved reference",
+    });
+    await expect(preview).toHaveJSProperty("naturalWidth", 2560);
+    const start = studio.getByRole("button", { name: /Start review/ });
+    await expect(start).toBeEnabled();
+    const content = studio.getByRole("main");
+    for (const width of [1440, 390]) {
+      await studio.setViewportSize({ width, height: 700 });
+      await studio.mouse.move(width / 2, 240);
+      await studio.mouse.wheel(0, 1600);
+      await expect
+        .poll(() => content.evaluate((page) => page.scrollTop))
+        .toBeGreaterThan(0);
+      await expect(start).toBeInViewport({ ratio: 1 });
+      const box = await preview.boundingBox();
+      expect(box.height).toBeLessThanOrEqual(224);
+      expect(box.width / box.height).toBeCloseTo(2560 / 1600, 1);
+      expect(
+        await studio.evaluate(() => document.documentElement.scrollWidth),
+      ).toBe(width);
+      await studio.screenshot({
+        path: info.outputPath(`review-scroll-${width}.png`),
+      });
+      await studio.mouse.wheel(0, -1600);
+      await expect(content).toHaveJSProperty("scrollTop", 0);
+    }
+    await studio.mouse.wheel(0, 1600);
+    await expect(start).toBeInViewport({ ratio: 1 });
+    await start.click();
+    await expect(
+      studio.getByRole("heading", { name: "WEB-216" }),
+    ).toBeInViewport();
+  } finally {
+    await app.context.close();
+  }
+});
+
 test("Design Review starts from a project and requests access only for the chosen address", async ({}, info) => {
   execFileSync(process.execPath, [
     "scripts/build.mjs",

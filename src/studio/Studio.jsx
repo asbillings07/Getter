@@ -372,14 +372,14 @@ function Studio() {
 
   if (reviews && !dialog)
     return (
-      <div className="studio-shell workspace-shell">
+      <div className="studio-shell workspace-shell review-shell">
         <WorkspaceHeader
           active="reviews"
           onProjects={showProjects}
           onInspect={() => openProjectDialog("inspect-pro")}
           onReview={() => showReviews()}
         />
-        <main className="studio-content workspace-page">
+        <main className="studio-content workspace-page review-main">
           <DesignReviews
             key={reviews.navigationId || reviews.initialReviewId}
             projects={projects || []}
