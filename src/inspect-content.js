@@ -1,4 +1,5 @@
 import { snapshotElement } from "./core/inspect.js";
+import { isSecureImageUrl } from "./core/access.js";
 import {
   captureComponent,
   componentParent,
@@ -409,7 +410,7 @@ if (!globalThis.__getterInspector) {
       const data = canvas.toDataURL("image/webp", 0.8);
       if (data.startsWith("data:image/webp;base64,")) return { data, alt };
     } catch {
-      // The browser can block reading an image on the page. Use a placeholder.
+      // Cross-origin media may be displayed by the page but unreadable to canvas.
     }
   }
 
@@ -492,6 +493,16 @@ if (!globalThis.__getterInspector) {
                 part.id = refs.length;
                 refs.push(new WeakRef(element));
                 if (element === node) selected = part;
+                if (element.localName === "img") {
+                  const src = element.currentSrc;
+                  if (
+                    element.complete &&
+                    element.naturalWidth &&
+                    src.length <= 4096 &&
+                    isSecureImageUrl(src)
+                  )
+                    part.previewImage = { src, alt: element.alt.slice(0, 100) };
+                }
                 if (
                   ["img", "video", "canvas"].includes(element.localName) &&
                   images.length < 8

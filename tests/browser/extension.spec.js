@@ -1850,7 +1850,49 @@ test("Inspect Pro keeps nested media and text in place while selecting or saving
   ]);
   const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
   try {
+    const thumbnailRequests = [];
+    await app.context.route(
+      `${imageOrigin}/component-thumb-*.png`,
+      async (route) => {
+        const request = route.request();
+        const headers = await request.allHeaders();
+        const filename = new URL(request.url()).pathname.split("/").at(-1);
+        const preview = headers.origin?.startsWith("chrome-extension://");
+        if (preview)
+          thumbnailRequests.push({ filename, referrer: headers.referer });
+        if (preview && filename.includes("blocked")) {
+          await route.fulfill({ status: 403, body: "Image unavailable" });
+          return;
+        }
+        await route.fulfill({
+          status: 200,
+          headers: {
+            "content-type": "image/png",
+            "access-control-allow-origin": "*",
+          },
+          body: studioPng,
+        });
+      },
+    );
     await app.page.goto(`${origin}/component-selection`);
+    await app.page
+      .locator("#feature")
+      .evaluate(async (component, imageOrigin) => {
+        const row = document.createElement("div");
+        row.id = "thumbnail-row";
+        component.append(row);
+        const images = Array.from({ length: 11 }, (_, index) => {
+          const image = document.createElement("img");
+          const name = index === 10 ? "blocked" : String(index + 1);
+          image.alt = `Component thumbnail ${name}`;
+          image.width = 42;
+          image.height = 28;
+          image.src = `${imageOrigin}/component-thumb-${name}.png`;
+          row.append(image);
+          return image.decode();
+        });
+        await Promise.all(images);
+      }, imageOrigin);
     await app.page.locator("#video").evaluate(async (video) => {
       await video.play();
     });
@@ -1886,6 +1928,33 @@ test("Inspect Pro keeps nested media and text in place while selecting or saving
     });
     await expect(selection).toHaveText("article#feature");
     await expect(frame).toHaveAttribute("src", /^data:image\/webp;base64,/);
+    const thumbnails = preview.getByRole("img", {
+      name: /^Component thumbnail \d+$/,
+    });
+    await expect(thumbnails).toHaveCount(10);
+    await expect
+      .poll(() =>
+        thumbnails.evaluateAll(
+          (images) => images.filter((image) => image.naturalWidth > 0).length,
+        ),
+      )
+      .toBe(10);
+    expect(
+      await thumbnails.evaluateAll((images) =>
+        images.every(
+          (image) =>
+            image.crossOrigin === "anonymous" &&
+            image.referrerPolicy === "no-referrer",
+        ),
+      ),
+    ).toBe(true);
+    await expect(
+      preview.getByText("Image unavailable", { exact: true }),
+    ).toHaveCount(1);
+    expect(thumbnailRequests).toHaveLength(11);
+    expect(
+      thumbnailRequests.every(({ referrer }) => referrer === undefined),
+    ).toBe(true);
     await expect(
       preview.getByText("Embedded frame", { exact: true }),
     ).toBeVisible();

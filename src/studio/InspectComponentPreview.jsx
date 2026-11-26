@@ -12,8 +12,14 @@ const mediaPlaceholders = {
 const place = ({ x, y, width, height }) => ({ left: x, top: y, width, height });
 
 function PreviewPart({ node }) {
+  const [failedImage, setFailedImage] = useState(null);
   const css = styleObject(node.css);
   const thumbnail = node.thumbnail;
+  const raster = thumbnail?.data.startsWith("data:image/webp;base64,")
+    ? thumbnail
+    : null;
+  const remote = node.previewImage;
+  const imageSrc = raster?.data || remote?.src;
   const textStyle = {
     color: css.color,
     fontFamily: css.fontFamily,
@@ -38,11 +44,15 @@ function PreviewPart({ node }) {
             boxShadow: css.boxShadow,
           }}
         >
-          {thumbnail?.data.startsWith("data:image/webp;base64,") ? (
+          {imageSrc && imageSrc !== failedImage ? (
             <img
               className="studio-component-thumbnail"
-              src={thumbnail.data}
-              alt={thumbnail.alt}
+              crossOrigin={raster ? undefined : "anonymous"}
+              referrerPolicy="no-referrer"
+              loading={raster ? undefined : "lazy"}
+              src={imageSrc}
+              alt={raster?.alt ?? remote.alt}
+              onError={() => setFailedImage(imageSrc)}
               style={{
                 objectFit: node.objectFit,
                 objectPosition: node.objectPosition,

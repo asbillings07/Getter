@@ -1,5 +1,14 @@
 export const websiteOrigins = ["http://*/*", "https://*/*"];
 
+export function isSecureImageUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
 export function supportedPage(url) {
   try {
     const u = new URL(url);
