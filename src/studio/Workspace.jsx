@@ -1,6 +1,12 @@
 import React, { useState } from "react";
 
-export function WorkspaceHeader({ project, onProjects, onInspect, onReview }) {
+export function WorkspaceHeader({
+  project,
+  onProjects,
+  onInspect,
+  onReview,
+  active = "projects",
+}) {
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const appearance = document.documentElement.dataset.appearance || "system";
   async function changeAppearance(value) {
@@ -54,12 +60,16 @@ export function WorkspaceHeader({ project, onProjects, onInspect, onReview }) {
         <nav className="studio-row workspace-sections" aria-label="Studio">
           <button
             className="text-button"
-            aria-current="page"
+            aria-current={active === "projects" ? "page" : undefined}
             onClick={onProjects}
           >
             Projects
           </button>
-          <button className="text-button" onClick={onReview}>
+          <button
+            className="text-button"
+            aria-current={active === "reviews" ? "page" : undefined}
+            onClick={onReview}
+          >
             Design Review
           </button>
           <button className="text-button" onClick={onInspect}>

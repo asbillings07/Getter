@@ -2193,6 +2193,269 @@ test("Inspect Pro accepts a typed site and requests only that site when asked", 
   }
 });
 
+test("Design Review pairs a sample Figma layer, guards the reviewed site, and restores its screenshot", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
+  try {
+    await app.page.goto(`${origin}/component-selection`);
+    const studio = await openStudioOptions(app);
+    await studio.setViewportSize({ width: 390, height: 900 });
+    await studio
+      .getByRole("button", { name: "Design Review", exact: true })
+      .click();
+    await expect(
+      studio.getByRole("heading", { name: "Review a page" }),
+    ).toBeVisible();
+    await studio.getByRole("button", { name: /New design review/ }).click();
+    await studio.getByLabel("Open tabs").selectOption({
+      label: "Component selection fixture · 127.0.0.1",
+    });
+    await studio.getByLabel("Ticket").fill("WEB-214");
+    await studio
+      .getByLabel("Figma frame link")
+      .fill("https://figma.invalid/design/test");
+    await expect(studio.getByRole("alert")).toContainText(
+      "Paste a Figma Design link",
+    );
+    await studio
+      .getByRole("button", { name: "Use sample Figma frame" })
+      .click();
+    await expect(
+      studio.getByText("Product card · Sample Figma frame"),
+    ).toBeVisible();
+    expect(
+      await studio.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(390);
+    await studio.screenshot({
+      path: info.outputPath("review-setup-narrow.png"),
+    });
+    await studio.getByRole("button", { name: /Start review/ }).click();
+    await expect(
+      studio.getByRole("heading", { name: "WEB-214" }),
+    ).toBeVisible();
+    await studio
+      .getByRole("button", { name: "Open Inspect Pro", exact: true })
+      .click();
+    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    await app.worker.evaluate(async () => {
+      const window = await chrome.windows.getCurrent();
+      await chrome.sidePanel.close({ windowId: window.id });
+    });
+
+    const panel = await app.openPanel();
+    await panel.setViewportSize({ width: 320, height: 880 });
+    const compare = panel.getByRole("region", {
+      name: "Design Review comparison",
+    });
+    await expect(compare).toBeVisible();
+    await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    await app.page.locator("#first-headline").dispatchEvent("click");
+    await expect(compare.getByText("h3#first-headline")).toBeVisible();
+    await compare.getByLabel("Figma layer").selectOption("24:81");
+    await compare
+      .getByRole("button", { name: "Match layer", exact: true })
+      .click();
+    const fontSize = compare.locator("li").filter({ hasText: "font-size" });
+    await expect(fontSize).toContainText("Different");
+    await expect(fontSize).toContainText("24px");
+    await expect(fontSize).toContainText("18px");
+    expect(
+      await panel.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(320);
+    await compare.screenshot({
+      path: info.outputPath("review-sample-figma-match.png"),
+    });
+
+    await app.page.evaluate(() => history.pushState({}, "", "?another-page"));
+    await expect(
+      panel.getByRole("heading", {
+        name: "Return to the website under review",
+      }),
+    ).toBeVisible();
+    await expect(compare).toHaveCount(0);
+    await app.page.evaluate(() =>
+      history.replaceState({}, "", "/component-selection"),
+    );
+    await expect(compare).toBeVisible();
+    await panel
+      .getByRole("button", { name: "Back to review", exact: true })
+      .click();
+    await studio.waitForURL(/studio\.html\?review=/);
+    await expect(
+      studio.getByRole("heading", { name: "Saved comparison" }),
+    ).toBeVisible();
+    await expect(studio.getByText("h3#first-headline")).toBeVisible();
+
+    await studio
+      .getByRole("button", { name: "Replace reference", exact: true })
+      .click();
+    await studio
+      .getByLabel("Figma frame link")
+      .fill(
+        "https://www.figma.com/design/FixtureOnly/Example?node-id=22-80&ignored=1",
+      );
+    await studio
+      .getByRole("button", { name: "Replace reference", exact: true })
+      .click();
+    await expect(studio.getByText("Waiting for Figma access")).toBeVisible();
+    await expect(
+      studio.getByRole("heading", { name: "Saved comparison" }),
+    ).toHaveCount(0);
+    await expect(
+      studio.getByRole("link", { name: "Open saved Figma frame link" }),
+    ).toHaveAttribute(
+      "href",
+      "https://www.figma.com/design/FixtureOnly/Example?node-id=22-80",
+    );
+
+    await studio
+      .getByRole("button", { name: "Replace reference", exact: true })
+      .click();
+    await studio.getByLabel("Reference type").selectOption("screenshot");
+    const screenshot = studio.getByLabel("Screenshot", { exact: true });
+    await screenshot.setInputFiles({
+      name: "invalid.png",
+      mimeType: "image/png",
+      buffer: Buffer.from("invalid"),
+    });
+    await expect(studio.getByRole("alert")).toContainText(
+      "could not be opened",
+    );
+    await screenshot.setInputFiles({
+      name: "approved.png",
+      mimeType: "image/png",
+      buffer: studioPng,
+    });
+    await expect(
+      studio.getByRole("img", { name: "Uploaded approved reference" }),
+    ).toBeVisible();
+    await studio
+      .getByRole("button", { name: "Replace reference", exact: true })
+      .click();
+    await expect(
+      studio.getByRole("heading", { name: "Reference and staging" }),
+    ).toBeVisible();
+    await studio.reload();
+    await expect(
+      studio.getByRole("img", { name: "Uploaded approved reference" }),
+    ).toBeVisible();
+    await studio
+      .getByRole("button", { name: "Open Inspect Pro", exact: true })
+      .click();
+    await expect(
+      compare.getByRole("heading", { name: "Screenshot reference" }),
+    ).toBeVisible();
+    await expect(compare.getByLabel("Figma layer")).toHaveCount(0);
+    await compare
+      .getByRole("button", { name: "Mark an area", exact: true })
+      .click();
+    await compare.getByText("Enter area coordinates").click();
+    await compare.getByLabel("width percent").fill("55");
+    await compare
+      .getByLabel("Visual difference")
+      .fill("The heading sits lower in staging.");
+    await compare.getByRole("button", { name: "Save marked area" }).click();
+    await expect(compare.getByText("Marked area saved.")).toBeVisible();
+    await expect(
+      compare.getByText("The heading sits lower in staging."),
+    ).toBeVisible();
+    await panel.reload();
+    await expect(compare.getByText("Marked area saved.")).toBeVisible();
+    await expect(compare.locator(".review-area-mark")).toHaveAttribute(
+      "style",
+      /width: 55%/,
+    );
+    await panel
+      .getByRole("button", { name: "Back to review", exact: true })
+      .click();
+    await studio
+      .getByRole("button", { name: "Back to reviews", exact: true })
+      .click();
+    await expect(
+      studio.getByRole("heading", { name: "WEB-214 · approved.png" }),
+    ).toBeVisible();
+  } finally {
+    await app.context.close();
+  }
+});
+
+test("Design Review starts from a project and requests access only for the chosen address", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, {
+    buildDir: "dist-studio-workspace-qa",
+    fixtureHostGrants: false,
+    denyPermissionRequests: true,
+  });
+  try {
+    const studio = await openStudioOptions(app);
+    await studio.getByRole("button", { name: "New project" }).click();
+    await studio.getByLabel("Project name").fill("Juniper");
+    await studio
+      .getByRole("button", { name: "Create project", exact: true })
+      .click();
+    await studio
+      .getByRole("button", { name: "Projects", exact: true })
+      .last()
+      .click();
+    await studio.getByRole("button", { name: "Open project Juniper" }).click();
+    await studio.getByRole("button", { name: "New design review" }).click();
+    await expect(studio.getByLabel("Project · Optional")).toHaveValue(/.+/);
+    await studio.getByLabel("Ticket").fill("WEB-215");
+    await studio.getByLabel("How to open the page").selectOption("address");
+    await expect(studio.getByLabel("Open tabs")).toHaveCount(0);
+    await studio
+      .getByRole("textbox", { name: "Website address", exact: true })
+      .fill(`${origin}/workbench`);
+    await studio.getByLabel("Reference type").selectOption("screenshot");
+    await studio.getByRole("button", { name: "Use sample screenshot" }).click();
+    await studio.getByRole("button", { name: /Start review/ }).click();
+    await expect(studio.getByText("Juniper · Desktop")).toBeVisible();
+    const opened = app.context.waitForEvent("page");
+    await studio
+      .getByRole("button", { name: "Open Inspect Pro", exact: true })
+      .click();
+    const site = await opened;
+    await expect(site).toHaveURL(`${origin}/workbench`);
+    await app.worker.evaluate(async () => {
+      const window = await chrome.windows.getCurrent();
+      await chrome.sidePanel.close({ windowId: window.id });
+    });
+    const panel = await app.openPanel();
+    await expect(
+      panel.getByRole("heading", { name: "Allow Inspect Pro on this site" }),
+    ).toBeVisible();
+    expect(await panel.evaluate(() => websiteAccessFixture.requests)).toEqual(
+      [],
+    );
+    await panel.getByRole("button", { name: "Allow site access" }).click();
+    await expect(panel.getByRole("status")).toContainText(
+      "Site access wasn’t allowed",
+    );
+    expect(await panel.evaluate(() => websiteAccessFixture.requests)).toEqual([
+      { origins: ["http://127.0.0.1/*"] },
+    ]);
+    await expect(site.locator("getter-inspection-overlay")).toHaveCount(0);
+    await expect(
+      panel.getByRole("region", { name: "Design Review comparison" }),
+    ).toHaveCount(0);
+    await studio.getByRole("button", { name: "Back to reviews" }).click();
+    await expect(
+      studio.getByRole("heading", { name: "Project reviews" }),
+    ).toBeVisible();
+    await expect(
+      studio.getByRole("heading", { name: /WEB-215.*Sample screenshot/ }),
+    ).toBeVisible();
+  } finally {
+    await app.context.close();
+  }
+});
+
 test("Studio detects and replays selected canvas and scroll motion without a recording step", async ({}, info) => {
   execFileSync(process.execPath, [
     "scripts/build.mjs",

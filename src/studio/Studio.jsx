@@ -9,6 +9,7 @@ import CollectionAssets, {
 import DesignKit from "./DesignKit.jsx";
 import Designs from "./Designs.jsx";
 import DesignEditor from "./DesignEditor.jsx";
+import DesignReviews from "./DesignReviews.jsx";
 import {
   ProjectsView,
   WorkspaceFooter,
@@ -50,6 +51,10 @@ function Studio() {
   const [projectOverview, setProjectOverview] = useState(false);
   const [notice, setNotice] = useState("");
   const [featuredCollection, setFeaturedCollection] = useState("");
+  const [reviews, setReviews] = useState(() => {
+    const initialReviewId = new URLSearchParams(location.search).get("review");
+    return initialReviewId ? { initialReviewId } : null;
+  });
   const currentProject = projects?.find(
     (project) => project.id === selection?.projectId,
   );
@@ -65,9 +70,22 @@ function Studio() {
     projectCollectionEntries(project, projects || []);
 
   function showProjects() {
+    setReviews(null);
+    const url = new URL(location.href);
+    if (url.searchParams.has("review")) {
+      url.searchParams.delete("review");
+      history.replaceState(null, "", url);
+    }
     setSelection(null);
     setNotice("");
     refreshProjects();
+  }
+
+  function showReviews(scope = {}) {
+    const url = new URL(location.href);
+    url.searchParams.delete("review");
+    history.replaceState(null, "", url);
+    setReviews({ ...scope, navigationId: crypto.randomUUID() });
   }
 
   async function openProjectDialog(next) {
@@ -342,6 +360,26 @@ function Studio() {
     }
   }
 
+  if (reviews && !dialog)
+    return (
+      <div className="studio-shell workspace-shell">
+        <WorkspaceHeader
+          active="reviews"
+          onProjects={showProjects}
+          onInspect={() => openProjectDialog("inspect-pro")}
+          onReview={() => showReviews()}
+        />
+        <main className="studio-content workspace-page">
+          <DesignReviews
+            key={reviews.navigationId || reviews.initialReviewId}
+            projects={projects || []}
+            {...reviews}
+          />
+        </main>
+        <WorkspaceFooter />
+      </div>
+    );
+
   if (design)
     return (
       <div className="studio-shell design-shell workspace-shell">
@@ -373,9 +411,7 @@ function Studio() {
         project={collection && !projectOverview ? currentProject : null}
         onProjects={showProjects}
         onInspect={() => openProjectDialog("inspect-pro")}
-        onReview={() =>
-          setNotice("Design Review requires a separate QA build.")
-        }
+        onReview={() => showReviews()}
       />
       {collection && !projectOverview && (
         <WorkspaceSteps
@@ -469,6 +505,27 @@ function Studio() {
                 >
                   Open editor →
                 </button>
+              </section>
+              <section className="studio-card">
+                <h2>Design Review</h2>
+                <div className="studio-row">
+                  <button
+                    className="secondary"
+                    onClick={() =>
+                      showReviews({ projectId: currentProject.id, setup: true })
+                    }
+                  >
+                    New design review
+                  </button>
+                  <button
+                    className="text-button"
+                    onClick={() =>
+                      showReviews({ projectId: currentProject.id })
+                    }
+                  >
+                    View project reviews
+                  </button>
+                </div>
               </section>
             </div>
           </>

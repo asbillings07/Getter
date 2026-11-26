@@ -99,7 +99,33 @@ the master recorded in the [Aptelum design system](https://github.com/asbillings
 with SHA-256 `e055a95caa78654fafd4aab080c91e216c262cada22d92173a5de0542ec60d80`.
 
 The Inspect Pro entry is part of the Studio workspace QA package. Live
-subscription enforcement and starting from Design Review are separate work.
+subscription enforcement is separate work.
+
+## Start a Design Review
+
+1. Open **Design Review** from Studio or start a review from a project. Choose
+   an open tab or enter a website address, enter the review ticket, and choose
+   the target viewport. The viewport is recorded on the review. Resize the
+   website separately to test that layout.
+2. Add an approved reference. Choose **Use sample Figma frame** to exercise
+   single-layer matching. A real Figma link can be saved in the review and
+   opened in Figma. The QA package does not fetch Figma files or verify file
+   access. Alternatively, upload a PNG, JPG, or WebP screenshot up to 10 MB.
+3. Select **Start review**, then **Open Inspect Pro**. If Chrome asks, allow
+   access to the site under review. Inspect Pro pauses the review when the
+   active tab shows a different address.
+4. For the sample frame, pick a live website element, choose a Figma layer, and
+   select **Match layer**. Check the expected and observed values and their
+   original units. For a screenshot, mark the area visually and optionally
+   describe the difference. Screenshot pixels do not supply exact design
+   properties or Figma layer names.
+5. Return to the review, then reopen it from **Design Review**. The chosen
+   reference, marked area, and latest confirmed comparison save on this
+   device. Replacing the reference clears the earlier comparison.
+
+This QA slice covers standalone and project-linked reviews with one confirmed
+layer match. Live Figma qualification and suggested or reusable matches are
+tracked separately.
 
 ## Use the collection in the editor
 
