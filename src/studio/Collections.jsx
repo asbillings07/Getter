@@ -58,42 +58,46 @@ export function EditorDialog({
       {description && <p>{description}</p>}
       {children}
       <form className="studio-form studio-fields" onSubmit={submit}>
-        {fields.map(({ key, label, max, multiline, required, options }) => {
-          if (options)
+        {fields
+          .filter(({ visible }) => !visible || visible(values))
+          .map(({ key, label, max, multiline, required, options, type }) => {
+            if (options)
+              return (
+                <label key={key}>
+                  {label}
+                  <select
+                    value={values[key]}
+                    disabled={pending}
+                    required={required}
+                    onChange={(event) =>
+                      setValues({ ...values, [key]: event.target.value })
+                    }
+                  >
+                    {options.map(({ id, name }) => (
+                      <option key={id} value={id}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              );
+            const Input = multiline ? "textarea" : "input";
             return (
               <label key={key}>
                 {label}
-                <select
+                <Input
+                  type={type}
+                  required={required}
+                  maxLength={max}
                   value={values[key]}
                   disabled={pending}
                   onChange={(event) =>
                     setValues({ ...values, [key]: event.target.value })
                   }
-                >
-                  {options.map(({ id, name }) => (
-                    <option key={id} value={id}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
+                />
               </label>
             );
-          const Input = multiline ? "textarea" : "input";
-          return (
-            <label key={key}>
-              {label}
-              <Input
-                required={required}
-                maxLength={max}
-                value={values[key]}
-                disabled={pending}
-                onChange={(event) =>
-                  setValues({ ...values, [key]: event.target.value })
-                }
-              />
-            </label>
-          );
-        })}
+          })}
         {error && <p role="alert">{error}</p>}
         <div className="studio-row">
           <button

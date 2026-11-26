@@ -1510,9 +1510,32 @@ test("Inspect Pro opens the native panel, previews and saves the whole selected 
       name: "Open tabs",
       exact: true,
     });
+    const mode = sitePicker.getByRole("combobox", {
+      name: "How to open the page",
+    });
+    await expect(mode).toHaveValue("tab");
+    await expect(
+      sitePicker.getByRole("textbox", { name: "Website address", exact: true }),
+    ).toHaveCount(0);
     await tabChoice.selectOption({
       label: "Studio motion fixture · 127.0.0.1",
     });
+    await sitePicker.screenshot({
+      path: info.outputPath("getter-inspect-pro-open-tabs.png"),
+    });
+    await mode.selectOption("address");
+    await expect(tabChoice).toHaveCount(0);
+    await sitePicker
+      .getByRole("textbox", { name: "Website address", exact: true })
+      .fill("https://would-open-if-both-inputs-were-active.example/");
+    await sitePicker.screenshot({
+      path: info.outputPath("getter-inspect-pro-address.png"),
+    });
+    await mode.selectOption("tab");
+    await expect(
+      sitePicker.getByRole("textbox", { name: "Website address", exact: true }),
+    ).toHaveCount(0);
+    await expect(tabChoice).not.toHaveValue("");
     await sitePicker.getByRole("button", { name: "Open Inspect Pro" }).click();
     await expect(sitePicker).toBeHidden();
     await expect
@@ -1541,6 +1564,21 @@ test("Inspect Pro opens the native panel, previews and saves the whole selected 
       panel.getByRole("heading", { name: "Inspect Pro", exact: true }),
     ).toBeVisible();
     await expect(app.page.locator("getter-inspection-overlay")).toBeAttached();
+    await app.page.locator("#promo").evaluate(async (component) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 32;
+      canvas.height = 21;
+      const paint = canvas.getContext("2d");
+      paint.fillStyle = "#2b634c";
+      paint.fillRect(0, 0, 32, 21);
+      const image = document.createElement("img");
+      image.alt = "Readable preview artwork";
+      image.width = 32;
+      image.height = 21;
+      image.src = canvas.toDataURL();
+      component.append(image);
+      await image.decode();
+    });
     await app.page.locator("#promo h2").dispatchEvent("click");
     await panel
       .getByRole("button", { name: "Select parent", exact: true })
@@ -1548,15 +1586,58 @@ test("Inspect Pro opens the native panel, previews and saves the whole selected 
     const selection = panel.locator(".element-title code");
     await expect(selection).toHaveText("article#promo");
     const parts = panel.getByRole("region", { name: "Component hierarchy" });
+    const componentPreview = panel.getByRole("region", {
+      name: "Component preview",
+    });
+    const highlight = componentPreview.locator("[data-highlighted-part]");
+    const previewMark = componentPreview.getByRole("img", {
+      name: "Readable preview artwork",
+      exact: true,
+    });
+    await expect(previewMark).toHaveAttribute(
+      "src",
+      /^data:image\/webp;base64,/,
+    );
+    const previewTop = await componentPreview.boundingBox();
+    const tabs = await panel
+      .getByRole("group", { name: "Inspect sections" })
+      .boundingBox();
+    expect(previewTop.y).toBeLessThan(tabs.y);
+    await expect(highlight).toContainText("Shop blend");
     await parts.getByRole("button", { name: /h2 · Juniper blend/ }).click();
     await expect(selection).toHaveText("article#promo > h2");
+    await expect(highlight).toHaveText("Juniper blend");
+    await expect(
+      componentPreview.getByText("Shop blend", { exact: true }),
+    ).toBeVisible();
+    const icon = panel.locator(".inspect-pro-context .inspect-pro-label svg");
+    const iconPaint = () =>
+      icon.evaluate((mark) => {
+        const css = getComputedStyle(mark);
+        return { stroke: css.stroke, color: css.color };
+      });
+    await panel.emulateMedia({ colorScheme: "light" });
+    const light = await iconPaint();
+    expect(light.stroke).toBe(light.color);
+    await panel.emulateMedia({ colorScheme: "dark" });
+    const dark = await iconPaint();
+    expect(dark.stroke).toBe(dark.color);
+    expect(dark.stroke).not.toBe(light.stroke);
+    await expect(panel.locator(".inspect-pro-footer img")).toHaveAttribute(
+      "src",
+      "images/aptelum-mark.png",
+    );
+    await panel.screenshot({
+      path: info.outputPath("getter-inspect-pro-parts-dark.png"),
+    });
+    await panel.emulateMedia({ colorScheme: "light" });
+    await panel.screenshot({
+      path: info.outputPath("getter-inspect-pro-parts-light.png"),
+    });
     await parts.getByRole("button", { name: "article", exact: true }).click();
     await expect(selection).toHaveText("article#promo");
 
     await panel.getByRole("button", { name: "Effects", exact: true }).click();
-    const componentPreview = panel.getByRole("region", {
-      name: "Component preview",
-    });
     await expect(
       componentPreview.getByText("Juniper blend", { exact: true }),
     ).toBeVisible();
@@ -1689,7 +1770,15 @@ test("Inspect Pro accepts a typed site and requests only that site when asked", 
     const picker = studio.getByRole("dialog", {
       name: /Inspect Pro.*Choose a site/,
     });
-    await picker.getByLabel("Website address").fill(`${origin}/studio-motion`);
+    await picker
+      .getByRole("combobox", { name: "How to open the page" })
+      .selectOption("address");
+    await expect(
+      picker.getByRole("combobox", { name: "Open tabs" }),
+    ).toHaveCount(0);
+    await picker
+      .getByRole("textbox", { name: "Website address", exact: true })
+      .fill(`${origin}/studio-motion`);
     const opened = app.context.waitForEvent("page");
     await picker.getByRole("button", { name: "Open Inspect Pro" }).click();
     const site = await opened;

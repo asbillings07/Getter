@@ -319,6 +319,45 @@ if (!globalThis.__getterInspector) {
     window.addEventListener("scroll", position, true);
     window.addEventListener("resize", position);
   }
+  function previewImage(node) {
+    if (!node.complete || !node.naturalWidth || !node.naturalHeight) return;
+    const scale = Math.min(
+      1,
+      160 / Math.max(node.naturalWidth, node.naturalHeight),
+    );
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(node.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(node.naturalHeight * scale));
+    try {
+      canvas
+        .getContext("2d")
+        .drawImage(node, 0, 0, canvas.width, canvas.height);
+      const data = canvas.toDataURL("image/webp", 0.8);
+      if (data.startsWith("data:image/webp;base64,"))
+        return { data, alt: node.alt.slice(0, 100) };
+    } catch {
+      // The browser can block reading an image on the page. Use a placeholder.
+    }
+  }
+
+  function previewBackground(root) {
+    for (
+      let node = root.parentElement, depth = 0;
+      node && depth < 16;
+      node = node.parentElement, depth++
+    ) {
+      const value = getComputedStyle(node).backgroundColor;
+      if (value && value !== "transparent" && !/[,/]\s*0\)$/.test(value))
+        return value;
+    }
+    const scheme = getComputedStyle(root).colorScheme;
+    const dark =
+      scheme === "dark" ||
+      (scheme.includes("dark") &&
+        matchMedia("(prefers-color-scheme: dark)").matches);
+    return dark ? "#121212" : "#ffffff";
+  }
+
   chrome.runtime.onConnect.addListener((port) => {
     const studio =
       GETTER_STUDIO_WORKSPACE_QA && port.name === "getter-studio-inspect";
@@ -370,6 +409,7 @@ if (!globalThis.__getterInspector) {
               proRoot = new WeakRef(root);
             }
             const refs = [];
+            const images = [];
             let selected;
             const result = captureComponent(root, {
               withAssets: true,
@@ -378,14 +418,19 @@ if (!globalThis.__getterInspector) {
                 part.id = refs.length;
                 refs.push(new WeakRef(element));
                 if (element === node) selected = part;
+                if (element.localName === "img" && images.length < 4)
+                  images.push({ element, part });
               },
             });
+            for (const { element, part } of images)
+              part.thumbnail = previewImage(element);
             proParts = refs;
             send({
               type: "studio-component-parts",
               parts: {
                 ...result,
                 selected,
+                background: previewBackground(root),
                 selectionId: state.selectionId,
                 revision: ++partsRevision,
               },

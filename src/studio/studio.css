@@ -1297,30 +1297,107 @@
   justify-content: space-between;
   gap: 8px;
 }
-.inspect-pro-preview {
-  margin: 0 0 12px;
+.inspect-pro-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
-.inspect-pro-preview > small {
+.inspect-pro-label svg,
+.inspect-pro-label img {
+  flex: none;
+}
+.inspect-pro-preview {
+  padding: 10px;
+  margin: 0 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+.inspect-pro-preview h2 {
+  margin: 0;
+  font-size: 14px;
+}
+.inspect-pro-preview small {
   color: var(--dim);
 }
-.inspect-pro-parts {
+.inspect-pro-preview-stage {
   display: grid;
-  gap: 4px;
+  justify-items: center;
+  padding: 8px;
+  margin-top: 8px;
+  border-radius: 6px;
+  background: var(--bg);
+}
+.inspect-pro-preview-frame {
+  overflow: hidden;
+  outline: 1px solid var(--line);
+  border-radius: 6px;
+}
+.inspect-pro-preview-frame > div {
+  transform-origin: top left;
+}
+.inspect-pro-preview-frame [data-highlighted-part] {
+  position: relative;
+}
+.inspect-pro-preview-frame [data-highlighted-part]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 2px #fff,
+    inset 0 0 0 5px #2059be;
+  pointer-events: none;
+}
+.studio-component-thumbnail {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.inspect-pro-window .inspect-results > .search-field {
+  margin-bottom: 12px;
+}
+.inspect-pro-parts,
+.inspect-pro-parts ul {
+  list-style: none;
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+}
+.inspect-pro-parts ul {
+  padding-inline-start: 14px;
 }
 .inspect-pro-parts button {
+  width: 100%;
+  padding: 6px;
   text-align: left;
   overflow-wrap: anywhere;
-  min-width: 0;
+  color: var(--ink);
 }
 .inspect-pro-parts button[aria-pressed="true"] {
   background: var(--active);
   color: var(--accent);
 }
-.inspect-pro-window .segments {
-  flex-wrap: wrap;
+.inspect-pro-window .inspect-tabs-row .segments {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
 }
-.inspect-pro-window .segments > button {
-  flex: 1 0 auto;
+.inspect-pro-window .inspect-tabs-row .segments > button {
+  min-width: 0;
+  padding-inline: 2px;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+}
+.inspect-pro-window .inspect-tabs-row .segments > button[aria-pressed="true"] {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
 }
 .inspect-pro-playback {
   display: grid;

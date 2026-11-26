@@ -12,14 +12,24 @@ function styleObject(css) {
   );
 }
 
-export function ComponentShape({ node, images, previewRef }) {
+export function ComponentShape({
+  node,
+  images,
+  previewRef,
+  selectedId,
+  previewRoot = false,
+}) {
   const style = styleObject(node.css);
   return (
     <div
       className="studio-node"
       ref={previewRef}
+      data-highlighted-part={
+        selectedId !== undefined && node.id === selectedId ? "" : undefined
+      }
       style={{
         ...style,
+        ...(previewRoot ? { margin: 0, transform: "none" } : {}),
         boxSizing: "border-box",
         minWidth: 0,
         maxWidth: "100%",
@@ -27,13 +37,28 @@ export function ComponentShape({ node, images, previewRef }) {
     >
       {images?.[node.imageIndex]?.blob ? (
         <ImagePreview image={images[node.imageIndex]} />
+      ) : node.thumbnail?.data.startsWith("data:image/webp;base64,") ? (
+        <img
+          className="studio-component-thumbnail"
+          src={node.thumbnail.data}
+          alt={node.thumbnail.alt}
+        />
       ) : (
         node.text ||
         node.placeholder ||
-        (node.children.length ? null : node.tag)
+        (node.children.length
+          ? null
+          : node.tag === "img"
+            ? "Image unavailable"
+            : node.tag)
       )}
       {node.children.map((child, index) => (
-        <ComponentShape key={index} node={child} images={images} />
+        <ComponentShape
+          key={index}
+          node={child}
+          images={images}
+          selectedId={selectedId}
+        />
       ))}
     </div>
   );

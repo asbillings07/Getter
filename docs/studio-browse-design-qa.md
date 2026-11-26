@@ -59,19 +59,21 @@ fetch path and have the same format and size limits as Studio Collections.
 
 ## Inspect Pro
 
-In **Open Studio QA**, choose **Inspect Pro**, then pick an open tab or enter a
-website address. A project can launch Inspect Pro with its collection already
+In **Open Studio QA**, choose **Inspect Pro**. Use **How to open the page** to
+switch between choosing an open tab and entering a website address. A project can launch Inspect Pro with its collection already
 selected for saving. Inspect Pro opens in Chrome’s side panel beside the chosen
 site and requests access only if Getter needs it for that page.
 
-- Select a component on the page. **Parts** lists the captured hierarchy and
-  lets you inspect its parts. **Select parent** moves up one level. **Styles**,
+- Select a component on the page. The component preview stays above the
+  property tabs. **Parts** lists the captured hierarchy and highlights the
+  selected part in the preview. **Select parent** moves up one level. **Styles**,
   **Layout**, **Effects**, and **Element** organize the selected element’s
   values. **Copy CSS** and property search are available.
 - **Effects** previews supported animations and transitions on reconstructed
   styling, or plays a reference clip for readable canvas and video motion.
   Native animation previews support replay, speed, and scrubbing. The
-  reconstructed view uses placeholders for images. A visual reference is
+  reconstructed view uses artwork already loaded and readable on the page.
+  Images the browser blocks are shown as placeholders. A visual reference is
   available only when Getter can read the motion.
 - **Save to collection** opens the destination for the whole selected component
   with its supported descendants, styles, and detected motion. **Individual
@@ -79,6 +81,11 @@ site and requests access only if Getter needs it for that page.
   the save dialog and keeps the selection while the same document is open.
 - Reloading or navigating the chosen tab requires starting a fresh inspection.
   **Back to Getter** returns to the extension tools, including Quick Inspect.
+
+Inspect Pro uses the product blend for the Aptelum attribution mark in both
+appearances. Action icons follow the surrounding text color. The mark matches
+the master recorded in the [Aptelum design system](https://github.com/asbillings07/aptelum/blob/747cce312918a5572c4bc58d7bb1f08c6cb9ea40/docs/design-system/README.md)
+with SHA-256 `e055a95caa78654fafd4aab080c91e216c262cada22d92173a5de0542ec60d80`.
 
 The Inspect Pro entry is part of the Studio workspace QA package. Live
 subscription enforcement and starting from Design Review are separate work.

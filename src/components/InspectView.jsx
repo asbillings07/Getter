@@ -3,20 +3,32 @@ import { sections, inspectGroups, cssSnippet } from "../core/inspect.js";
 import { verifyDocument } from "../core/workspace.js";
 import Info from "./Info.jsx";
 import InspectMotion from "../studio/InspectMotion.jsx";
-import { ComponentShape } from "../studio/AssetPreview.jsx";
+import InspectComponentPreview from "../studio/InspectComponentPreview.jsx";
+import InspectorIcon from "../studio/InspectorIcon.jsx";
 import { capturableEffects } from "../studio/inspect.js";
 
 function ComponentParts({ node, selectedId, onSelect }) {
+  const mark =
+    node.tag === "img"
+      ? "image"
+      : ["input", "button", "label", "select"].includes(node.tag)
+        ? "control"
+        : node.children.length
+          ? "layers"
+          : "text";
   return (
     <li>
       <button
         type="button"
-        className="text-button"
+        className="text-button inspect-pro-label"
         aria-pressed={node.id === selectedId}
         onClick={() => onSelect(node.id)}
       >
-        <code>{node.tag}</code>
-        {node.text && <span> · {node.text.slice(0, 60)}</span>}
+        <InspectorIcon name={mark} />
+        <span>
+          <code>{node.tag}</code>
+          {node.text && ` · ${node.text.slice(0, 60)}`}
+        </span>
       </button>
       {!!node.children.length && (
         <ul>
@@ -243,7 +255,7 @@ export default function InspectView({
     if (!pro || selectionId === undefined) return;
     let live = true;
     request({ type: "component-parts", selectionId }).then((result) => {
-      if (live) setParts(result);
+      if (live) setParts({ result, selectionId });
     });
     return () => {
       live = false;
@@ -260,7 +272,7 @@ export default function InspectView({
         type: "select-part",
         selectionId,
         partId,
-        revision: parts?.revision,
+        revision: parts?.result?.revision,
       }))
     )
       onNotice("This part is no longer available. Choose the component again.");
@@ -298,7 +310,8 @@ export default function InspectView({
   }
   const snapshot = model.snapshot,
     groups = inspectGroups(snapshot, model.section, model.all, model.query);
-  const component = parts?.selectionId === selectionId ? parts : null;
+  const partsReady = parts !== null && parts.selectionId === selectionId;
+  const component = partsReady ? parts.result : null;
   const sectionButtons = pro ? [["parts", "Parts"], ...sections] : sections;
   const hasEffect =
     pro && snapshot && Object.keys(capturableEffects(snapshot.css)).length > 0;
@@ -380,6 +393,45 @@ export default function InspectView({
       </dd>
     </div>
   );
+  const sectionControls = (
+    <>
+      <div className="inspect-tabs-row">
+        <div className="segments" role="group" aria-label="Inspect sections">
+          {sectionButtons.map(([id, label]) => (
+            <button
+              key={id}
+              aria-pressed={model.section === id}
+              onClick={() => onChange({ ...model, section: id, query: "" })}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <Info label="How to copy values">
+          Click a value to copy it. Show all properties reveals additional
+          values and attributes.
+        </Info>
+      </div>
+      {model.section !== "parts" && (
+        <label className="search-field">
+          <span aria-hidden="true">⌕</span>
+          <input
+            type="search"
+            aria-label={
+              model.section === "element"
+                ? "Find element detail"
+                : "Find CSS property"
+            }
+            placeholder={
+              model.section === "element" ? "Find a detail" : "Find a property"
+            }
+            value={model.query}
+            onChange={(e) => toggle("query", e.target.value)}
+          />
+        </label>
+      )}
+    </>
+  );
   const n = (value) => Number.parseFloat(value) || 0;
   return (
     <section className="inspect-view">
@@ -429,9 +481,17 @@ export default function InspectView({
                 <button
                   type="button"
                   className="secondary studio-collection-button"
+                  aria-label={pro ? "＋ Save to collection" : undefined}
                   onClick={() => collect("component")}
                 >
-                  ＋ Save to collection
+                  {pro ? (
+                    <span className="inspect-pro-label">
+                      <InspectorIcon name="add" />
+                      Save to collection
+                    </span>
+                  ) : (
+                    "＋ Save to collection"
+                  )}
                 </button>
                 <button
                   type="button"
@@ -451,53 +511,7 @@ export default function InspectView({
                 to that root.
               </p>
             )}
-            {model.section !== "code" && (
-              <>
-                <div className="inspect-tabs-row">
-                  <div
-                    className="segments"
-                    role="group"
-                    aria-label="Inspect sections"
-                  >
-                    {sectionButtons.map(([id, label]) => (
-                      <button
-                        key={id}
-                        aria-pressed={model.section === id}
-                        onClick={() =>
-                          onChange({ ...model, section: id, query: "" })
-                        }
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  <Info label="How to copy values">
-                    Click a value to copy it. Show all properties reveals
-                    additional values and attributes.
-                  </Info>
-                </div>
-                {model.section !== "parts" && (
-                  <label className="search-field">
-                    <span aria-hidden="true">⌕</span>
-                    <input
-                      type="search"
-                      aria-label={
-                        model.section === "element"
-                          ? "Find element detail"
-                          : "Find CSS property"
-                      }
-                      placeholder={
-                        model.section === "element"
-                          ? "Find a detail"
-                          : "Find a property"
-                      }
-                      value={model.query}
-                      onChange={(e) => toggle("query", e.target.value)}
-                    />
-                  </label>
-                )}
-              </>
-            )}
+            {!pro && model.section !== "code" && sectionControls}
           </>
         )}
       </div>
@@ -523,6 +537,15 @@ export default function InspectView({
         </div>
       ) : (
         <div className="inspect-results" aria-label="Inspect results">
+          {pro && model.section !== "code" && (
+            <>
+              <InspectComponentPreview
+                component={component}
+                loading={!partsReady}
+              />
+              {sectionControls}
+            </>
+          )}
           {model.section === "code" ? (
             <>
               <button
@@ -552,7 +575,6 @@ export default function InspectView({
           ) : model.section === "parts" && pro ? (
             component ? (
               <section aria-label="Component hierarchy">
-                <h2>Component parts</h2>
                 {component.limited && (
                   <p className="scan-note">
                     Large components may have additional parts. Select a smaller
@@ -577,28 +599,15 @@ export default function InspectView({
               {pro &&
                 model.section === "effects" &&
                 !model.query &&
-                component?.selected && (
-                  <section
-                    className="inspect-pro-preview"
-                    aria-label="Component preview"
+                component?.selected &&
+                hasEffect && (
+                  <button
+                    className="secondary"
+                    type="button"
+                    onClick={() => collect("effect")}
                   >
-                    <h2>Component preview</h2>
-                    <small>
-                      Reconstructed styles · images shown as placeholders
-                    </small>
-                    <div className="studio-component-preview">
-                      <ComponentShape node={component.selected} />
-                    </div>
-                    {hasEffect && (
-                      <button
-                        className="secondary"
-                        type="button"
-                        onClick={() => collect("effect")}
-                      >
-                        Save effect
-                      </button>
-                    )}
-                  </section>
+                    Save effect
+                  </button>
                 )}
               {GETTER_STUDIO_WORKSPACE_QA &&
                 onCollect &&

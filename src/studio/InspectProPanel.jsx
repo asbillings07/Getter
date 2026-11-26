@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import InspectView from "../components/InspectView.jsx";
+import InspectorIcon from "./InspectorIcon.jsx";
 import { initialWorkspace, verifyDocument } from "../core/workspace.js";
 import SidePanelCollect, {
   openCollectionWorkspace,
@@ -236,12 +237,20 @@ function InspectProPanel({ session }) {
           />
           <h1>Inspect Pro</h1>
         </div>
-        <button className="text-button" type="button" onClick={exit}>
+        <button
+          className="text-button inspect-pro-label"
+          type="button"
+          onClick={exit}
+        >
+          <InspectorIcon name="back" />
           Back to Getter
         </button>
       </header>
       <div className="context inspect-pro-context">
-        <span>◎ {hostname}</span>
+        <span className="inspect-pro-label">
+          <InspectorIcon name="site" />
+          {hostname}
+        </span>
         <button
           className="text-button"
           type="button"
@@ -298,7 +307,10 @@ function InspectProPanel({ session }) {
         )}
       </main>
       <footer className="inspect-pro-footer">
-        <span>Created by Aptelum Labs</span>
+        <span className="inspect-pro-label">
+          <img src="images/aptelum-mark.png" alt="" width="19" height="19" />
+          Created by Aptelum Labs
+        </span>
         {destination && (
           <button
             className="text-button"

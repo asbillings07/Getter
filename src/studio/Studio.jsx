@@ -252,6 +252,22 @@ function Studio() {
     },
     { key: "address", label: "Website address", max: 2048 },
   ];
+  const inspectSiteFields = [
+    {
+      key: "siteMode",
+      label: "How to open the page",
+      options: [
+        { id: "tab", name: "Choose an open tab" },
+        { id: "address", name: "Enter a website address" },
+      ],
+    },
+    ...siteFields.map((field) => ({
+      ...field,
+      required: true,
+      type: field.key === "address" ? "url" : undefined,
+      visible: ({ siteMode }) => siteMode === field.key,
+    })),
+  ];
   async function submitDialog(fields) {
     const { name, notes, collection: destination } = fields;
     if (projectDialog) {
@@ -272,7 +288,7 @@ function Studio() {
       if (!Number.isInteger(inspectWindow))
         throw Error("The sites are still loading. Try again in a moment.");
       let address;
-      if (fields.address.trim()) {
+      if (fields.siteMode === "address") {
         try {
           address = websiteAddress(fields.address.trim()).href;
         } catch {
@@ -282,7 +298,8 @@ function Studio() {
         }
       }
       const source =
-        !address && siteOptions.find(({ id }) => String(id) === fields.tab);
+        fields.siteMode === "tab" &&
+        siteOptions.find(({ id }) => String(id) === fields.tab);
       if (!address && !source)
         throw Error("Choose an open tab or enter a website address.");
       await launchInspectPro(chrome, {
@@ -641,6 +658,7 @@ function Studio() {
                 ? currentProject.site?.address || ""
                 : "",
             tab: "",
+            siteMode: "tab",
           }}
           fields={
             projectDialog
@@ -661,11 +679,13 @@ function Studio() {
                     ],
                   },
                 ]
-              : inspectDialog || siteDialog
-                ? siteFields
-                : editDialog
-                  ? collectionFields
-                  : collectionFields.slice(0, 1)
+              : inspectDialog
+                ? inspectSiteFields
+                : siteDialog
+                  ? siteFields
+                  : editDialog
+                    ? collectionFields
+                    : collectionFields.slice(0, 1)
           }
           action={
             projectDialog
