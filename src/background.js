@@ -49,9 +49,11 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
       const saved =
         transfers.get(message.windowId) ||
         (await chrome.storage.session.get(key))[key];
+      const recipient = page.pathname === "/popup.html" ? "popup" : "panel";
+      if (saved?.mode !== recipient) return null;
       transfers.delete(message.windowId);
       await chrome.storage.session.remove(key);
-      return saved && Date.now() - saved.time < 30000 ? saved.workspace : null;
+      return Date.now() - saved.time < 30000 ? saved.workspace : null;
     })().then(respond, () => respond(null));
     return true;
   }
@@ -60,7 +62,11 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     !["panel", "popup"].includes(message.mode)
   )
     return;
-  const record = { time: Date.now(), workspace: message.workspace };
+  const record = {
+    time: Date.now(),
+    mode: message.mode,
+    workspace: message.workspace,
+  };
   transfers.set(message.windowId, record);
   const saved = chrome.storage.session
     .set({ [key]: record })

@@ -1429,9 +1429,9 @@ test("Quick Inspect opens from the popup while Pro is active", async ({}, info) 
           .filter((w) => w.location.pathname === "/sidepanel.html")
           .map((w) => ({
             head: w.document.querySelector("h1")?.textContent,
-            mode: w.document
-              .querySelector(".tabs button[aria-pressed=true]")
-              ?.textContent.trim(),
+            quickInspect: !!w.document.querySelector(
+              ".tabs button:last-child[aria-pressed=true]",
+            ),
             body: w.document.body?.innerText,
           })),
       );
@@ -1483,7 +1483,7 @@ test("Quick Inspect opens from the popup while Pro is active", async ({}, info) 
       .poll(native)
       .toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ mode: "Quick Inspect" }),
+          expect.objectContaining({ quickInspect: true }),
         ]),
       );
   } finally {

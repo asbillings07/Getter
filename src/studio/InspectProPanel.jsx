@@ -7,7 +7,7 @@ import SidePanelCollect, {
 import { inspectProKey } from "./inspect-workspace.js";
 
 export default function InspectProRouter({ children }) {
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState(undefined);
   useEffect(() => {
     let live = true;
     let read = 0;
@@ -22,7 +22,7 @@ export default function InspectProRouter({ children }) {
         ]);
         const current = saved[key];
         if (live && reading === read)
-          setSession(current?.tabId === tabs[0]?.id ? current : null);
+          setSession(current && current.tabId === tabs[0]?.id ? current : null);
       } catch {
         if (live && reading === read) setSession(null);
       }
@@ -43,7 +43,9 @@ export default function InspectProRouter({ children }) {
         chrome.storage.onChanged.addListener(changed);
         refresh();
       })
-      .catch(() => {});
+      .catch(() => {
+        if (live) setSession(null);
+      });
     return () => {
       live = false;
       chrome.tabs.onActivated.removeListener(activate);
@@ -51,6 +53,7 @@ export default function InspectProRouter({ children }) {
     };
   }, []);
 
+  if (session === undefined) return null;
   return session ? (
     <InspectProPanel key={session.id} session={session} />
   ) : (
