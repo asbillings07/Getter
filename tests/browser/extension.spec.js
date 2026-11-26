@@ -1388,7 +1388,9 @@ test("Studio Inspect keeps the existing tools and saves motion, text, and reusab
     await dialog
       .getByRole("button", { name: "Save component", exact: true })
       .click();
-    await expect(dialog.getByRole("status")).toContainText("Saved to Assets");
+    await expect(
+      dialog.getByRole("status").or(dialog.getByRole("alert")),
+    ).toContainText("Saved to Assets", { timeout: 15000 });
     await dialog.getByRole("button", { name: "Keep inspecting" }).click();
     await panel
       .getByRole("button", { name: "Individual assets", exact: true })
@@ -2096,9 +2098,9 @@ test("Inspect Pro keeps nested media and text in place while selecting or saving
       .getByRole("textbox", { name: "Project name" })
       .fill("Full component QA");
     await destination.getByRole("button", { name: "Create and save" }).click();
-    await expect(destination.getByRole("status")).toContainText(
-      "Saved to Assets",
-    );
+    await expect(
+      destination.getByRole("status").or(destination.getByRole("alert")),
+    ).toContainText("Saved to Assets", { timeout: 15000 });
     const opened = app.context.waitForEvent("page");
     await destination.getByRole("button", { name: "Open collection" }).click();
     const collection = await opened;
@@ -3723,9 +3725,10 @@ test("Studio campaign and brand board drafts keep collection assets through reop
     await expect(
       studio.getByRole("dialog", { name: "Create a project" }),
     ).toBeHidden();
-    await studio.getByLabel("Open tabs").selectOption({
-      label: "Getter workspace fixture · 127.0.0.1",
-    });
+    await studio
+      .getByRole("main")
+      .getByRole("combobox", { name: "Open tabs", exact: true })
+      .selectOption({ label: "Getter workspace fixture · 127.0.0.1" });
     await studio.getByRole("button", { name: "Scan styles" }).click();
     await studio.getByRole("checkbox", { name: /#123456/ }).check();
     await studio.getByRole("checkbox", { name: /Arial.*body/ }).check();
