@@ -1,14 +1,41 @@
 import React from "react";
-import { MotionPreview, Properties } from "./AssetPreview.jsx";
+import {
+  MotionPreview,
+  Properties,
+  VisualMotionPreview,
+} from "./AssetPreview.jsx";
 import { motionAssets } from "./inspect.js";
 
-export default function InspectMotion({ motion, snapshot, query, onSave }) {
-  const items = motionAssets(motion);
-  if (!items.length)
-    return query ? null : (
-      <p className="scan-note">No animation or transition on this element.</p>
-    );
-  return items
+export default function InspectMotion({
+  motion,
+  observed,
+  snapshot,
+  query,
+  onSave,
+}) {
+  const selectArtwork = observed?.status === "select-artwork";
+  const items = motion && !selectArtwork ? motionAssets(motion) : [];
+  const captured = observed?.asset;
+  const entireScene = captured?.clip?.scope === "scene";
+  const showCaptured =
+    captured &&
+    (!query ||
+      `${entireScene ? "Canvas motion " : ""}${captured.name} animation preview`
+        .toLowerCase()
+        .includes(query.trim().toLowerCase()));
+  let note;
+  if (!query && !captured && !items.length) {
+    if (selectArtwork)
+      note = "Select artwork on the page to preview its motion.";
+    else if (!observed || observed.status === "checking")
+      note = "Checking the selected element for motion…";
+    else if (observed.status === "unavailable")
+      note = "This motion can’t be previewed from the selected element.";
+    else if (motion)
+      note =
+        "No motion detected. If it starts on hover or scroll, try that on the page.";
+  }
+  const declared = items
     .filter(
       (item) =>
         !query ||
@@ -54,7 +81,7 @@ export default function InspectMotion({ motion, snapshot, query, onSave }) {
             />
           ) : (
             <p className="scan-note">
-              Timing is available. Hover the element to record a transition, or
+              Timing is available. Hover the element to preview a transition, or
               select it while its animation is active.
             </p>
           )}
@@ -88,4 +115,49 @@ export default function InspectMotion({ motion, snapshot, query, onSave }) {
         </section>
       );
     });
+  return (
+    <>
+      {note && (
+        <p className="scan-note" role="status">
+          {note}
+        </p>
+      )}
+      {showCaptured && (
+        <section
+          className="studio-inspect-motion"
+          aria-label="Studio observed motion"
+        >
+          <div className="studio-row studio-between">
+            <h3>{entireScene ? "Canvas motion" : captured.name}</h3>
+            <small>Studio</small>
+          </div>
+          <p className="scan-note">
+            {entireScene
+              ? "Entire scene"
+              : observed.selectedArtwork
+                ? "Selected artwork"
+                : observed.canvasWithinSelection
+                  ? "Canvas in selection"
+                  : "Motion detected"}{" "}
+            · {captured.clip ? "2-second visual reference" : "2-second sample"}
+          </p>
+          {captured.clip ? (
+            <VisualMotionPreview
+              key={observed.sampleId}
+              clip={captured.clip}
+              onSave={() => onSave(captured.kind, observed.sampleId)}
+            />
+          ) : (
+            <MotionPreview
+              item={captured}
+              label="Preview motion"
+              saveLabel="Save motion"
+              onSave={() => onSave(captured.kind, observed.sampleId)}
+            />
+          )}
+        </section>
+      )}
+      {declared}
+    </>
+  );
 }

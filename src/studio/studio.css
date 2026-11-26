@@ -339,6 +339,21 @@
   display: grid;
   gap: 6px;
 }
+.studio-visual-motion {
+  max-height: none;
+}
+.studio-visual-stage {
+  position: relative;
+  margin-inline: auto;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #f2f5f9;
+}
+.studio-visual-stage img {
+  position: absolute;
+  display: block;
+}
 .studio-inspect-motion .studio-sample {
   width: fit-content;
   max-width: 100%;

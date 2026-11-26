@@ -96,6 +96,7 @@ export function MotionPreview({
   caption = "Motion preview",
   css,
   onSave,
+  saveLabel = `Save ${item.kind}`,
 }) {
   const sample = useRef(null);
   const animations = useRef([]);
@@ -136,10 +137,87 @@ export function MotionPreview({
         </button>
         {onSave && (
           <button className="secondary" type="button" onClick={onSave}>
-            Save {item.kind}
+            {saveLabel}
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+export function VisualMotionPreview({ clip, onSave }) {
+  const animation = useRef(0);
+  const [index, setIndex] = useState(0);
+  const [status, setStatus] = useState("");
+  const frame = clip.frames[index] || clip.frames[0];
+  const source = clip.sources[frame.image];
+  useEffect(() => () => cancelAnimationFrame(animation.current), [clip]);
+
+  function play() {
+    cancelAnimationFrame(animation.current);
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setIndex(clip.frames.length - 1);
+      setStatus("End frame shown. Reduced motion is on.");
+      return;
+    }
+    const start = performance.now();
+    let next = 0;
+    setIndex(0);
+    setStatus("Playing motion preview…");
+    function tick(now) {
+      const elapsed = now - start;
+      while (
+        next + 1 < clip.frames.length &&
+        clip.frames[next + 1].at <= elapsed
+      )
+        next++;
+      setIndex(next);
+      if (elapsed < clip.duration)
+        animation.current = requestAnimationFrame(tick);
+      else setStatus("Preview complete.");
+    }
+    animation.current = requestAnimationFrame(tick);
+  }
+
+  return (
+    <div className="studio-motion-preview studio-visual-motion">
+      <div
+        role="img"
+        aria-label="Visual motion preview"
+        className="studio-visual-stage"
+        style={{
+          aspectRatio: `${clip.width} / ${clip.height}`,
+          width: `min(100%, ${clip.scope === "scene" ? 384 : 256}px, ${(180 * clip.width) / clip.height}px)`,
+        }}
+      >
+        {source?.startsWith("data:image/webp;base64,") && (
+          <img
+            alt=""
+            src={source}
+            style={{
+              left: `${frame.left}%`,
+              top: `${frame.top}%`,
+              width: `${frame.width}%`,
+              height: `${frame.height}%`,
+            }}
+          />
+        )}
+      </div>
+      <div className="studio-row">
+        <button
+          type="button"
+          className={onSave ? "primary" : "secondary"}
+          onClick={play}
+        >
+          Preview motion
+        </button>
+        {onSave && (
+          <button type="button" className="secondary" onClick={onSave}>
+            Save motion
+          </button>
+        )}
+      </div>
+      {status && <p role="status">{status}</p>}
     </div>
   );
 }
@@ -184,7 +262,9 @@ export default function AssetPreview({ item }) {
         Effect preview
       </div>
     );
-  if (item.type === "motion" && item.animations.length)
-    return <MotionPreview item={item} />;
+  if (item.type === "motion") {
+    if (item.clip) return <VisualMotionPreview clip={item.clip} />;
+    if (item.animations.length) return <MotionPreview item={item} />;
+  }
   return null;
 }

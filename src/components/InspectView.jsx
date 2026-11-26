@@ -14,6 +14,7 @@ export default function InspectView({
   const [status, setStatus] = useState("connecting"),
     [note, setNote] = useState("");
   const [motion, setMotion] = useState(null);
+  const [observed, setObserved] = useState(null);
   const connection = useRef(),
     latest = useRef(),
     waiters = useRef(new Map()),
@@ -39,6 +40,20 @@ export default function InspectView({
         port.onMessage.addListener((message) => {
           if (!live) return;
           const { model: m, onChange: change } = latest.current;
+          if (
+            GETTER_STUDIO_WORKSPACE_QA &&
+            message.type === "studio-sampled-motion"
+          )
+            setObserved({ ...message, documentId: scan.documentId });
+          if (
+            GETTER_STUDIO_WORKSPACE_QA &&
+            message.type === "studio-native-motion"
+          )
+            setMotion({
+              value: message.motion,
+              selectionId: message.selectionId,
+              documentId: scan.documentId,
+            });
           if (message.requestId) {
             waiters.current.get(message.requestId)?.(
               message.type === "snapshot"
@@ -65,6 +80,7 @@ export default function InspectView({
           if (message.type === "paused") change({ ...m, picking: false });
           if (message.type === "removed") {
             setStatus("removed");
+            if (GETTER_STUDIO_WORKSPACE_QA) setObserved(null);
             change({ ...m, snapshot: null });
           }
           if (message.type === "unavailable") setNote(message.message);
@@ -76,6 +92,7 @@ export default function InspectView({
           void chrome.runtime.lastError;
           if (live) {
             setStatus("error");
+            if (GETTER_STUDIO_WORKSPACE_QA) setObserved(null);
             setNote(
               "The page connection ended. Scan again or reopen Getter from the toolbar.",
             );
@@ -164,6 +181,11 @@ export default function InspectView({
     onCopy(value, label, scan);
   }
   const selectionId = model.snapshot?.selectionId;
+  const matchesSelection = (result) =>
+    !!result &&
+    selectionId !== undefined &&
+    result.selectionId === selectionId &&
+    result.documentId === scan.documentId;
   useEffect(() => {
     if (
       !GETTER_STUDIO_WORKSPACE_QA ||
@@ -190,13 +212,18 @@ export default function InspectView({
     await request({ type: "select-parent", selectionId });
   }
 
-  async function collect(scope) {
+  async function collect(scope, sampleId) {
     const selectionId = model.snapshot?.selectionId;
     if (!(await verifyDocument(chrome, scan))) {
       onNotice("The page changed. Scan again before saving.");
       return;
     }
-    const capture = await request({ type: "collect-selection", selectionId });
+    const capture = await request({
+      type: "collect-selection",
+      selectionId,
+      scope,
+      sampleId,
+    });
     if (
       !capture ||
       latest.current.model.snapshot?.selectionId !== selectionId ||
@@ -458,12 +485,11 @@ export default function InspectView({
             <>
               {GETTER_STUDIO_WORKSPACE_QA &&
                 onCollect &&
-                model.section === "effects" &&
-                motion?.selectionId === selectionId &&
-                motion?.documentId === scan.documentId &&
-                motion.value && (
+                model.section === "effects" && (
                   <InspectMotion
-                    motion={motion.value}
+                    key={`${scan.documentId}:${selectionId}`}
+                    motion={matchesSelection(motion) ? motion.value : null}
+                    observed={matchesSelection(observed) ? observed : null}
                     snapshot={snapshot}
                     query={model.query}
                     onSave={collect}
