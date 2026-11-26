@@ -1,4 +1,6 @@
+import JSZip from "jszip";
 import React, { forwardRef, useEffect, useState } from "react";
+import { colorLabel } from "../core/extract.js";
 import { safeStyleValue } from "./inspect.js";
 
 export function dataUrl(blob) {
@@ -69,12 +71,12 @@ function TextContent({ layer, centered }) {
   );
 }
 
-function Artwork({ layer }) {
+function Artwork({ layer, exportOnly }) {
   const [href, setHref] = useState("");
   useEffect(() => {
     let live = true;
     setHref("");
-    if (layer.blob)
+    if (!exportOnly && layer.blob)
       dataUrl(layer.blob)
         .then((url) => {
           if (live) setHref(url);
@@ -83,7 +85,7 @@ function Artwork({ layer }) {
     return () => {
       live = false;
     };
-  }, [layer.blob]);
+  }, [layer.blob, exportOnly]);
   const clip = `image-${layer.id}`;
   return (
     <>
@@ -113,13 +115,13 @@ const metric = (value, otherwise) =>
 const literalColor = (value, otherwise) =>
   safeStyleValue(value) && CSS.supports("color", value) ? value : otherwise;
 
-function ComponentArtwork({ layer }) {
+function ComponentArtwork({ layer, exportOnly }) {
   const root = layer.tree;
   const [images, setImages] = useState([]);
   useEffect(() => {
     let live = true;
     setImages([]);
-    if (layer.images?.length)
+    if (!exportOnly && layer.images?.length)
       Promise.all(
         layer.images.map(({ blob }) => dataUrl(blob).catch(() => "")),
       ).then((values) => {
@@ -128,7 +130,7 @@ function ComponentArtwork({ layer }) {
     return () => {
       live = false;
     };
-  }, [layer.images]);
+  }, [layer.images, exportOnly]);
   const width = root.bounds?.width || metric(root.css.width, 320) || 320;
   const height = root.bounds?.height || metric(root.css.height, 160) || 160;
   function draw(node, fallback, key) {
@@ -208,8 +210,39 @@ function ComponentArtwork({ layer }) {
   );
 }
 
+function SwatchCaption({ layer }) {
+  const value = colorLabel(layer.fill);
+  return (
+    <svg
+      width={layer.width}
+      height={layer.height}
+      pointerEvents="none"
+      fill={layer.textColor}
+      fontFamily="Arial, sans-serif"
+    >
+      <text
+        y={layer.height * 0.77}
+        fontSize={Math.min(21, layer.height * 0.19)}
+        fontWeight="700"
+      >
+        {layer.name}
+      </text>
+      <text
+        y={layer.height * 0.96}
+        fontSize={Math.min(
+          17,
+          layer.height * 0.16,
+          layer.width / (value.length * 0.62),
+        )}
+      >
+        {value.startsWith("#") ? value.toUpperCase() : value}
+      </text>
+    </svg>
+  );
+}
+
 export default forwardRef(function DesignCanvas(
-  { draft, selected, onStart, onMove, onEnd, onCancel },
+  { draft, selected, onStart, onMove, onEnd, onCancel, exportOnly = false },
   ref,
 ) {
   const interactive = !!onStart;
@@ -275,7 +308,7 @@ export default forwardRef(function DesignCanvas(
             {["shape", "button"].includes(layer.type) && (
               <rect
                 width={layer.width}
-                height={layer.height}
+                height={layer.swatch ? layer.height * 0.54 : layer.height}
                 rx={layer.radius}
                 fill={layer.fill}
                 stroke={layer.stroke}
@@ -283,6 +316,7 @@ export default forwardRef(function DesignCanvas(
                 filter={layer.shadow ? `url(#shadow-${layer.id})` : undefined}
               />
             )}
+            {layer.swatch && <SwatchCaption layer={layer} />}
             {interactive && (
               <rect
                 data-editor-only=""
@@ -298,9 +332,11 @@ export default forwardRef(function DesignCanvas(
                 viewBox={`0 0 ${layer.width} ${layer.height}`}
                 pointerEvents="none"
               >
-                {layer.type === "image" && <Artwork layer={layer} />}
+                {layer.type === "image" && (
+                  <Artwork layer={layer} exportOnly={exportOnly} />
+                )}
                 {layer.type === "component" && (
-                  <ComponentArtwork layer={layer} />
+                  <ComponentArtwork layer={layer} exportOnly={exportOnly} />
                 )}
                 {["text", "button"].includes(layer.type) && (
                   <TextContent
@@ -388,4 +424,14 @@ export async function exportDesign(stage, draft, format) {
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+export async function exportSlides(slides, format) {
+  const zip = new JSZip();
+  for (const [index, { stage, draft }] of slides.entries()) {
+    const blob = await exportDesign(stage, draft, format);
+    const number = String(index + 1).padStart(2, "0");
+    zip.file(`slide-${number}.${format}`, await blob.arrayBuffer());
+  }
+  return zip.generateAsync({ type: "blob", compression: "DEFLATE" });
 }

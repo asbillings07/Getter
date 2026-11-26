@@ -7,14 +7,19 @@ import { safeStyleValue } from "./inspect.js";
 import {
   addFromAsset,
   applyFromAsset,
+  changeComposition,
+  changeDesignLayer,
   checkColor,
+  compositionOptions,
+  draftSlide,
   formats,
   layer,
   layerLabels,
   moveLayer,
+  replaceDraftSlide,
   resizeCanvas,
 } from "./design.js";
-import DesignCanvas, { exportDesign } from "./DesignCanvas.jsx";
+import DesignCanvas, { exportDesign, exportSlides } from "./DesignCanvas.jsx";
 
 function Control({ label, children }) {
   return (
@@ -90,6 +95,7 @@ function LayerProperties({
   changeLayer,
   changeDraft,
   onError,
+  carousel,
 }) {
   const number = (name, label, min, max, step) => (
     <NumberField
@@ -112,6 +118,7 @@ function LayerProperties({
   );
   const text = selected && ["text", "button"].includes(selected.type);
   const surface = selected && ["shape", "button"].includes(selected.type);
+  const compositions = compositionOptions(draft);
   return (
     <aside
       className="studio-card studio-fields design-properties"
@@ -240,20 +247,38 @@ function LayerProperties({
               }
             />
           </Control>
-          <Control label="Canvas format">
-            <select
-              value={draft.format}
-              onChange={(event) =>
-                changeDraft(resizeCanvas(draft, event.target.value))
-              }
-            >
-              {Object.entries(formats).map(([id, format]) => (
-                <option key={id} value={id}>
-                  {format.label} ({format.width} × {format.height})
-                </option>
-              ))}
-            </select>
-          </Control>
+          {!carousel && (
+            <Control label="Canvas format">
+              <select
+                value={draft.format}
+                onChange={(event) =>
+                  changeDraft(resizeCanvas(draft, event.target.value))
+                }
+              >
+                {Object.entries(formats).map(([id, format]) => (
+                  <option key={id} value={id}>
+                    {format.label} ({format.width} × {format.height})
+                  </option>
+                ))}
+              </select>
+            </Control>
+          )}
+          {compositions && (
+            <Control label="Composition">
+              <select
+                value={draft.composition}
+                onChange={(event) =>
+                  changeDraft(changeComposition(draft, event.target.value))
+                }
+              >
+                {compositions.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </Control>
+          )}
           <ColorField
             label="Canvas background"
             value={draft.background}
@@ -266,7 +291,7 @@ function LayerProperties({
   );
 }
 
-function ExportDialog({ onClose, onDownload, pending, status }) {
+function ExportDialog({ onClose, onDownload, pending, status, carousel }) {
   const element = useRef(null);
   const [format, setFormat] = useState("svg");
   useEffect(() => {
@@ -289,15 +314,24 @@ function ExportDialog({ onClose, onDownload, pending, status }) {
             disabled={pending}
             onChange={(event) => setFormat(event.target.value)}
           >
-            <option value="svg">SVG · Text and shapes</option>
-            <option value="png">PNG · Flattened image</option>
+            <option value="svg">
+              {carousel
+                ? "SVG ZIP · One SVG per slide"
+                : "SVG · Text and shapes"}
+            </option>
+            <option value="png">
+              {carousel
+                ? "PNG ZIP · One PNG per slide"
+                : "PNG · Flattened image"}
+            </option>
           </select>
         </Control>
       </div>
       <p>
         {format === "svg"
           ? "The SVG contains vector shapes, text, and embedded artwork. Fonts are referenced by name."
-          : "The PNG uses the canvas dimensions."}
+          : "The PNG uses the canvas dimensions."}{" "}
+        {carousel && "The ZIP includes every slide in order."}
       </p>
       <div className="studio-row">
         <button
@@ -312,7 +346,9 @@ function ExportDialog({ onClose, onDownload, pending, status }) {
           disabled={pending}
           onClick={() => onDownload(format)}
         >
-          {pending ? "Preparing…" : `Download ${format.toUpperCase()}`}
+          {pending
+            ? "Preparing…"
+            : `Download ${format.toUpperCase()}${carousel ? " ZIP" : ""}`}
         </button>
       </div>
       {status && <p role="status">{status}</p>}
@@ -334,7 +370,8 @@ export default function DesignEditor({
   onSave,
   onBack,
 }) {
-  const [draft, setDraft] = useState(initial);
+  const [design, setDesign] = useState(initial);
+  const [slide, setSlide] = useState(0);
   const [saved, setSaved] = useState(initial);
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState(startingAsset?.name || "");
@@ -354,8 +391,16 @@ export default function DesignEditor({
   const savingTask = useRef(null);
   const tracker = useRef(null);
   const stage = useRef(null);
+  const otherStages = useRef([]);
   const drag = useRef(null);
-  const dirty = draft !== saved;
+  const draft = draftSlide(design, slide);
+  const carousel = Boolean(design.additionalSlides?.length);
+  const slides = [
+    0,
+    ...(design.additionalSlides || []).map((_, index) => index + 1),
+  ];
+  const campaign = ["portrait", "square", "story"].includes(draft.format);
+  const dirty = design !== saved;
   const selected = draft.layers.find(({ id }) => id === selectedId);
   const chosenColorTarget =
     (selected || colorTarget === "background" ? colorTarget : "") ||
@@ -398,24 +443,19 @@ export default function DesignEditor({
       group.current?.field !== field ||
       time - group.current.time > 650
     ) {
-      history.current.push(draft);
+      history.current.push({ design, slide });
       if (history.current.length > 80) history.current.shift();
     }
     group.current = field ? { field, time } : null;
     redo.current = [];
-    setDraft(next);
+    setDesign(replaceDraftSlide(design, slide, next));
     setStatus("");
   }
 
   function changeLayer(fields, field) {
     if (!selected) return;
     change(
-      {
-        ...draft,
-        layers: draft.layers.map((item) =>
-          item.id === selected.id ? { ...item, ...fields } : item,
-        ),
-      },
+      changeDesignLayer(draft, selected, fields),
       field && `${selected.id}-${field}`,
     );
   }
@@ -426,18 +466,37 @@ export default function DesignEditor({
     group.current = null;
   }
 
+  function openSlide(index) {
+    setSlide(index);
+    select(null);
+    drag.current = null;
+    setMove(null);
+  }
+
+  function restoreEdit(edit) {
+    setDesign(edit.design);
+    if (edit.slide !== slide) openSlide(edit.slide);
+    group.current = null;
+  }
+
   function undo() {
     if (!history.current.length) return;
-    redo.current.push(draft);
-    setDraft(history.current.pop());
-    group.current = null;
+    const previous = history.current.pop();
+    redo.current.push({ design, slide: previous.slide });
+    restoreEdit(previous);
   }
 
   function redoEdit() {
     if (!redo.current.length) return;
-    history.current.push(draft);
-    setDraft(redo.current.pop());
-    group.current = null;
+    const next = redo.current.pop();
+    history.current.push({ design, slide: next.slide });
+    restoreEdit(next);
+  }
+
+  function changeCanvas(fields, key) {
+    const next = { ...draft, ...fields };
+    if (next.background !== draft.background) delete next.backgroundSource;
+    change(next, key);
   }
 
   function add(item) {
@@ -454,8 +513,7 @@ export default function DesignEditor({
       ) {
         add(addFromAsset(asset, draft));
       } else if (kind === "color" && chosenColorTarget === "background") {
-        change({
-          ...draft,
+        changeCanvas({
           background: checkColor(asset.color || asset.value.value),
         });
       } else if (selected) {
@@ -473,7 +531,7 @@ export default function DesignEditor({
     setSaving(true);
     group.current = null;
     setStatus("");
-    const snapshot = draft;
+    const snapshot = design;
     const work = Promise.resolve().then(async () => {
       try {
         const name = cleanName(snapshot.name);
@@ -508,10 +566,19 @@ export default function DesignEditor({
     setExporting(true);
     setExportStatus("");
     try {
-      const blob = await exportDesign(stage.current, draft, format);
+      const blob = carousel
+        ? await exportSlides(
+            slides.map((index) => ({
+              stage:
+                index === slide ? stage.current : otherStages.current[index],
+              draft: draftSlide(design, index),
+            })),
+            format,
+          )
+        : await exportDesign(stage.current, draft, format);
       await tracker.current.start(URL.createObjectURL(blob), {
         blob: true,
-        filename: `${slug(draft.name)}.${format}`,
+        filename: `${slug(draft.name)}.${carousel ? "zip" : format}`,
       });
     } catch (error) {
       setExportStatus(error.message || "Couldn’t export the draft.");
@@ -834,8 +901,29 @@ export default function DesignEditor({
             onEnd={finishDrag}
             onCancel={(event) => finishDrag(event, true)}
           />
+          {carousel && (
+            <div
+              className="studio-row design-slides"
+              role="group"
+              aria-label="Carousel slides"
+            >
+              {slides.map((index) => (
+                <button
+                  key={index}
+                  type="button"
+                  className="secondary"
+                  aria-pressed={slide === index}
+                  disabled={saving}
+                  onClick={() => openSlide(index)}
+                >
+                  Slide {index + 1}
+                </button>
+              ))}
+            </div>
+          )}
           <small>
             {draft.width} × {draft.height}
+            {campaign && " · Static artwork"}
           </small>
         </section>
         <LayerProperties
@@ -843,17 +931,37 @@ export default function DesignEditor({
           selected={selected}
           draft={draft}
           changeLayer={changeLayer}
-          changeDraft={(fields, key) => change({ ...draft, ...fields }, key)}
+          changeDraft={changeCanvas}
           onError={setStatus}
+          carousel={carousel}
         />
       </div>
       {exportOpen && (
-        <ExportDialog
-          pending={exporting}
-          onClose={() => setExportOpen(false)}
-          status={exportStatus}
-          onDownload={download}
-        />
+        <>
+          {carousel && (
+            <div hidden>
+              {slides
+                .filter((index) => index !== slide)
+                .map((index) => (
+                  <DesignCanvas
+                    key={index}
+                    ref={(node) => {
+                      otherStages.current[index] = node;
+                    }}
+                    draft={draftSlide(design, index)}
+                    exportOnly
+                  />
+                ))}
+            </div>
+          )}
+          <ExportDialog
+            pending={exporting}
+            onClose={() => setExportOpen(false)}
+            status={exportStatus}
+            onDownload={download}
+            carousel={carousel}
+          />
+        </>
       )}
     </section>
   );
