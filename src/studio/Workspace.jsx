@@ -170,7 +170,7 @@ export function ProjectsView({
           </button>
         </section>
         <section className="studio-card">
-          <small className="workspace-kicker">Website assets</small>
+          <small className="workspace-kicker">Inspect Pro</small>
           <h2>Choose a site to collect assets</h2>
           <p>Enter a website or pick an open tab.</p>
           <button className="secondary" onClick={onChooseSite}>

@@ -227,7 +227,7 @@ function Studio() {
   }
 
   const projectDialog = ["project", "reuse"].includes(dialog);
-  const siteDialog = ["choose-site", "change-site"].includes(dialog);
+  const siteDialog = dialog === "change-site";
   const inspectDialog = dialog === "inspect-pro";
   const editDialog = dialog === "edit-collection";
   const reusable = (projects || []).flatMap((project) =>
@@ -296,15 +296,9 @@ function Studio() {
     } else if (siteDialog) {
       const site = siteFromFields(fields);
       if (!site) throw Error("Choose an open tab or enter a website address.");
-      const source = reusable.find(({ id }) => id === destination);
-      const projectId =
-        dialog === "change-site" ? currentProject?.id : source?.ownerId;
-      if (!projectId) throw Error("Choose a collection for this site.");
-      const { project } = await saveProjectSite(projectId, site);
+      const { project } = await saveProjectSite(currentProject.id, site);
       updateProject(project);
-      const target =
-        dialog === "change-site" ? { ...collection, ownerId } : source.item;
-      openCollection(project, target, "collect");
+      openCollection(project, { ...collection, ownerId }, "collect");
     } else if (editDialog) {
       await updateCollection((next, project) => {
         const cleaned = cleanName(name);
@@ -608,9 +602,7 @@ function Studio() {
               );
               openProjectDialog("reuse");
             }}
-            onChooseSite={() =>
-              openProjectDialog(reusable.length ? "choose-site" : "project")
-            }
+            onChooseSite={() => openProjectDialog("inspect-pro")}
             onOpen={(project) => {
               const target = projectCollections(project)[0];
               if (target) openCollection(project, target, "project");
@@ -643,12 +635,7 @@ function Studio() {
           initial={{
             name: editDialog ? collection.name : "",
             notes: editDialog ? collection.notes : "",
-            collection:
-              dialog === "reuse"
-                ? featuredCollection
-                : dialog === "choose-site"
-                  ? reusable[0]?.id || ""
-                  : "",
+            collection: dialog === "reuse" ? featuredCollection : "",
             address:
               dialog === "change-site"
                 ? currentProject.site?.address || ""
@@ -674,24 +661,11 @@ function Studio() {
                     ],
                   },
                 ]
-              : inspectDialog
+              : inspectDialog || siteDialog
                 ? siteFields
-                : siteDialog
-                  ? [
-                      ...siteFields,
-                      ...(dialog === "choose-site"
-                        ? [
-                            {
-                              key: "collection",
-                              label: "Collection",
-                              options: reusable,
-                            },
-                          ]
-                        : []),
-                    ]
-                  : editDialog
-                    ? collectionFields
-                    : collectionFields.slice(0, 1)
+                : editDialog
+                  ? collectionFields
+                  : collectionFields.slice(0, 1)
           }
           action={
             projectDialog

@@ -1,4 +1,5 @@
 import { legacyKeys } from "./core/preferences.js";
+import { inspectProKey } from "./studio/inspect-workspace.js";
 chrome.runtime.onInstalled.addListener(() => {
   chrome.action
     .enable()
@@ -61,7 +62,13 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     return;
   const record = { time: Date.now(), workspace: message.workspace };
   transfers.set(message.windowId, record);
-  const saved = chrome.storage.session.set({ [key]: record });
+  const saved = chrome.storage.session
+    .set({ [key]: record })
+    .then(() =>
+      GETTER_STUDIO_WORKSPACE_QA && message.mode === "panel"
+        ? chrome.storage.session.remove(inspectProKey(message.windowId))
+        : undefined,
+    );
   setTimeout(() => {
     if (transfers.get(message.windowId) === record)
       transfers.delete(message.windowId);

@@ -1402,6 +1402,95 @@ test("Studio Inspect keeps the existing tools and saves motion, text, and reusab
   }
 });
 
+test("Quick Inspect opens from the popup while Pro is active", async ({}, info) => {
+  execFileSync(process.execPath, [
+    "scripts/build.mjs",
+    "--studio-workspace-qa",
+  ]);
+  const app = await launch(info, { buildDir: "dist-studio-workspace-qa" });
+  try {
+    await app.page.goto(`${origin}/studio-motion`);
+    const studio = await openStudioOptions(app);
+    await studio
+      .getByRole("button", { name: "Inspect Pro", exact: true })
+      .click();
+    const dialog = studio.getByRole("dialog");
+    await dialog
+      .getByRole("combobox", { name: "Open tabs", exact: true })
+      .selectOption({ label: "Studio motion fixture · 127.0.0.1" });
+    await dialog
+      .getByRole("button", { name: "Open Inspect Pro", exact: true })
+      .click();
+    await expect(dialog).toBeHidden();
+    const native = () =>
+      studio.evaluate(() =>
+        chrome.extension
+          .getViews()
+          .filter((w) => w.location.pathname === "/sidepanel.html")
+          .map((w) => ({
+            head: w.document.querySelector("h1")?.textContent,
+            mode: w.document
+              .querySelector(".tabs button[aria-pressed=true]")
+              ?.textContent.trim(),
+            body: w.document.body?.innerText,
+          })),
+      );
+    await expect
+      .poll(native)
+      .toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ head: "Inspect Pro" }),
+        ]),
+      );
+    await app.worker.evaluate(() => chrome.action.openPopup());
+    const cdp = await app.context.newCDPSession(studio);
+    const opened = (await cdp.send("Target.getTargets")).targetInfos.find((t) =>
+      t.url.endsWith("/popup.html"),
+    );
+    if (!opened) throw Error("Missing native popup.");
+    const { sessionId } = await cdp.send("Target.attachToTarget", {
+      targetId: opened.targetId,
+      flatten: false,
+    });
+    const activity = new Promise((resolve, reject) => {
+      const handler = (event) => {
+        if (event.sessionId !== sessionId) return;
+        const result = JSON.parse(event.message);
+        if (result.id !== 1) return;
+        cdp.off("Target.receivedMessageFromTarget", handler);
+        result.error || result.result?.exceptionDetails
+          ? reject(new Error(JSON.stringify(result)))
+          : resolve();
+      };
+      cdp.on("Target.receivedMessageFromTarget", handler);
+    });
+    await cdp.send("Target.sendMessageToTarget", {
+      sessionId,
+      message: JSON.stringify({
+        id: 1,
+        method: "Runtime.evaluate",
+        params: {
+          expression:
+            "document.querySelector('.tabs button:nth-child(5)').click()",
+          userGesture: true,
+          returnByValue: true,
+        },
+      }),
+    });
+    await activity;
+    await cdp.send("Target.detachFromTarget", { sessionId }).catch(() => {});
+    await expect
+      .poll(native)
+      .toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ mode: "Quick Inspect" }),
+        ]),
+      );
+  } finally {
+    await app.context.close();
+  }
+});
+
 test("Inspect Pro opens the native panel, previews and saves the whole selected component", async ({}, info) => {
   execFileSync(process.execPath, [
     "scripts/build.mjs",
